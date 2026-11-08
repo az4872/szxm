@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>塞得下吗 · 我的东西能塞进这间仓吗</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#11151c;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#e8eef7}
+#c{position:absolute;left:0;top:0;width:100%;height:100%;display:block;touch-action:none;
+  transition:height .28s cubic-bezier(.4,0,.2,1)}
+body.ropen #c{height:calc(100% - 296px)}
+body.ropen footer{opacity:0;pointer-events:none}
+footer{transition:opacity .18s}
+header{position:absolute;top:0;left:0;right:0;padding:12px 14px 10px;z-index:10;
+  background:linear-gradient(180deg,rgba(17,21,28,.96),rgba(17,21,28,0));
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+header h1{font-size:15px;font-weight:700;letter-spacing:.3px}
+header h1 em{font-style:normal;color:#4da3ff}
+.binbtn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+  color:#c9d6e8;font-size:12px;font-weight:600;padding:7px 10px;border-radius:9px;
+  cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.binbtn small{font-size:9px;color:#7f8fa6;font-weight:400}
+footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18px;
+  background:linear-gradient(0deg,rgba(17,21,28,.98),rgba(17,21,28,0));
+  display:flex;flex-direction:column;gap:8px}
+.acts{display:flex;gap:8px}
+.btn{border:none;border-radius:12px;padding:14px 8px;font-size:15px;font-weight:700;
+  font-family:inherit;cursor:pointer;transition:.12s}
+.btn:active{transform:scale(.97)}
+.primary{flex:1;background:linear-gradient(135deg,#4da3ff,#2b7fe0);color:#fff;
+  box-shadow:0 6px 18px rgba(77,163,255,.28)}
+.add{flex:0 0 auto;min-width:120px;background:linear-gradient(135deg,#3ddc84,#22a862);color:#06210f}
+.ghost{flex:0 0 84px;background:rgba(255,255,255,.08);color:#c9d6e8;
+  border:1px solid rgba(255,255,255,.14);position:relative}
+#cartNum{position:absolute;top:-6px;right:-4px;background:#ff6b6b;color:#fff;
+  font-size:10px;font-weight:700;min-width:18px;height:18px;line-height:18px;
+  border-radius:9px;padding:0 5px;text-align:center}
+#status{font-size:11px;color:#7f8fa6;text-align:center;line-height:1.5}
+
+/* 抽屉通用 */
+#mask{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:29;
+  display:none;opacity:0;transition:.2s}
+#mask.show{display:block;opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;max-height:76%;
+  background:#161d28;border-top:1px solid rgba(255,255,255,.12);
+  border-radius:18px 18px 0 0;padding:16px 14px 22px;
+  transform:translateY(105%);transition:.28s;display:flex;flex-direction:column}
+.sheet.show{transform:translateY(0)}
+.ptitle{font-size:15px;font-weight:700;margin-bottom:3px}
+.psub{font-size:11px;color:#7f8fa6;line-height:1.55;margin-bottom:10px}
+.plist{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.pitem{position:relative;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:10px;padding:11px 10px;cursor:pointer}
+.pitem:active{background:rgba(77,163,255,.18)}
+.pitem.hasqty{border-color:rgba(77,163,255,.5);background:rgba(77,163,255,.1)}
+.pitem.hasqty .pname{padding-right:34px}
+.pitem.hasqty .pdim{padding-right:26px}
+.pqty{position:absolute;top:7px;right:8px;font-size:11px;font-weight:700;color:#08131f;
+  background:#4da3ff;border-radius:9px;padding:1px 6px;font-variant-numeric:tabular-nums}
+.pminus{position:absolute;right:8px;bottom:7px;width:23px;height:23px;padding:0;line-height:1;
+  border-radius:7px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
+  color:#c9d6e8;font-size:15px;font-family:inherit;cursor:pointer}
+.ptotal{display:inline-block;font-size:11px;font-weight:700;color:#7cc0ff;
+  background:rgba(77,163,255,.14);border-radius:8px;padding:2px 8px;margin-bottom:7px;
+  font-variant-numeric:tabular-nums}
+.pname{font-size:13px;font-weight:600;margin-bottom:3px}
+.pdim{font-size:11px;color:#8fa8c4;font-variant-numeric:tabular-nums}
+.mk{font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.1);
+  color:#93a5bb;margin-left:5px;vertical-align:middle}
+.mk.real{background:rgba(77,163,255,.2);color:#7cc0ff}
+.mk.bad{background:rgba(255,179,71,.18);color:#ffb347}
+.sbtn{width:100%;border:none;border-radius:12px;padding:13px;
+  background:#4da3ff;color:#08131f;font-size:15px;font-weight:700;
+  font-family:inherit;cursor:pointer}
+.sbtn.sec{background:rgba(255,255,255,.09);color:#c9d6e8;margin-top:8px}
+#cartList{flex:1;overflow-y:auto;margin:8px 0 12px}
+.crow{display:flex;align-items:center;gap:10px;padding:11px 2px;
+  border-bottom:1px solid rgba(255,255,255,.07)}
+.cinfo{flex:1;min-width:0}
+.cname{font-size:14px;font-weight:600;margin-bottom:2px}
+.cdim{font-size:11px;color:#8fa8c4;font-variant-numeric:tabular-nums}
+.clink{color:#4da3ff;margin-left:6px;cursor:pointer;text-decoration:underline}
+.qty{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.qb{width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.07);color:#e8eef7;font-size:16px;font-family:inherit;
+  cursor:pointer;line-height:1;padding:0}
+.cdel{background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.3);
+  color:#ff9b9b;font-size:12px;border-radius:8px;padding:7px 9px;
+  font-family:inherit;cursor:pointer}
+.empty{text-align:center;color:#63748a;font-size:13px;padding:38px 0;line-height:2}
+.empty span{font-size:11px;color:#4d5c70}
+#binIn{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+  color:#e8eef7;border-radius:10px;padding:13px;font-size:15px;font-family:inherit;
+  margin:10px 0}
+.qrow{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+.qbin{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+  color:#c9d6e8;font-size:11px;padding:7px 10px;border-radius:8px;
+  font-family:inherit;cursor:pointer}
+#photoPrev{display:none;width:100%;max-height:150px;object-fit:contain;
+  border-radius:10px;margin-bottom:10px;background:#0d1117}
+
+/* 结果卡 */
+#result{position:absolute;left:0;right:0;bottom:0;z-index:25;
+  max-height:296px;overflow-y:auto;display:none;
+  background:rgba(20,26,36,.995);border-top:1px solid rgba(255,255,255,.12);
+  border-radius:16px 16px 0 0;padding:16px 16px 18px}
+#result.show{display:block}
+.rhead{font-size:19px;font-weight:800;letter-spacing:.5px;margin-bottom:3px}
+.rhead.ok{color:#3ddc84}
+.rhead.bad{color:#ff6b6b}
+.rhead.warn{color:#ffc44d}
+.rbig{font-size:32px;font-weight:800;line-height:1.1;margin-bottom:8px}
+.rbig span{font-size:15px;color:#7f8fa6;font-weight:600}
+.rrow{display:flex;justify-content:space-between;font-size:12px;color:#9fb0c6;
+  padding:5px 0;border-top:1px solid rgba(255,255,255,.06)}
+.rrow b{color:#e8eef7}
+.rmiss{margin-top:9px}
+.mlabel{font-size:11px;color:#ff8a8a;margin-bottom:6px;font-weight:600}
+.missrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.mreason{font-size:11px;color:#8fa8c4;line-height:1.5}
+.chip.size{background:rgba(255,107,107,.18);border-color:rgba(255,107,107,.4);color:#ff8a8a}
+.chip.space{background:rgba(255,179,71,.14);border-color:rgba(255,179,71,.35);color:#ffc44d}
+.chip{display:inline-block;background:rgba(255,107,107,.14);color:#ff9b9b;
+  border:1px solid rgba(255,107,107,.3);font-size:11px;padding:4px 8px;
+  border-radius:6px;margin:0 5px 5px 0}
+.radv{margin-top:7px;font-size:12px;color:#ffc44d;font-weight:600;line-height:1.65}
+.radv.good{color:#3ddc84}
+.mk.guessmk{background:rgba(255,179,71,.2);color:#ffc44d}
+.pitem.guess{border-color:rgba(255,179,71,.45);background:rgba(255,179,71,.07)}
+#binBar{position:absolute;top:54px;left:14px;right:14px;z-index:12;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(77,163,255,.13);border:1px solid rgba(77,163,255,.32);
+  border-radius:11px;padding:12px 13px;font-size:12px;cursor:pointer;
+  transition:.2s;min-height:46px}
+#binBar:active{background:rgba(77,163,255,.24)}
+body.ropen #binBar{opacity:0;pointer-events:none}
+#binBar .bl{color:#7fa8d0;flex:0 0 auto}
+#binBar b{color:#e8eef7;font-size:13px;font-variant-numeric:tabular-nums;flex:1}
+#binBar .bc{color:#4da3ff;font-size:11px;flex:0 0 auto}
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.sitem{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;padding:12px 10px;text-align:left;font-family:inherit;
+  cursor:pointer;min-height:62px;transition:.15s}
+.sitem:active{background:rgba(77,163,255,.25);border-color:#4da3ff}
+.sitem.on{background:rgba(77,163,255,.2);border-color:#4da3ff}
+.sitem b{display:block;color:#e8eef7;font-size:13px;margin-bottom:3px}
+.sitem span{display:block;color:#8fa8c4;font-size:11px;font-variant-numeric:tabular-nums}
+.sitem em{display:block;color:#63748a;font-size:10px;font-style:normal;margin-top:3px}
+.qrow{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
+.qbin{display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  color:#c9d6e8;font-size:13px;padding:14px 14px;border-radius:10px;
+  font-family:inherit;cursor:pointer;min-height:48px;transition:.15s}
+.qbin:active{background:rgba(77,163,255,.25);border-color:#4da3ff}
+.qbin b{color:#e8eef7;font-size:14px}
+.qbin span{color:#8fa8c4;font-size:12px;font-variant-numeric:tabular-nums}
+.photoEntry{width:100%;background:rgba(77,163,255,.14);border:1px dashed rgba(77,163,255,.45);
+  color:#7cc0ff;font-size:13px;font-weight:600;padding:12px;border-radius:10px;
+  font-family:inherit;cursor:pointer;margin-bottom:10px}
+#manualBar{position:absolute;left:0;right:0;bottom:0;z-index:16;display:none;
+  background:linear-gradient(180deg,rgba(14,20,28,.96),rgba(10,14,20,1));
+  border-top:1px solid #253347;padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+body.manual #manualBar{display:block}
+body.manual footer{display:none}
+.mb-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.mb-head b{font-size:13.5px;color:#eaf2ff}
+.mb-head span{font-size:11.5px;color:#8b9ab0}
+.mb-head span.ok{color:#54d68a}
+.mb-head span.bad{color:#ff6b6b}
+.mb-head span.warn{color:#ffaa33}
+.mb-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.btn.manual{background:rgba(77,163,255,.18);border:1px solid rgba(77,163,255,.45);color:#8fc4ff}
+.mb-btn{background:#1c2534;border:1px solid #2b3849;color:#d6e2f2;font-size:12px;
+  font-weight:600;padding:11px 2px;border-radius:9px;font-family:inherit;cursor:pointer}
+.mb-btn:active{background:#263243}
+.mb-btn.ok{background:#1d4d33;border-color:#2f7a4f;color:#7ff0b0}
+.mb-btn.skip{background:#3a2630;border-color:#5e3a46;color:#ff9db0}
+.mb-btn:disabled{opacity:.35}
+body.manual #c{height:calc(100% - 128px)}
+.gbtn{position:absolute;right:14px;top:58px;z-index:12;background:rgba(20,26,36,.9);
+  border:1px solid #33455e;color:#9fb2c9;font-size:11.5px;font-weight:700;
+  padding:8px 12px;border-radius:9px;cursor:pointer;font-family:inherit}
+.gbtn.on{background:rgba(255,209,102,.16);border-color:rgba(255,209,102,.6);color:#ffd166}
+.lvbtn{position:absolute;right:14px;top:14px;z-index:12;background:rgba(77,163,255,.16);
+  border:1px solid rgba(77,163,255,.5);color:#8fc4ff;font-size:12px;font-weight:700;
+  padding:9px 14px;border-radius:10px;cursor:pointer;font-family:inherit}
+.lvitem{display:block;width:100%;text-align:left;background:#1b2230;border:1px solid #2a3448;
+  border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;font-family:inherit;color:#e8eef7}
+.lvitem:active{background:#222c3d}
+.lvitem b{display:block;font-size:13.5px;margin-bottom:3px}
+.lvitem small{display:block;font-size:11.5px;color:#8b9ab0;line-height:1.4}
+.lvitem .st{position:absolute;right:14px;font-size:13px;color:#ffc44d;letter-spacing:2px}
+.lvitem{position:relative}
+.lvitem .best{color:#4da3ff;font-size:11px;margin-left:auto}
+.lvscore{background:linear-gradient(160deg,#17263c,#111823);border:1px solid #2f4160;
+  border-radius:14px;padding:14px;margin-bottom:12px;text-align:center}
+.lvscore .stars{font-size:26px;letter-spacing:6px;color:#ffc44d;line-height:1.1}
+.lvscore .stars .off{color:#3a4658}
+.lvscore .pts{font-size:30px;font-weight:800;color:#eaf2ff;margin:2px 0 4px}
+.lvscore .pts span{font-size:13px;font-weight:600;color:#8b9ab0;margin-left:4px}
+.lvscore .brk{font-size:11px;color:#8b9ab0;line-height:1.6}
+.lvscore .tip{margin-top:8px;font-size:11.5px;color:#4da3ff}
+#tripBadge{position:absolute;top:112px;left:50%;transform:translateX(-50%) scale(.9);
+  z-index:14;background:rgba(77,163,255,.92);color:#08131f;font-size:13px;font-weight:800;
+  padding:8px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:.25s;
+  white-space:nowrap}
+#tripBadge.show{opacity:1;transform:translateX(-50%) scale(1)}
+.playbtn{background:rgba(77,163,255,.9);border:none;color:#08131f;font-size:11px;
+  font-weight:700;padding:5px 11px;border-radius:7px;cursor:pointer;margin-left:6px;
+  font-family:inherit;vertical-align:middle}
+#hint{position:absolute;left:0;right:0;top:46%;text-align:center;z-index:5;
+  pointer-events:none;transition:.3s}
+#hint.hide{opacity:0}
+#hint .h1{font-size:15px;font-weight:700;color:#8fa8c4;margin-bottom:8px}
+#hint .h2{font-size:12px;color:#5c6b80;line-height:1.9}
+.rule{margin-top:10px;font-size:10px;color:#5f7086;line-height:1.6;
+  padding-top:8px;border-top:1px dashed rgba(255,255,255,.1)}
+.route{margin-top:9px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.65;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#9fb0c6}
+.route.warn{background:rgba(255,179,71,.1);border-color:rgba(255,179,71,.32);color:#ffc98a}
+.route.bad{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.32);color:#ffa8a8}
+.rtitle{font-weight:700;margin-bottom:4px;color:#c9d6e8}
+.route.warn .rtitle{color:#ffc44d}
+.route.bad .rtitle{color:#ff8a8a}
+.rline{font-size:12px;margin-top:4px}
+.pstep{display:flex;gap:8px;font-size:11px;line-height:1.6;padding:3px 0;
+  border-top:1px solid rgba(255,255,255,.06);align-items:baseline}
+.pstep b{flex:0 0 52px;color:#c9d6e8;font-size:11px}
+.pstep span{flex:1;color:#8fa8c4;font-size:11px}
+.rline.good{color:#3ddc84}
+.rec{margin-top:9px;padding:10px 12px;border-radius:10px;font-size:12px;
+  background:rgba(77,163,255,.1);border:1px solid rgba(77,163,255,.28);
+  color:#9fc4ea;line-height:1.6}
+.rec.hot{background:rgba(61,220,132,.1);border-color:rgba(61,220,132,.35);color:#8fe0b0}
+.rec b{color:#e8eef7}
+.ractions{display:flex;gap:9px;margin-top:13px}
+.ract{flex:1;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);
+  color:#c9d6e8;border-radius:11px;padding:13px 8px;font-size:14px;font-weight:700;
+  font-family:inherit;cursor:pointer;min-height:46px}
+.ract:active{background:rgba(255,255,255,.16)}
+#resultClose{position:absolute;top:10px;right:12px;background:none;border:none;
+  color:#63748a;font-size:18px;cursor:pointer;font-family:inherit;padding:2px 6px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<header>
+  <h1>塞得下吗 · <em>我能装走多少</em></h1>
+  <button class="binbtn" id="binBtn">
+    <span id="binLabel">200×150×120 cm</span>
+    <small>我的仓位 · 点改</small>
+  </button>
+  <button class="lvbtn" id="lvBtn">关卡</button>
+  <button class="gbtn" id="gbBtn">灰盒</button>
+</header>
+
+<div id="binBar">
+  <span class="bl">当前仓位</span>
+  <b id="binBarVal">200×150×120 cm</b>
+  <span class="bc">点这里改 ›</span>
+</div>
+
+<div id="tripBadge"></div>
+
+<div id="hint">
+  <div class="h1">这是你的仓位 3D 空间</div>
+  <div class="h2">拖动旋转 · 双指缩放<br>点下方「＋ 添加物品」把要搬的东西放进来</div>
+</div>
+
+<div id="result">
+  <button id="resultClose">×</button>
+</div>
+
+<div id="mask"></div>
+
+<div class="sheet" id="picker">
+  <div class="ptitle">要搬什么东西？</div>
+  <div class="ptotal" id="pickerTotal">已加 0 件</div>
+  <div class="psub">点品类可以连续加，同一件点几次就是几件；加够了点底部「完成」。尺寸是品类标准值，加进清单后可以按你家的实际尺寸改。带「真实模型」的会显示扫描出来的外形。</div>
+  <button class="photoEntry" id="photoBtn">📷 拍一张 / 从相册选（本地无法自动识别，需你确认品类）</button>
+  <img id="photoPrev" alt="">
+  <div class="plist" id="pickerList"></div>
+  <button class="sbtn" id="pickerClose">完成（共 0 件）</button>
+</div>
+
+<div class="sheet" id="cartSheet">
+  <div class="ptitle">我的清单</div>
+  <div class="psub">点改尺寸可以填你实测的值。</div>
+  <div id="cartList"></div>
+  <button class="sbtn sec" id="cartClose">收起</button>
+</div>
+
+<div class="sheet" id="levelSheet">
+  <div class="ptitle">闯关模式</div>
+  <div class="psub">六关，每关只教一件事。三星条件：全都装下 + 搬得进去 + 仓位选得准。</div>
+  <div id="levelList"></div>
+  <button class="sbtn sec" id="levelClose">收起</button>
+</div>
+
+<div class="sheet" id="binSheet">
+  <div class="ptitle">我的仓位尺寸</div>
+  <div class="psub">填你要租的那间仓的内尺寸（长,宽,高，单位 cm）。不知道就先用快捷值。</div>
+  <div class="psub" style="margin-bottom:8px">点任一场景，立即生效</div>
+  <div class="qgrid" id="sceneGrid"></div>
+  <div class="psub" style="margin:10px 0 4px">或者填你自己量到的<b>内部尺寸</b>（cm）。<br>分格仓：外部 = 标称 +10cm，内部 ≈ 标称 +2cm，判定只用内部。</div>
+  <input id="binIn" placeholder="例如 240,160,140" inputmode="numeric">
+  <button class="sbtn" id="binApply">按这个尺寸设置</button>
+  <button class="sbtn sec" id="binCancel">取消</button>
+</div>
+
+<div id="manualBar">
+  <div class="mb-head"><b id="mbName">—</b><span id="mbState">拖动到仓内</span></div>
+  <div class="mb-btns">
+    <button class="mb-btn" id="mbRotate">↻ 转向</button>
+    <button class="mb-btn" id="mbUp">↑ 上一格</button>
+    <button class="mb-btn" id="mbDown">↓ 落地</button>
+    <button class="mb-btn ok" id="mbDrop">放下</button>
+    <button class="mb-btn skip" id="mbSkip">跳过</button>
+  </div>
+</div>
+
+<footer>
+  <div class="acts">
+    <button class="btn add" id="addBtn">＋ 添加物品</button>
+    <button class="btn ghost" id="cartBtn">清单<span id="cartNum">0</span></button>
+    <button class="btn manual" id="manualBtn">手动装</button>
+    <button class="btn primary" id="packBtn">一键装填</button>
+  </div>
+  <div id="status">先添加你要搬的物品 · 共 0 件</div>
+  <input type="file" id="photoIn" accept="image/*" style="display:none">
+</footer>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>if(!window.THREE){document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/scr'+'ipt>');}</script>
+
+<script>// 塞得下吗 · 装填判定内核 v2（贴合度贪心，纯 JS 无依赖）
+// 轴对齐 6 朝向 + 接触面积最大化放置
+
+function orientations(d) {
+  const { l, w, h } = d;
+  const p = [[l, w, h], [l, h, w], [w, l, h], [w, h, l], [h, l, w], [h, w, l]];
+  const seen = new Set(), out = [];
+  for (const [a, b, c] of p) {
+    const k = [a, b, c].map(v => v.toFixed(2)).join('|');
+    if (!seen.has(k)) { seen.add(k); out.push([a, b, c]); }
+  }
+  return out;
+}
+
+/* 有效占位 = 实际尺寸 + 搬运间隙
+   硬物每件预留 2cm，软物预留 1cm；不足则视为塞不进去 */
+const GAP_HARD = 2;
+const GAP_SOFT = 1;
+
+function effDims(it) {
+  const pad = it.soft ? GAP_SOFT : GAP_HARD;
+  return { l: it.l + pad, w: it.w + pad, h: it.h + pad };
+}
+
+function gapOf(it) { return it.soft ? GAP_SOFT : GAP_HARD; }
+
+function sep(a, b) { // 两个 AABB 是否分离
+  return a.x >= b.x + b.l - 0.5 || b.x >= a.x + a.l - 0.5 ||
+         a.y >= b.y + b.w - 0.5 || b.y >= a.y + a.w - 0.5 ||
+         a.z >= b.z + b.h - 0.5 || b.z >= a.z + a.h - 0.5;
+}
+
+function contact(b, placed, W, D, H, penTop) {
+  let s = 0;
+  if (b.x < 0.5) s += b.w * b.h;
+  if (b.x + b.l > W - 0.5) s += b.w * b.h;
+  if (b.y < 0.5) s += b.l * b.h;
+  if (b.y + b.w > D - 0.5) s += b.l * b.h;
+  if (b.z < 0.5) s += b.l * b.w;
+  if (b.z + b.h > H - 0.5) s -= b.l * b.w * (penTop ? 1 : 0);
+  for (const q of placed) {
+    if (Math.abs(b.x - (q.x + q.l)) < 0.5 || Math.abs(b.x + b.l - q.x) < 0.5) s += b.w * b.h;
+    if (Math.abs(b.y - (q.y + q.w)) < 0.5 || Math.abs(b.y + b.w - q.y) < 0.5) s += b.l * b.h;
+    if (Math.abs(b.z - (q.z + q.h)) < 0.5 || Math.abs(b.z + b.h - q.z) < 0.5) s += b.l * b.w;
+  }
+  return s;
+}
+
+function packCore(bin, items, topPenalty) {
+  const W = bin.l, D = bin.w, H = bin.h;
+  const placed = [], points = [{ x: 0, y: 0, z: 0 }], failed = [];
+
+  // FFD：按体积降序，大件先放；单件失败只记该件，不影响其他
+  const sorted = items.map(it => ({
+    ...it, _d: effDims(it), _v: it.l * it.w * it.h
+  })).sort((a, b) => b._v - a._v);
+
+  for (const it of sorted) {
+    let best = null;
+    /* 不可倒置（冰箱/书架/衣柜）：只保留高度方向仍是自身高度的朝向 */
+    let ors = orientations(it._d);
+    if (it.upright) {
+      const keep = ors.filter(o => Math.abs(o[2] - it._d.h) < 0.01);
+      if (keep.length) ors = keep;
+    }
+    for (const [a, b, c] of ors) {
+      if (a > W || b > D || c > H) continue;
+      for (const p of points) {
+        if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
+        const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
+        let ok = true;
+        for (const q of placed) if (!sep(box, q)) { ok = false; break; }
+        if (!ok) continue;
+        /* 接触面积越大越稳，但顶得太高会堵住上方空间，按顶高加罚 */
+        const score = contact(box, placed, W, D, H, topPenalty) - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
+        if (!best || score > best.score) best = { box, score };
+      }
+    }
+    if (best) {
+      const b = best.box;
+      placed.push(b);
+      /* 极值点：角点 + 顶面投影到两墙的点（让后续物品能叠放到已有堆顶上）*/
+      const cand = [
+        { x: b.x + b.l, y: b.y, z: b.z },
+        { x: b.x, y: b.y + b.w, z: b.z },
+        { x: b.x, y: b.y, z: b.z + b.h },
+        { x: 0, y: b.y, z: b.z + b.h },
+        { x: b.x, y: 0, z: b.z + b.h },
+        { x: b.x + b.l, y: 0, z: b.z },
+        { x: 0, y: b.y + b.w, z: b.z }
+      ];
+      for (const c of cand) {
+        if (c.x < 0 || c.y < 0 || c.z < 0) continue;
+        if (c.x > W || c.y > D || c.z > H) continue;
+        let dup = false;
+        for (const q of points) {
+          if (Math.abs(q.x - c.x) < 0.01 && Math.abs(q.y - c.y) < 0.01 && Math.abs(q.z - c.z) < 0.01) { dup = true; break; }
+        }
+        if (!dup) points.push(c);
+      }
+    } else {
+      failed.push(it.name);
+    }
+  }
+
+  const vol = placed.reduce((s, b) => s + b.l * b.w * b.h, 0);
+  const cap = W * D * H;
+  return { placed, failed, count: placed.length, total: items.length,
+           util: vol / cap, vol: vol / 1e6, cap: cap / 1e6 };
+}
+
+/* 两轮择优：先按"别顶天"策略，装不全再退回不惩罚策略，取装得多的一轮 */
+function pack(bin, items) {
+  const a = packCore(bin, items, 60);
+  if (a.failed.length === 0) return a;
+  const b = packCore(bin, items, 0);
+  return (b.count > a.count) ? b : a;
+}
+
+if (typeof module !== 'undefined') module.exports = { pack, orientations, effDims, gapOf, GAP_HARD, GAP_SOFT };
+</script>
+<script>var MESH_DATA = {};</script>
+<script>
+/* ===== 塞得下吗 v7 · 用户自建清单 ===== */
+(function () {
+'use strict';
+var T = THREE;
+
+/* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
+var CATALOG = [
+  { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55 },
+  { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'suitcase', color:0x3f5b78 },
+  { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b },
+  { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true },
+  { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true },
+  { id:'desk',     name:'折叠桌',  l:120, w:60,  h:75,  color:0x9c7b52 },
+  { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   color:0xa9c4cf, upright:true },
+  { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  color:0xe8e8e8, upright:true },
+  { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true },
+  { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true },
+  { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  color:0x6b7b8c },
+  { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  color:0x5c7a63 },
+  { id:'tv',       name:'电视',    l:130, w:15,  h:75,  color:0x2a2a2a, upright:true },
+  { id:'table',    name:'茶几',    l:100, w:55,  h:45,  color:0x8a7355 },
+  { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, color:0x3a3f47 },
+  { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, color:0x7d6247, upright:true }
+];
+
+/* ---------- 状态 ---------- */
+var cart = [];                                  /* [{id, name, l,w,h, qty, soft, compress, color, mesh, warn}] */
+var bin = { l:200, w:150, h:120, name:'迷你仓 M', type:'store' };
+
+/* 场景库
+   store = 装填判定，pass = 单件通过判定
+   分格仓库（迷你仓）标称尺寸与实际可用内径的差：每边约 +10cm 结构余量
+   电梯轿厢 / 货车车厢是设备净尺寸，不加余量
+*/
+/* 分格仓的三种尺寸，判定只用「内部」
+   标称 → 外部 = 标称 + 10cm（含板材与分格骨架） → 内部 = 标称 + 2cm（板材约 4cm/侧）
+   例：标称 1 m³ = 外部 110×110×110，内部 102×102×102
+*/
+var PAD_OUTER = 10;   /* 外部相对标称 */
+var PAD_INNER = 2;    /* 内部相对标称（判定用这个） */
+
+function repoScene(id, name, nl, nw, nh, doorW, doorH) {
+  return {
+    id: id, name: name, type: 'store',
+    l: nl + PAD_INNER, w: nw + PAD_INNER, h: nh + PAD_INNER,
+    outer: [nl + PAD_OUTER, nw + PAD_OUTER, nh + PAD_OUTER],
+    nominal: [nl, nw, nh],
+    doorW: doorW, doorH: doorH,
+    memo: '标称 ' + nl + '×' + nw + '×' + nh
+  };
+}
+
+var SCENES = [
+  repoScene('S', '迷你仓 1 m³',  100, 100, 100, 80, 190),
+  repoScene('M', '迷你仓 3 m³',  150, 150, 130, 80, 190),
+  repoScene('L', '迷你仓 6 m³',  200, 170, 175, 90, 200),
+  repoScene('XL','迷你仓 12 m³', 300, 200, 200, 120, 210),
+  { id:'elev',  name:'电梯轿厢', type:'store', l:160, w:130, h:250,
+    doorW: 90, doorH: 210, memo:'轿厢净尺寸 160×130×250' },
+  { id:'truck', name:'货车车厢', type:'store', l:430, w:200, h:220,
+    doorW: 200, doorH: 190, memo:'车厢净尺寸 430×200×220' },
+  { id:'door',  name:'门洞通道', type:'pass',  l:90,  w:200, memo:'门宽 90 · 门高 200' },
+  { id:'aisle', name:'走廊',     type:'pass',  l:120, w:0,   memo:'最窄 120 · 90° 拐角 120×100 · 净高 200' },
+  { id:'stair', name:'楼梯间',   type:'pass',  l:100, w:200, memo:'净宽 100 · 净高 200' }
+];
+
+/* ---------- base64 ---------- */
+function b64bytes(b64) {
+  var bin2 = atob(b64), n = bin2.length, u8 = new Uint8Array(n);
+  for (var i = 0; i < n; i++) u8[i] = bin2.charCodeAt(i);
+  return u8;
+}
+function b64f32(s) { return new Float32Array(b64bytes(s).buffer); }
+function b64u32(s) { return new Uint32Array(b64bytes(s).buffer); }
+function b64i16(s) {
+  var u = b64bytes(s), dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+  var a = new Int16Array(u.length >> 1);
+  for (var i = 0; i < a.length; i++) a[i] = dv.getInt16(i * 2, true);
+  return a;
+}
+function b64u16(s) {
+  var u = b64bytes(s), dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+  var a = new Uint16Array(u.length >> 1);
+  for (var i = 0; i < a.length; i++) a[i] = dv.getUint16(i * 2, true);
+  return a;
+}
+
+/* ---------- 场景 ---------- */
+var canvas = document.getElementById('c');
+var renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setClearColor(0x11151c, 1);
+
+var scene = new T.Scene();
+var camera = new T.PerspectiveCamera(45, 1, 1, 20000);
+
+scene.add(new T.HemisphereLight(0xffffff, 0x2a3240, 1.1));
+var d1 = new T.DirectionalLight(0xffffff, 1.45); d1.position.set(300, 600, 400); scene.add(d1);
+var d2 = new T.DirectionalLight(0xbfd4ff, 0.65); d2.position.set(-400, 300, -300); scene.add(d2);
+
+/* ---------- 真实模型 ---------- */
+/* NoModelData：构建时就没有模型（纯灰盒包）
+   greyboxView：用户主动切到灰盒视图（有模型也能切） */
+var NoModelData = (typeof MESH_DATA === 'undefined') || !MESH_DATA || Object.keys(MESH_DATA).length === 0;
+var greyboxView = false;
+function GREYBOX_ON() { return NoModelData || greyboxView; }
+var meshCache = {};
+var texLoader = new T.TextureLoader();
+
+function buildRealMesh(key, fallbackColor) {
+  if (meshCache[key]) return meshCache[key].clone(true);
+  var d = MESH_DATA[key];
+  if (!d) return null;
+  var geo = new T.BufferGeometry();
+  if (d.qscale) {
+    /* 量化版：int16 顶点 + uint16 索引，体积约为 float32 版的一半 */
+    var qi = b64i16(d.pos), fv = new Float32Array(qi.length), qs = d.qscale;
+    for (var zi = 0; zi < qi.length; zi++) fv[zi] = qi[zi] * qs;
+    geo.setAttribute('position', new T.BufferAttribute(fv, 3));
+    geo.setIndex(new T.BufferAttribute(b64u16(d.idx), 1));
+  } else {
+    geo.setAttribute('position', new T.BufferAttribute(b64f32(d.pos), 3));
+    if (d.nrm) geo.setAttribute('normal', new T.BufferAttribute(b64f32(d.nrm), 3));
+    if (d.uv) geo.setAttribute('uv', new T.BufferAttribute(b64f32(d.uv), 2));
+    geo.setIndex(new T.BufferAttribute(b64u32(d.idx), 1));
+  }
+  if (!d.nrm) geo.computeVertexNormals();
+  var mat = new T.MeshStandardMaterial({
+    color: d.tex ? 0xffffff : fallbackColor,
+    roughness: 0.82, metalness: 0.04, side: T.DoubleSide
+  });
+  if (d.tex) {
+    var tex = texLoader.load('data:image/jpeg;base64,' + d.tex);
+    tex.flipY = false;
+    mat.map = tex; mat.needsUpdate = true;
+  }
+  var m = new T.Mesh(geo, mat);
+  meshCache[key] = m;
+  return m;
+}
+
+function fitInto(obj, L, H, W) {
+  var box = new T.Box3().setFromObject(obj);
+  var size = new T.Vector3(); box.getSize(size);
+  var ctr = new T.Vector3(); box.getCenter(ctr);
+  obj.position.sub(ctr);
+  var wrap = new T.Group();
+  wrap.add(obj);
+  wrap.scale.set(
+    (L / (size.x || 1)) * 0.96,
+    (H / (size.y || 1)) * 0.96,
+    (W / (size.z || 1)) * 0.96
+  );
+  var b2 = new T.Box3().setFromObject(wrap);
+  var c2 = new T.Vector3(); b2.getCenter(c2);
+  wrap.position.sub(c2);
+  var g = new T.Group(); g.add(wrap);
+  return g;
+}
+
+/* ---------- 仓体 ---------- */
+var binGroup = null;
+/* 灰盒专用：10cm 地面网格 + 50cm 标尺，用来读空间尺度 */
+function buildBinGrid() {
+  var g = new T.Group();
+  if (!GREYBOX_ON()) return g;
+  var step = 10;
+  var pts = [];
+  for (var gx = 0; gx <= bin.l + 0.01; gx += step) { pts.push(gx, 0.3, 0, gx, 0.3, bin.w); }
+  for (var gy = 0; gy <= bin.w + 0.01; gy += step) { pts.push(0, 0.3, gy, bin.l, 0.3, gy); }
+  var geo = new T.BufferGeometry();
+  geo.setAttribute('position', new T.Float32BufferAttribute(pts, 3));
+  g.add(new T.LineSegments(geo, new T.LineBasicMaterial({ color: 0x2a4a6b, transparent: true, opacity: 0.55 })));
+
+  /* 每 50cm 一根加粗刻度，方便一眼数出米数 */
+  var big = [];
+  for (var bx = 0; bx <= bin.l + 0.01; bx += 50) { big.push(bx, 0.5, 0, bx, 0.5, bin.w); }
+  for (var by = 0; by <= bin.w + 0.01; by += 50) { big.push(0, 0.5, by, bin.l, 0.5, by); }
+  var geo2 = new T.BufferGeometry();
+  geo2.setAttribute('position', new T.Float32BufferAttribute(big, 3));
+  g.add(new T.LineSegments(geo2, new T.LineBasicMaterial({ color: 0x4da3ff, transparent: true, opacity: 0.75 })));
+
+  /* 四面墙的竖直刻度线（每 50cm 高一根），读层高用 */
+  var vpts = [];
+  for (var hz = 50; hz <= bin.h; hz += 50) {
+    vpts.push(0, hz, 0, bin.l, hz, 0);
+    vpts.push(0, hz, bin.w, bin.l, hz, bin.w);
+    vpts.push(0, hz, 0, 0, hz, bin.w);
+    vpts.push(bin.l, hz, 0, bin.l, hz, bin.w);
+  }
+  if (vpts.length) {
+    var geo3 = new T.BufferGeometry();
+    geo3.setAttribute('position', new T.Float32BufferAttribute(vpts, 3));
+    g.add(new T.LineSegments(geo3, new T.LineBasicMaterial({ color: 0x2a4a6b, transparent: true, opacity: 0.4 })));
+  }
+  return g;
+}
+
+function drawBin() {
+  if (binGroup) { scene.remove(binGroup); binGroup = null; }
+  binGroup = new T.Group();
+  var geo = new T.BoxGeometry(bin.l, bin.h, bin.w);
+  var edges = new T.LineSegments(
+    new T.EdgesGeometry(geo),
+    new T.LineBasicMaterial({ color: 0x4da3ff, transparent: true, opacity: 0.9 })
+  );
+  edges.position.set(bin.l / 2, bin.h / 2, bin.w / 2);
+  binGroup.add(edges);
+  var ghost = new T.Mesh(geo, new T.MeshBasicMaterial({
+    color: 0x2f6fb0, transparent: true, opacity: 0.07,
+    side: T.DoubleSide, depthWrite: false
+  }));
+  ghost.position.set(bin.l / 2, bin.h / 2, bin.w / 2);
+  binGroup.add(ghost);
+  binGroup.add(buildBinGrid());
+  var floor = new T.Mesh(
+    new T.PlaneGeometry(bin.l, bin.w),
+    new T.MeshStandardMaterial({ color: 0x1b2330, roughness: 0.95 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(bin.l / 2, 0, bin.w / 2);
+  binGroup.add(floor);
+  scene.add(binGroup);
+  fitCamera();
+}
+
+/* ---------- 相机 ---------- */
+var camTarget = new T.Vector3(), camDist = 500, camTheta = 0.9, camPhi = 1.05;
+function fitCamera(wide) {
+  var diag = Math.sqrt(bin.l * bin.l + bin.h * bin.h + bin.w * bin.w);
+  camDist = diag * (wide ? 1.95 : 1.35);
+  camTarget.set(bin.l / 2, bin.h * 0.45, bin.w / 2);
+  updateCam();
+}
+function updateCam() {
+  var sp = Math.sin(camPhi), cp = Math.cos(camPhi);
+  camera.position.set(
+    camTarget.x + camDist * sp * Math.sin(camTheta),
+    camTarget.y + camDist * cp,
+    camTarget.z + camDist * sp * Math.cos(camTheta)
+  );
+  camera.lookAt(camTarget);
+}
+
+var dragging = false, lastX = 0, lastY = 0;
+var _dragItem = false;
+canvas.addEventListener('pointerdown', function (e) {
+  if (manual.on && manual.cur) {
+    /* 手动模式：拖动物品，不动相机 */
+    _dragItem = true;
+    moveCurrentTo(e.clientX, e.clientY);
+    try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+    return;
+  }
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+});
+canvas.addEventListener('pointermove', function (e) {
+  if (_dragItem) { moveCurrentTo(e.clientX, e.clientY); return; }
+  if (!dragging) return;
+  camTheta -= (e.clientX - lastX) * 0.008;
+  camPhi -= (e.clientY - lastY) * 0.006;
+  camPhi = Math.max(0.15, Math.min(1.5, camPhi));
+  lastX = e.clientX; lastY = e.clientY;
+  updateCam();
+});
+canvas.addEventListener('pointerup', function (e) {
+  _dragItem = false;
+  dragging = false;
+  try { canvas.releasePointerCapture(e.pointerId); } catch (x) {}
+});
+canvas.addEventListener('wheel', function (e) {
+  e.preventDefault();
+  camDist *= (1 + Math.sign(e.deltaY) * 0.08);
+  updateCam();
+}, { passive: false });
+var pinchD = 0;
+canvas.addEventListener('touchmove', function (e) {
+  if (e.touches.length !== 2) return;
+  var dx = e.touches[0].clientX - e.touches[1].clientX;
+  var dy = e.touches[0].clientY - e.touches[1].clientY;
+  var d = Math.sqrt(dx * dx + dy * dy);
+  if (pinchD) { camDist *= pinchD / d; updateCam(); }
+  pinchD = d;
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', function () { pinchD = 0; });
+
+/* ---------- 物品实例 ---------- */
+var placedGroup = new T.Group();
+scene.add(placedGroup);
+
+function makeObj(cat) {
+  return makeObjSized(cat, cat.l, cat.w, cat.h);
+}
+
+/* 按实际占位尺寸建物体：pl=X长 ph=Y高 pw=Z深
+   盒体精确；真实模型等比缩放进盒内，绝不超过盒子（防穿模） */
+/* 模型局部轴对应：原始长 l → x，原始宽 w → z，原始高 h → y（模型 Y-up） */
+function axisOfDim(d) {
+  if (d === 0) return new T.Vector3(1, 0, 0);
+  if (d === 1) return new T.Vector3(0, 0, 1);
+  return new T.Vector3(0, 1, 0);
+}
+
+/* placed 的某一维来自原始哪一维（0=长 1=宽 2=高） */
+function matchDim(val, orig) {
+  var best = 0, bd = 1e9;
+  for (var i = 0; i < 3; i++) {
+    var d = Math.abs(val - orig[i]);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
+function makeObjSized(cat, pl, ph, pw, placed) {
+  var g = new T.Group();
+  var body = null;
+  if (cat.mesh && MESH_DATA[cat.mesh] && !GREYBOX_ON()) {
+    var real = buildRealMesh(cat.mesh, cat.color);
+    if (real) {
+      /* 算法若旋转过朝向，先把模型转到同一朝向，否则会被误压扁 */
+      if (placed && placed.orig) {
+        var o = placed.orig;
+        var bx = axisOfDim(matchDim(placed.l, o));
+        var by = axisOfDim(matchDim(placed.h, o));
+        var bz = axisOfDim(matchDim(placed.w, o));
+        var det = bx.x * (by.y * bz.z - by.z * bz.y)
+                - bx.y * (by.x * bz.z - by.z * bz.x)
+                + bx.z * (by.x * bz.y - by.y * bz.x);
+        if (Math.abs(Math.abs(det) - 1) < 1e-6) {
+          var mtx = new T.Matrix4().makeBasis(bx, by, bz);
+          mtx.transpose();   /* bx/by/bz 是"世界轴→模型轴"，取转置才是局部轴朝向 */
+          real.applyMatrix4(mtx);
+        }
+      }
+      var box = new T.Box3().setFromObject(real);
+      var size = new T.Vector3(); box.getSize(size);
+      var ctr = new T.Vector3(); box.getCenter(ctr);
+      /* 模型已在打包时按轴向对齐 + 每轴归一化，这里直接非等比铺满占位盒，
+         彻底消除"模型缩在盒子一角"的问题 */
+      real.position.sub(ctr);
+      var wrap = new T.Group();
+      wrap.add(real);
+      wrap.scale.set(
+        (pl / (size.x || 1)) * 0.98,
+        (ph / (size.y || 1)) * 0.98,
+        (pw / (size.z || 1)) * 0.98
+      );
+      var b2 = new T.Box3().setFromObject(wrap);
+      var c2 = new T.Vector3(); b2.getCenter(c2);
+      /* X/Z 居中，Y 底部坐实到占位盒底面（防止模型悬浮在盒中间） */
+      wrap.position.x -= c2.x;
+      wrap.position.z -= c2.z;
+      wrap.position.y += (-ph / 2 - b2.min.y);
+      body = new T.Group();
+      body.add(wrap);
+    }
+  }
+  if (!body) {
+    var geo = new T.BoxGeometry(pl, ph, pw);
+    body = new T.Group();
+    body.add(new T.Mesh(geo, new T.MeshStandardMaterial({
+      color: cat.color, roughness: 0.75, metalness: 0.05,
+      transparent: true, opacity: 0.93
+    })));
+    body.add(new T.LineSegments(
+      new T.EdgesGeometry(geo),
+      new T.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 })
+    ));
+  }
+  g.add(body);
+  return g;
+}
+
+/* ---------- 清单 UI ---------- */
+var els = {
+  status: document.getElementById('status'),
+  cartBtn: document.getElementById('cartBtn'),
+  cartNum: document.getElementById('cartNum'),
+  addBtn: document.getElementById('addBtn'),
+  packBtn: document.getElementById('packBtn'),
+  binBtn: document.getElementById('binBtn'),
+  binLabel: document.getElementById('binLabel'),
+  binBar: document.getElementById('binBar'),
+  binBarVal: document.getElementById('binBarVal'),
+  mask: document.getElementById('mask'),
+  sceneGrid: document.getElementById('sceneGrid'),
+  tripBadge: document.getElementById('tripBadge'),
+  lvBtn: document.getElementById('lvBtn'),
+  mbName: document.getElementById('mbName'),
+  mbState: document.getElementById('mbState'),
+  mbRotate: document.getElementById('mbRotate'),
+  mbUp: document.getElementById('mbUp'),
+  mbDown: document.getElementById('mbDown'),
+  mbDrop: document.getElementById('mbDrop'),
+  mbSkip: document.getElementById('mbSkip'),
+  manualBtn: document.getElementById('manualBtn'),
+  gbBtn: document.getElementById('gbBtn'),
+  levelSheet: document.getElementById('levelSheet'),
+  levelList: document.getElementById('levelList'),
+  levelClose: document.getElementById('levelClose'),
+  picker: document.getElementById('picker'),
+  pickerList: document.getElementById('pickerList'),
+  pickerTotal: document.getElementById('pickerTotal'),
+  pickerClose: document.getElementById('pickerClose'),
+  cartSheet: document.getElementById('cartSheet'),
+  cartList: document.getElementById('cartList'),
+  cartClose: document.getElementById('cartClose'),
+  binSheet: document.getElementById('binSheet'),
+  binIn: document.getElementById('binIn'),
+  binApply: document.getElementById('binApply'),
+  binCancel: document.getElementById('binCancel'),
+  result: document.getElementById('result'),
+  resultClose: document.getElementById('resultClose'),
+  hint: document.getElementById('hint'),
+  photoBtn: document.getElementById('photoBtn'),
+  photoIn: document.getElementById('photoIn'),
+  photoPrev: document.getElementById('photoPrev')
+};
+
+function totalQty() {
+  var n = 0;
+  for (var i = 0; i < cart.length; i++) n += cart[i].qty;
+  return n;
+}
+
+function refreshCartUI() {
+  var n = totalQty();
+  els.cartNum.textContent = n;
+  els.cartBtn.style.opacity = n ? '1' : '.45';
+  var h = '';
+  if (!cart.length) {
+    h = '<div class="empty">清单还是空的<br><span>点「添加物品」，把你要搬的东西加进来</span></div>';
+  } else {
+    for (var i = 0; i < cart.length; i++) {
+      var c = cart[i];
+      h += '<div class="crow">' +
+        '<div class="cinfo">' +
+          '<div class="cname">' + c.name + (c.mesh ? '<span class="mk real">真实模型</span>' : '') +
+            (c.warn ? '<span class="mk bad">比例失真</span>' : '') + '</div>' +
+          '<div class="cdim">' + c.l + '×' + c.w + '×' + c.h + ' cm' +
+            ' <a class="clink" data-act="edit" data-i="' + i + '">改尺寸</a></div>' +
+        '</div>' +
+        '<div class="qty">' +
+          '<button class="qb" data-act="minus" data-i="' + i + '">−</button>' +
+          '<span>' + c.qty + '</span>' +
+          '<button class="qb" data-act="plus" data-i="' + i + '">＋</button>' +
+        '</div>' +
+        '<button class="cdel" data-act="del" data-i="' + i + '">删</button>' +
+      '</div>';
+    }
+  }
+  els.cartList.innerHTML = h;
+  if (els.hint) {
+    if (n) els.hint.classList.add('hide'); else els.hint.classList.remove('hide');
+  }
+}
+
+function bindCartEvents() {
+  var btns = els.cartList.querySelectorAll('[data-act]');
+  for (var i = 0; i < btns.length; i++) {
+    (function (b) {
+      b.addEventListener('click', function () {
+        var act = b.getAttribute('data-act');
+        var idx = +b.getAttribute('data-i');
+        var c = cart[idx];
+        if (!c) return;
+        if (act === 'plus') { c.qty++; }
+        else if (act === 'minus') { c.qty--; if (c.qty <= 0) cart.splice(idx, 1); }
+        else if (act === 'del') { cart.splice(idx, 1); }
+        else if (act === 'edit') {
+          var v = prompt('修改「' + c.name + '」尺寸（长,宽,高 单位 cm）', c.l + ',' + c.w + ',' + c.h);
+          if (v === null) return;
+          var p = v.split(/[,，\s]+/).filter(function (x) { return x !== ''; });
+          if (p.length !== 3) { alert('请填三个数字，用逗号分隔，例如 200,85,80'); return; }
+          var nn = [];
+          for (var k = 0; k < 3; k++) {
+            var x = parseFloat(p[k]);
+            if (!isFinite(x) || x <= 0) { alert('第 ' + (k + 1) + ' 个值无效'); return; }
+            nn.push(Math.round(x * 10) / 10);
+          }
+          c.l = nn[0]; c.w = nn[1]; c.h = nn[2];
+        }
+        refreshCartUI();
+        bindCartEvents();
+        renderPreview();
+        els.status.textContent = '清单已更新（' + totalQty() + ' 件），点「一键装填」重新计算';
+      });
+    })(btns[i]);
+  }
+}
+
+/* ---------- 品类选择器 ---------- */
+var lastOrder = null;   /* 拍照后按轮廓比例排好的品类顺序 */
+
+/* 某个品类（按 id + 当前尺寸）已经在清单里多少件 */
+function pickerQtyOf(cat) {
+  var n = 0;
+  for (var i = 0; i < cart.length; i++) {
+    var it = cart[i];
+    if (it.id === cat.id && it.l === cat.l && it.w === cat.w && it.h === cat.h) n += it.qty;
+  }
+  return n;
+}
+
+/* 品类面板上的「−」：清单里减 1，减到 0 就从清单移除（面板不关） */
+function decFromCart(cat) {
+  for (var i = 0; i < cart.length; i++) {
+    var it = cart[i];
+    if (it.id === cat.id && it.l === cat.l && it.w === cat.w && it.h === cat.h) {
+      it.qty--;
+      if (it.qty <= 0) cart.splice(i, 1);
+      refreshCartUI(); bindCartEvents(); afterChange();
+      return;
+    }
+  }
+}
+
+/* 面板底部主按钮 / 顶部计数，实时显示本次已加总数 */
+function refreshPickerDone() {
+  var n = totalQty();
+  if (els.pickerClose) els.pickerClose.textContent = '完成（共 ' + n + ' 件）';
+  if (els.pickerTotal) els.pickerTotal.textContent = '已加 ' + n + ' 件';
+}
+
+function renderPicker() {
+  var h = '';
+  var list = lastOrder || CATALOG;
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    var ci = CATALOG.indexOf(c);
+    var rank = lastOrder ? (i < 3 ? ' guess' : '') : '';
+    var tag = lastOrder ? (i < 3 ? '<span class="mk guessmk">推荐' + (i + 1) + '</span>' : '') : '';
+    var q = pickerQtyOf(c);
+    h += '<div class="pitem' + rank + (q ? ' hasqty' : '') + '" data-i="' + ci + '">' +
+      '<div class="pname">' + c.name + tag + (c.mesh ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
+      '<div class="pdim">' + c.l + '×' + c.w + '×' + c.h + '</div>' +
+      (q ? '<span class="pqty">×' + q + '</span><button class="pminus" data-act="minus">−</button>' : '') +
+      '</div>';
+  }
+  var keepScroll = els.pickerList.scrollTop || 0;
+  els.pickerList.innerHTML = h;
+  var its = els.pickerList.querySelectorAll('.pitem');
+  for (var j = 0; j < its.length; j++) {
+    (function (el) {
+      el.addEventListener('click', function (ev) {
+        var cat = CATALOG[+el.getAttribute('data-i')];
+        if (!cat) return;
+        /* 点到条目上的「−」= 减 1，其余位置 = 加 1；两种情况都留在面板里，可连续点 */
+        var t = ev && ev.target, dec = false;
+        while (t && t !== el) {
+          if (t.getAttribute && t.getAttribute('data-act') === 'minus') { dec = true; break; }
+          t = t.parentNode;
+        }
+        if (dec) decFromCart(cat); else addToCart(cat);
+        renderPicker();
+        els.pickerList.scrollTop = keepScroll;
+      });
+    })(its[j]);
+  }
+  refreshPickerDone();
+}
+
+/* 读图算前景包围盒比例，把最接近的品类排前面（这是推断，不是识别） */
+function rankByImage(img, done) {
+  try {
+    var maxW = 220;
+    var sc = Math.min(1, maxW / Math.max(img.naturalWidth || img.width, 1));
+    var w = Math.max(1, Math.round((img.naturalWidth || img.width) * sc));
+    var hh = Math.max(1, Math.round((img.naturalHeight || img.height) * sc));
+    var cv = document.createElement('canvas');
+    cv.width = w; cv.height = hh;
+    var ctx = cv.getContext('2d');
+    if (!ctx) { done(null); return; }
+    ctx.drawImage(img, 0, 0, w, hh);
+    var data = ctx.getImageData(0, 0, w, hh).data;
+    /* 取四角平均当背景色 */
+    function px(x, y) { var i = (y * w + x) * 4; return [data[i], data[i + 1], data[i + 2]]; }
+    var corners = [px(0, 0), px(w - 1, 0), px(0, hh - 1), px(w - 1, hh - 1)];
+    var bg = [0, 1, 2].map(function (k) {
+      return corners.reduce(function (a, c) { return a + c[k]; }, 0) / 4;
+    });
+    var minX = w, maxX = -1, minY = hh, maxY = -1, cnt = 0;
+    for (var y = 0; y < hh; y++) {
+      for (var x = 0; x < w; x++) {
+        var i2 = (y * w + x) * 4;
+        var d = Math.abs(data[i2] - bg[0]) + Math.abs(data[i2 + 1] - bg[1]) + Math.abs(data[i2 + 2] - bg[2]);
+        if (d > 60) {
+          cnt++;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0 || cnt < 50) { done(null); return; }
+    var bw = maxX - minX + 1, bh = maxY - minY + 1;
+    var ratio = bw / bh;              /* 宽 / 高 */
+    /* 按品类 l/h 与实际比例的距离排序 */
+    var scored = CATALOG.map(function (c) {
+      var r = Math.max(c.l, c.w) / c.h;
+      var dist = Math.abs(Math.log(ratio / r));
+      return { c: c, d: dist };
+    }).sort(function (a, b) { return a.d - b.d; });
+    done({ ratio: ratio, order: scored.map(function (x) { return x.c; }) });
+  } catch (e) {
+    done(null);
+  }
+}
+
+function addToCart(cat) {
+  for (var i = 0; i < cart.length; i++) {
+    if (cart[i].id === cat.id && cart[i].l === cat.l && cart[i].w === cat.w && cart[i].h === cat.h) {
+      cart[i].qty++;
+      refreshCartUI(); bindCartEvents(); afterChange();
+      return;
+    }
+  }
+  cart.push({
+    id: cat.id, name: cat.name, l: cat.l, w: cat.w, h: cat.h, qty: 1,
+    soft: cat.soft, compress: cat.compress, color: cat.color, mesh: cat.mesh, warn: cat.warn
+  });
+  refreshCartUI(); bindCartEvents(); afterChange();
+}
+
+function afterChange() {
+  renderPreview();
+  els.status.textContent = '已加入清单（共 ' + totalQty() + ' 件），右侧是它们的样子';
+}
+
+/* 物品是否在任何朝向下都放不进这个容器（放不进 = 尺寸超限，而非空间不足） */
+function canEverFit(it, b) {
+  var p = [[it.l, it.w, it.h], [it.l, it.h, it.w], [it.w, it.l, it.h],
+           [it.w, it.h, it.l], [it.h, it.l, it.w], [it.h, it.w, it.l]];
+  for (var i = 0; i < p.length; i++) {
+    if (p[i][0] <= b.l && p[i][1] <= b.w && p[i][2] <= b.h) return true;
+  }
+  return false;
+}
+
+/* ---------- M2-a 搬运路径通过性（门洞 / 电梯 / 走廊）---------- */
+var ROUTE = {
+  doorW: 90, doorH: 200,          /* 仓门 */
+  elevD: 160, elevW: 130, elevH: 250, elevDW: 90, elevDH: 210,  /* 电梯轿厢与电梯门 */
+  corridor: 120,                   /* 走廊最窄处 */
+  cornerA: 120, cornerB: 100, cornerH: 200   /* 90° 拐角：两段净宽 120/100，净高 200 */
+};
+
+/* 长条物体过 90° 直角拐角的最大可行长度（钢琴搬运问题的矩形解）
+   贴墙通过时，进入段横向占 a，离开段纵向占 b，取各角度最优 */
+function cornerMaxLen(a, b, w) {
+  if (w > Math.min(a, b)) return 0;
+  var best = 0;
+  for (var deg = 1; deg < 90; deg++) {
+    var t = deg * Math.PI / 180;
+    var sn = Math.sin(t), cs = Math.cos(t);
+    var v1 = (a - w * cs) / sn;
+    var v2 = (b - w * sn) / cs;
+    if (v1 > 0 && v2 > 0) {
+      var m = Math.min(v1, v2);
+      if (m > best) best = m;
+    }
+  }
+  return best;
+}
+
+/* 拐角通过性：枚举三种摆放姿态（哪一维朝前进方向），任一满足即算通过 */
+function cornerPass(it, a, b, H) {
+  /* 六种姿态：哪一维朝前进方向 × 剩下两维怎么分配水平宽/垂直高。
+     只枚举 3 种会漏掉"长边朝前、薄边当宽"，床垫竖起来侧着过走廊就是这种 */
+  var poses = [
+    [it.l, it.w, it.h], [it.l, it.h, it.w],
+    [it.w, it.l, it.h], [it.w, it.h, it.l],
+    [it.h, it.l, it.w], [it.h, it.w, it.l]
+  ];
+  var near = null;
+  for (var i = 0; i < poses.length; i++) {
+    var len = poses[i][0], wHz = poses[i][1], hVt = poses[i][2];
+    if (wHz > Math.min(a, b)) continue;
+    if (hVt > H) continue;
+    var lm = cornerMaxLen(a, b, wHz);
+    if (len <= lm) return { ok: true, len: len, w: wHz, limit: Math.round(lm) };
+    var gap = len - lm;
+    if (!near || gap < near.gap) near = { ok: false, len: len, w: wHz, limit: Math.round(lm), gap: gap };
+  }
+  return near || { ok: false, reason: '截面超过拐角净宽/净高' };
+}
+
+/* 物品截面能否穿过矩形门洞：先试正交，不行再算斜放角 */
+function passDoor(it, dw, dh) {
+  /* 过门同样留间隙：硬 2cm / 软 1cm。否则 80cm 厚的沙发会被判成能过 80cm 门 */
+  var gp = it.soft ? 1 : 2;
+  var l = it.l + gp, w = it.w + gp, h = it.h + gp;
+  /* 1. 直立：高度方向仍是 h */
+  if (Math.min(l, w) <= dw && h <= dh) return { ok: true, mode: 'upright', angle: 0 };
+  /* 2. 侧翻：让 l 或 w 变竖直 */
+  if (Math.min(l, h) <= dw && w <= dh) return { ok: true, mode: 'side', angle: 0 };
+  if (Math.min(w, h) <= dw && l <= dh) return { ok: true, mode: 'side', angle: 0 };
+  /* 3. 斜放：薄板绕门法线转一个角度 */
+  var arr = [l, w, h].sort(function (a, b) { return a - b; });
+  var thin = arr[0], mid = arr[1], big = arr[2];
+  var diag = Math.sqrt(dw * dw + dh * dh);
+  if (thin <= dw && big <= diag && mid <= dh) {
+    var ang = Math.acos(Math.min(1, mid / Math.min(dw, diag))) * 180 / Math.PI;
+    return { ok: true, mode: 'tilt', angle: ang };
+  }
+  return { ok: false, mode: 'none', angle: 0 };
+}
+
+/* 能否放进电梯轿厢（任一朝向） */
+function fitInBox(it, L, W, H) {
+  var p = [[it.l, it.w, it.h], [it.l, it.h, it.w], [it.w, it.l, it.h],
+           [it.w, it.h, it.l], [it.h, it.l, it.w], [it.h, it.w, it.l]];
+  for (var i = 0; i < p.length; i++) {
+    if (p[i][0] <= L && p[i][1] <= W && p[i][2] <= H) return 'direct';
+  }
+  /* 正交放不进时，按轿厢地面对角线容差判斜放（保守估计） */
+  var i = 0;
+  for (i = 0; i < p.length; i++) {
+    var a = p[i][0], b = p[i][1], hh = p[i][2];
+    if (hh > H) continue;
+    var diag = Math.sqrt(L * L + W * W);
+    if (a <= diag && b <= Math.min(L, W) * 1.02) return 'tilt';
+    if (b <= diag && a <= Math.min(L, W) * 1.02) return 'tilt';
+  }
+  return false;
+}
+
+function checkRoute(cart2) {
+  var res = { door: [], elevator: [], corridor: [], blocked: [] };
+  for (var i = 0; i < cart2.length; i++) {
+    var c = cart2[i];
+    var item = { l: c.l, w: c.w, h: c.h };
+    /* 仓门 */
+    var dW = bin.doorW || ROUTE.doorW, dH = bin.doorH || ROUTE.doorH;
+    var d = passDoor(item, dW, dH);
+    if (!d.ok) { res.door.push({ name: c.name, ok: false }); res.blocked.push({ name: c.name, where: '仓门' }); }
+    else res.door.push({ name: c.name, ok: true, mode: d.mode, angle: d.angle });
+
+    /* 电梯：先过电梯门，再进轿厢 */
+    var ed = passDoor(item, ROUTE.elevDW, ROUTE.elevDH);
+    var inCar = fitInBox(item, ROUTE.elevD, ROUTE.elevW, ROUTE.elevH);  /* 'direct'/'tilt'/false */
+    if (!ed.ok || !inCar) {
+      res.elevator.push({ name: c.name, ok: false, why: !ed.ok ? '门太窄' : '轿厢装不下' });
+      res.blocked.push({ name: c.name, where: '电梯' });
+    } else {
+      res.elevator.push({ name: c.name, ok: true, mode: ed.mode, angle: ed.angle, car: inCar });
+    }
+
+    /* 走廊：先按姿态判断截面能否进走廊，再看 90° 拐角能不能转过去 */
+    var posesC = [
+      [c.l, c.w, c.h], [c.l, c.h, c.w],
+      [c.w, c.l, c.h], [c.w, c.h, c.l],
+      [c.h, c.l, c.w], [c.h, c.w, c.l]
+    ];
+    var secOK = false;
+    for (var pz = 0; pz < posesC.length; pz++) {
+      if (posesC[pz][1] <= ROUTE.corridor && posesC[pz][2] <= ROUTE.cornerH) { secOK = true; break; }
+    }
+    if (!secOK) {
+      res.corridor.push({ name: c.name, ok: false, why: '走廊宽度不足（截面需 ≤ ' + ROUTE.corridor + '×' + ROUTE.cornerH + '）' });
+      res.blocked.push({ name: c.name, where: '走廊' });
+    } else if (!routeCornerCheck) {
+      res.corridor.push({ name: c.name, ok: true });
+    } else {
+      var cp = cornerPass(item, ROUTE.cornerA, ROUTE.cornerB, ROUTE.cornerH);
+      if (!cp.ok) {
+        var cpWhy = cp.reason || ('拐角转不过（需 ' + cp.len + 'cm，此拐角最多 ' + cp.limit + 'cm，差 ' + Math.round(cp.gap) + 'cm）');
+        if (c.soft) cpWhy += '，软体可卷起/弯折通过';
+        res.corridor.push({ name: c.name, ok: false, why: cpWhy });
+        res.blocked.push({ name: c.name, where: '走廊拐角' });
+      } else {
+        res.corridor.push({ name: c.name, ok: true, corner: true, limit: cp.limit });
+      }
+    }
+  }
+  return res;
+}
+
+/* ---------- M1 最小可行仓位推荐（照抄 Calcumate / AI Smart Size Finder 的做法）---------- */
+var TIERS = [
+  { name: 'S', l: 100, w: 100, h: 100 },
+  { name: 'M', l: 200, w: 150, h: 120 },
+  { name: 'L', l: 360, w: 220, h: 200 },
+  { name: 'XL', l: 480, w: 240, h: 220 }
+];
+
+function recommendBin(inst) {
+  for (var i = 0; i < TIERS.length; i++) {
+    var t = TIERS[i];
+    var r;
+    try { r = pack({ l: t.l, w: t.w, h: t.h }, inst); } catch (e) { continue; }
+    if (r.failed.length === 0) {
+      return { tier: t, util: r.util, count: r.count, total: r.total };
+    }
+  }
+  /* 全档位都不够：按体积估一个建议值（目标利用率 55%） */
+  var vol = 0;
+  for (var k = 0; k < inst.length; k++) vol += inst[k].l * inst[k].w * inst[k].h;
+  var needCm3 = vol / 0.55;
+  var side = Math.cbrt(needCm3);
+  return { tier: null, suggest: Math.ceil(side / 10) * 10, vol: needCm3 / 1e6 };
+}
+
+/* ---------- M4 分趟方案（装不下时给具体怎么分）---------- */
+function planTrips(inst, bin2) {
+  var remain = inst.slice();
+  var trips = [];
+  var guard = 0;
+  while (remain.length && guard < 6) {
+    guard++;
+    var r;
+    try { r = pack({ l: bin2.l, w: bin2.w, h: bin2.h }, remain); }
+    catch (e) { break; }
+    if (!r.placed.length) break;
+    var doneNames = {};
+    for (var i = 0; i < r.placed.length; i++) doneNames[r.placed[i].name] = 1;
+    var next = [];
+    for (var j = 0; j < remain.length; j++) {
+      if (!doneNames[remain[j].name]) next.push(remain[j]);
+    }
+    trips.push({ count: r.count, util: r.util, names: r.placed.map(function (p) { return p.name; }) });
+    if (next.length === remain.length) break;
+    remain = next;
+  }
+  return { trips: trips, left: remain.length };
+}
+
+/* ---------- 手动摆放（真正的交互）---------- */
+var manual = {
+  on: false,
+  queue: [],        /* 待摆放物品实例 */
+  idx: 0,
+  placed: [],       /* 已放 {x,y,z,l,w,h} 算法坐标 */
+  cur: null,        /* 当前手上的 {cat, box:{l,w,h}, pos:{x,y,z}, obj} */
+  obj: null,
+  layer: 0,         /* 当前层高（算法 z） */
+  rotStep: 0,
+  ghostOK: false
+};
+
+var _ray = new T.Raycaster();
+var _ndc = new T.Vector2();
+var _planeHit = new T.Vector3();
+var _plane = new T.Plane(new T.Vector3(0, 1, 0), 0);
+
+/* 算法坐标 ↔ three 坐标：algo(x=长,y=宽,z=高) → three(x, y=高, z=宽) */
+function A2T(ax, ay, az) { return { x: ax, y: az, z: ay }; }
+
+function manualStart() {
+  if (!cart.length) { alert('先添加物品'); return; }
+  manual.on = true;
+  manual.queue = [];
+  manual.idx = 0;
+  manual.placed = [];
+  manual.layer = 0;
+  manual.rotStep = 0;
+  document.body.classList.add('manual');
+  placedGroup.clear();
+  curLevel = -1;
+  routeCornerCheck = true;
+
+  /* 展开清单（大件优先，跟自动装填一致） */
+  var list = [];
+  for (var i = 0; i < cart.length; i++) {
+    for (var q = 0; q < cart[i].qty; q++) {
+      var it = {};
+      for (var k in cart[i]) it[k] = cart[i][k];
+      it._v = it.l * it.w * it.h;
+      list.push(it);
+    }
+  }
+  list.sort(function (a, b) { return b._v - a._v; });
+  manual.queue = list;
+  spawnNext();
+}
+
+function spawnNext() {
+  if (manual.idx >= manual.queue.length) { finishManual(); return; }
+  var cat = manual.queue[manual.idx];
+  var pad = cat.soft ? 1 : 2;
+  var box = { l: cat.l + pad, w: cat.w + pad, h: cat.h + pad };
+
+  /* 初始放在仓外左侧地面 */
+  var pos = { x: -box.l - 20, y: 0, z: 0 };
+  manual.cur = { cat: cat, pad: pad, box: box, base: { l: box.l, w: box.w, h: box.h }, r: 0,
+                 pos: { x: pos.x, y: pos.y, z: pos.z } };
+  manual.layer = 0;
+
+  if (manual.obj) { placedGroup.remove(manual.obj); manual.obj = null; }
+  manual.obj = makeObjSized(cat, box.l - pad, box.h - pad, box.w - pad, null);
+  manual.obj.traverse(function (o) { if (o.material) { o.material.transparent = true; o.material.opacity = 0.75; } });
+  /* 灰盒关键：把「物品实体」和「含间隙占位」用两层画出来，
+     这样 2cm/1cm 的间隙规则是看得见的，而不是一句文案 */
+  if (GREYBOX_ON()) {
+    var shellGeo = new T.BoxGeometry(box.l, box.h, box.w);
+    var shell = new T.LineSegments(
+      new T.EdgesGeometry(shellGeo),
+      new T.LineBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.9, dashSize: 4, gapSize: 3 })
+    );
+    shell.userData._shell = true;
+    manual.obj.add(shell);
+  }
+  placedGroup.add(manual.obj);
+
+  els.mbName.textContent = cat.name + '（' + Math.round(cat.l) + '×' + Math.round(cat.w) + '×' + Math.round(cat.h) + '）';
+  updateManualVisual();
+  els.mbState.textContent = '拖到仓里 → 绿了才能放';
+  els.mbState.className = '';
+  els.status.textContent = '手动装：第 ' + (manual.idx + 1) + '/' + manual.queue.length + ' 件';
+}
+
+function updateManualVisual() {
+  if (!manual.cur || !manual.obj) return;
+  var b = manual.cur;
+  var t = A2T(b.pos.x + b.box.l / 2, b.pos.y + b.box.w / 2, b.pos.z + b.box.h / 2);
+  manual.obj.position.set(t.x, t.y, t.z);
+  manual.obj.rotation.y = -b.r * Math.PI / 2;
+
+  var st = checkManualFit(b);
+  var ok = (st === 'ok');
+  manual.ghostOK = ok;
+  var col = ok ? 0x54d68a : (st === 'float' ? 0xffaa33 : 0xff5f5f);
+  manual.obj.traverse(function (o) {
+    if (o.material && o.material.color) {
+      if (!o.userData._origCol) { o.userData._origCol = o.material.color.getHex(); }
+      o.material.color.setHex(ok ? o.userData._origCol : col);
+      o.material.opacity = ok ? 0.8 : 0.55;
+    }
+  });
+  var txt = { ok: '可以放', out: '超出仓位范围', high: '超高', collide: '和别的东西撞了', 'float': '悬空——底下没东西托着' };
+  els.mbState.textContent = txt[st] || '放不下';
+  els.mbState.className = ok ? 'ok' : (st === 'float' ? 'warn' : 'bad');
+  els.mbDrop.disabled = !ok;
+}
+
+/* 判定：返回 'ok' / 'out' 出界 / 'high' 超高 / 'collide' 相撞 / 'float' 悬空 */
+function checkManualFit(b) {
+  var p = b.pos, box = b.box;
+  if (p.x < -0.5 || p.y < -0.5 || p.z < -0.5) return 'out';
+  if (p.x + box.l > bin.l + 0.5) return 'out';
+  if (p.y + box.w > bin.w + 0.5) return 'out';
+  if (p.z + box.h > bin.h + 0.5) return 'high';
+
+  var hit = null;
+  for (var i = 0; i < manual.placed.length; i++) {
+    var q = manual.placed[i];
+    var sep = (p.x >= q.x + q.l - 0.5) || (q.x >= p.x + box.l - 0.5) ||
+              (p.y >= q.y + q.w - 0.5) || (q.y >= p.y + box.w - 0.5) ||
+              (p.z >= q.z + q.h - 0.5) || (q.z >= p.z + box.h - 0.5);
+    if (!sep) { hit = q; break; }
+  }
+  if (hit) return 'collide';
+
+  /* 悬空判定：底面必须落地，或者压在别的物件顶面上（水平方向要有重叠） */
+  if (p.z > 0.5) {
+    var supported = false;
+    for (var j = 0; j < manual.placed.length; j++) {
+      var u = manual.placed[j];
+      var topMatch = Math.abs((u.z + u.h) - p.z) < 1.0;
+      var overlapX = (p.x < u.x + u.l - 0.5) && (u.x < p.x + box.l - 0.5);
+      var overlapY = (p.y < u.y + u.w - 0.5) && (u.y < p.y + box.w - 0.5);
+      if (topMatch && overlapX && overlapY) { supported = true; break; }
+    }
+    if (!supported) return 'float';
+  }
+  return 'ok';
+}
+
+/* 屏幕坐标 → 当前层高的地面点 */
+function screenToLayer(clientX, clientY) {
+  var rect = canvas.getBoundingClientRect();
+  _ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  _ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  _plane.constant = -manual.layer;
+  _ray.setFromCamera(_ndc, camera);
+  if (!_ray.ray.intersectPlane(_plane, _planeHit)) return null;
+  return { threeX: _planeHit.x, threeZ: _planeHit.z };
+}
+
+function moveCurrentTo(clientX, clientY) {
+  if (!manual.cur) return;
+  var hit = screenToLayer(clientX, clientY);
+  if (!hit) return;
+  var b = manual.cur;
+  /* three → 算法：(threeX, threeZ) → (algo x, algo y)，对齐到 1cm */
+  var ax = Math.round(hit.threeX - b.box.l / 2);
+  var ay = Math.round(hit.threeZ - b.box.w / 2);
+  b.pos.x = ax;
+  b.pos.y = ay;
+  b.pos.z = manual.layer;
+  updateManualVisual();
+}
+
+function rotateCurrent() {
+  if (!manual.cur) return;
+  var b = manual.cur;
+  if (b.base.l === b.base.w) { els.status.textContent = '这件是方的，转不转一样'; return; }
+  var t = b.box.l; b.box.l = b.box.w; b.box.w = t;
+  b.r = (b.r + 1) % 4;
+  updateManualVisual();
+}
+
+function liftCurrent(dir) {
+  if (!manual.cur) return;
+  var b = manual.cur;
+  var next = manual.layer + dir * 10;
+  if (next < 0) next = 0;
+  if (next > bin.h) next = bin.h;
+  manual.layer = next;
+  b.pos.z = next;
+  updateManualVisual();
+}
+
+function dropCurrent() {
+  if (!manual.cur || !manual.ghostOK) return;
+  var b = manual.cur;
+  manual.placed.push({ x: b.pos.x, y: b.pos.y, z: b.pos.z, l: b.box.l, w: b.box.w, h: b.box.h, name: b.cat.name });
+  if (manual.obj) {
+    manual.obj.traverse(function (o) {
+      if (o.material) {
+        if (o.userData._shell) { o.material.color.setHex(0x6b7d94); o.material.opacity = 0.5; }
+        else { o.material.transparent = false; o.material.opacity = 1; }
+      }
+    });
+    manual.obj = null;
+  }
+  manual.idx++;
+  spawnNext();
+}
+
+function skipCurrent() {
+  if (!manual.cur) return;
+  if (manual.obj) { placedGroup.remove(manual.obj); manual.obj = null; }
+  manual.idx++;
+  spawnNext();
+}
+
+function finishManual() {
+  manual.on = false;
+  document.body.classList.remove('manual');
+  if (manual.obj) { placedGroup.remove(manual.obj); manual.obj = null; }
+
+  var okN = manual.placed.length, totN = manual.queue.length;
+  var vol = 0;
+  for (var i = 0; i < manual.placed.length; i++) {
+    var q = manual.placed[i]; vol += q.l * q.w * q.h;
+  }
+  var cap = bin.l * bin.w * bin.h;
+  var util = cap > 0 ? vol / cap : 0;
+
+  var h = '<div class="rhead ' + (okN === totN ? 'ok' : (okN ? 'warn' : 'bad')) + '">' +
+          (okN === totN ? '✓ 全都装进去了' : (okN ? '⚠ 装下 ' + okN + ' 件，剩 ' + (totN - okN) + ' 件没装' : '✕ 一件都没装')) +
+          '</div>';
+  h += '<div class="rbig">' + okN + '<span>/' + totN + '</span> 件已装入</div>';
+  h += '<div class="rrow"><span>体积利用率</span><b>' + (util * 100).toFixed(1) + '%</b></div>';
+  h += '<div class="rrow"><span>你自己摆的</span><b>没有用自动装填</b></div>';
+
+  /* 对照：同一批货自动装填能装几件 */
+  var inst = [];
+  idMap = {};
+  for (var ci = 0; ci < cart.length; ci++) {
+    for (var q2 = 0; q2 < cart[ci].qty; q2++) {
+      var nm2 = cart[ci].name + '@' + ci + '#' + q2;
+      idMap[nm2] = cart[ci];
+      inst.push({ name: nm2, l: cart[ci].l, w: cart[ci].w, h: cart[ci].h, soft: !!cart[ci].soft, upright: !!cart[ci].upright });
+    }
+  }
+  var autoR = null;
+  try { autoR = pack({ l: bin.l, w: bin.w, h: bin.h }, inst); } catch (e) {}
+  if (autoR) {
+    h += '<div class="rrow"><span>自动装填对照</span><b>' + autoR.count + ' 件 / ' +
+         (autoR.util * 100).toFixed(1) + '%</b></div>';
+    if (okN > autoR.count) {
+      h += '<div class="radv good">你比算法多装了 ' + (okN - autoR.count) + ' 件</div>';
+    } else if (okN === autoR.count) {
+      h += '<div class="radv">和算法打平，试试再多塞一件</div>';
+    } else {
+      h += '<div class="radv">比算法少 ' + (autoR.count - okN) + ' 件，还有空间没利用上</div>';
+    }
+  }
+  h += '<div class="radv"><button class="playbtn" data-r="repack">再试一次</button></div>';
+
+  els.result.innerHTML = '<button id="resultClose">×</button>' + h;
+  els.result.classList.add('show');
+  document.body.classList.add('ropen');
+  els.status.textContent = '手动装完成 · ' + okN + '/' + totN;
+}
+
+/* 灰盒视图切换：同一份数据，换一种画法。
+   有模型时切灰盒 = 隐藏模型看占位盒；无模型时按钮禁用 */
+function applyGreyboxUI() {
+  if (els.gbBtn) {
+    if (GREYBOX_ON()) els.gbBtn.classList.add('on'); else els.gbBtn.classList.remove('on');
+    els.gbBtn.textContent = GREYBOX_ON() ? '灰盒·开' : '灰盒';
+    els.gbBtn.disabled = NoModelData;
+    if (NoModelData) els.gbBtn.textContent = '灰盒（无模型包）';
+  }
+  drawBin();
+  if (GREYBOX_ON()) document.body.classList.add('grey'); else document.body.classList.remove('grey');
+}
+function rebuildSceneAfterViewSwitch() {
+  placedGroup.clear();
+  drawBin();
+  if (manual.on) {
+    els.status.textContent = '已切换视图，手动装需要重新开始';
+    manual.on = false;
+    document.body.classList.remove('manual');
+  } else if (cart.length) {
+    els.status.textContent = '已切到' + (GREYBOX_ON() ? '灰盒' : '写实') + '视图，点「一键装填」重画';
+  }
+}
+els.gbBtn.addEventListener('click', function (e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (NoModelData) { alert('这个包没有模型数据，本来就是灰盒。要用真实模型请打开写实版。'); return; }
+  greyboxView = !greyboxView;
+  applyGreyboxUI();
+  rebuildSceneAfterViewSwitch();
+});
+els.manualBtn.addEventListener('click', function (e) {
+  if (e && e.preventDefault) e.preventDefault();
+  manualStart();
+});
+els.mbRotate.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); rotateCurrent(); });
+els.mbUp.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); liftCurrent(1); });
+els.mbDown.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); liftCurrent(-1); });
+els.mbDrop.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); dropCurrent(); });
+els.mbSkip.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); skipCurrent(); });
+
+/* ---------- 关卡（游戏化）---------- */
+/* minCap 是"能全装下的最小仓位容积"，用于算"仓位选得准不准"的奖励分。
+   六关数值均来自实跑验证，改物品或仓位尺寸必须重新跑一遍。 */
+var LEVELS = [
+  { id:'L01', name:'第一趟', hint:'先看看 1m³ 能不能塞下', bin:'S',
+    items:[['纸箱',4],['行李箱',1]], minCap:1.0612, limit:0 },
+  { id:'L02', name:'装不下的时候', hint:'沙发、床垫、自行车，3m³ 真装得下吗', bin:'M',
+    items:[['沙发',1],['床垫',1],['自行车',1]], minCap:6.15, limit:0 },
+  { id:'L03', name:'能小一号吗', hint:'6m³ 装得下，但 3m³ 就够了——省一半租金', bin:'L',
+    items:[['纸箱',6],['收纳箱',4],['椅子',2],['折叠桌',1]], minCap:3.05, limit:0 },
+  { id:'L04', name:'高的进矮仓就废了', hint:'书架 180 高，矮仓放不下，而且不能倒着放', bin:'XL',
+    items:[['床垫',1],['书架',2],['椅子',2],['洗衣机',1]], minCap:12.32, limit:0 },
+  { id:'L05', name:'那个拐角', hint:'全都装进去了，不等于搬得进去', bin:'XL',
+    items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:12.32, limit:0, corner:true },
+  { id:'L06', name:'限时装车', hint:'60 秒，看你能装多少', bin:'truck',
+    items:[['纸箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 }
+];
+
+var curLevel = -1;
+var routeCornerCheck = true;   /* 自由模式默认查拐角；关卡只有 L05 查 */
+var levelStartMs = 0;
+var levelRunning = false;
+var levelBest = {};
+try {
+  var saved = (typeof localStorage !== 'undefined') ? localStorage.getItem('szxm_levels') : null;
+  if (saved) levelBest = JSON.parse(saved) || {};
+} catch (e) { levelBest = {}; }
+
+function starsHTML(n) {
+  var o = '';
+  for (var i = 0; i < 3; i++) o += (i < n ? '★' : '<span class="off">★</span>');
+  return o;
+}
+
+function renderLevels() {
+  var h = '';
+  for (var i = 0; i < LEVELS.length; i++) {
+    var L = LEVELS[i];
+    var best = levelBest[L.id] || 0;
+    h += '<button class="lvitem" data-i="' + i + '">' +
+         '<b>' + L.id + ' · ' + L.name + '</b>' +
+         '<small>' + L.hint + '</small>' +
+         '<span class="st">' + starsHTML(best) + '</span>' +
+         '</button>';
+  }
+  els.levelList.innerHTML = h;
+  var its = els.levelList.querySelectorAll('.lvitem');
+  for (var j = 0; j < its.length; j++) {
+    (function (el) {
+      el.addEventListener('click', function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        loadLevel(parseInt(el.getAttribute('data-i'), 10));
+      });
+    })(its[j]);
+  }
+}
+
+function loadLevel(idx) {
+  var L = LEVELS[idx];
+  if (!L) return;
+  curLevel = idx;
+
+  /* 设仓位 */
+  var sc = null;
+  for (var i = 0; i < SCENES.length; i++) if (SCENES[i].id === L.bin) sc = SCENES[i];
+  if (sc) applyScene(sc);
+
+  /* 载入清单 */
+  cart = [];
+  for (var k = 0; k < L.items.length; k++) {
+    var nm = L.items[k][0], qty = L.items[k][1];
+    for (var c = 0; c < CATALOG.length; c++) {
+      if (CATALOG[c].name === nm) {
+        var it = {};
+        for (var key in CATALOG[c]) it[key] = CATALOG[c][key];
+        it.qty = qty;
+        cart.push(it);
+        break;
+      }
+    }
+  }
+  refreshCartUI();
+  renderPreview();
+
+  routeCornerCheck = !!L.corner;
+  levelStartMs = nowMs();
+  levelRunning = true;
+
+  els.status.textContent = L.id + ' · ' + L.name + (L.limit > 0 ? '（限时 ' + L.limit + ' 秒）' : '') + '，点「一键装填」';
+  hideSheets();
+  placedGroup.clear();
+  document.body.classList.remove('ropen');
+}
+
+els.lvBtn.addEventListener('click', function (ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  renderLevels();
+  showSheet(els.levelSheet);
+});
+els.levelClose.addEventListener('click', function (ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  hideSheets();
+});
+
+/* ---------- 分趟演示 ---------- */
+var tripPlaying = false;
+
+function playTrips() {
+  if (tripPlaying) return;
+  var cartInst = [];
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    for (var q = 0; q < c.qty; q++) {
+      cartInst.push({ name: c.name + '@' + i + '#' + q, l: c.l, w: c.w, h: c.h, soft: !!c.soft, cat: c });
+    }
+  }
+  var plan = planTrips(cartInst, bin);
+  if (plan.trips.length < 2) { alert('这一趟就装完了，不需要分趟。'); return; }
+
+  tripPlaying = true;
+  document.body.classList.remove('ropen');
+  els.result.classList.remove('show');
+  var k = 0;
+
+  function step() {
+    if (k >= plan.trips.length) {
+      tripPlaying = false;
+      els.tripBadge.classList.remove('show');
+      if (els.tripBadge) els.tripBadge.textContent = '';
+      els.status.textContent = '分 ' + plan.trips.length + ' 趟演示结束，点「一键装填」可回到完整结果';
+      return;
+    }
+    var names = plan.trips[k].names;
+    els.tripBadge.textContent = '第 ' + (k + 1) + ' 趟 / 共 ' + plan.trips.length + ' 趟';
+    els.tripBadge.classList.add('show');
+
+    placedGroup.clear();
+    var sub = [];
+    for (var i2 = 0; i2 < cartInst.length; i2++) {
+      if (names.indexOf(cartInst[i2].name) >= 0) sub.push(cartInst[i2]);
+    }
+    var r2;
+    try { r2 = pack({ l: bin.l, w: bin.w, h: bin.h }, sub); } catch (e) { r2 = null; }
+    if (r2) {
+      var byName = {};
+      for (var i3 = 0; i3 < cartInst.length; i3++) byName[cartInst[i3].name] = cartInst[i3];
+      for (var j = 0; j < r2.placed.length; j++) {
+        var p = r2.placed[j];
+        var src = byName[p.name];
+        if (!src) continue;
+        var pad2 = src.soft ? 1 : 2;
+        var obj = makeObjSized(src.cat, Math.max(1, p.l - pad2), Math.max(1, p.h - pad2), Math.max(1, p.w - pad2), p);
+        var tx = p.x + p.l / 2, ty = p.z + p.h / 2, tz = p.y + p.w / 2;
+        obj.userData.target = new T.Vector3(tx, ty, tz);
+        obj.position.set(tx, ty + 350, tz);
+        obj.userData.appearAt = nowMs() + j * 150;
+        obj.visible = false;
+        placedGroup.add(obj);
+      }
+      els.status.textContent = '第 ' + (k + 1) + ' 趟装入 ' + r2.count + ' 件';
+    }
+    k++;
+    setTimeout(step, 2300);
+  }
+  step();
+}
+
+/* ---------- 装填 ---------- */
+var animClock = 0;
+var animWasRunning = false;
+function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+
+function clearPlaced() {
+  placedGroup.clear();
+  document.body.classList.remove('ropen');
+}
+
+/* ---------- 清单预览：加进来的东西先在仓位旁边摆出来 ---------- */
+function renderPreview() {
+  placedGroup.clear();
+  els.result.classList.remove('show');
+  document.body.classList.remove('ropen');
+  if (!cart.length) { fitCamera(); return; }
+  var inst = [];
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    for (var q = 0; q < c.qty; q++) inst.push(c);
+  }
+  var px = bin.l + 55, pz = 0;
+  var maxZ = Math.max(bin.w, 110);
+  for (var k = 0; k < inst.length; k++) {
+    var cat = inst[k];
+    if (pz + cat.w > maxZ) { pz = 0; px += 100; }
+    var o = makeObj(cat);
+    o.position.set(px + cat.l / 2, cat.h / 2, pz + cat.w / 2);
+    o.userData.target = o.position.clone();
+    placedGroup.add(o);
+    pz += cat.w + 14;
+  }
+  fitCamera(true);
+}
+
+var idMap = {};
+
+function doPassCheck() {
+  if (!cart.length) {
+    alert('清单还是空的。先点「添加物品」。');
+    return;
+  }
+  var dw = bin.l, dh = bin.w || 999;
+  var pass = [], blocked = [], tilt = [];
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    var r = passDoor({ l: c.l, w: c.w, h: c.h }, dw, dh);
+    if (!r.ok) blocked.push(c.name);
+    else if (r.mode === 'side') tilt.push(c.name + ' 需侧翻');
+    else if (r.mode === 'tilt') tilt.push(c.name + ' 需斜放 ' + Math.round(r.angle) + '°');
+    else pass.push(c.name);
+  }
+  var ok = blocked.length === 0;
+  var h = '<div class="rhead ' + (ok ? 'ok' : 'bad') + '">' +
+          (ok ? '✓ 都能通过' : '✕ 有东西过不去') + '</div>';
+  h += '<div class="rbig">' + (pass.length + tilt.length) + '<span>/' + cart.length + '</span> 件可通过</div>';
+  h += '<div class="rrow"><span>场景</span><b>' + bin.name + ' · 宽 ' + dw +
+       (bin.w ? ' / 高 ' + dh : '') + '</b></div>';
+  if (blocked.length) h += '<div class="rline" style="color:#ff8a8a;margin-top:6px">过不去：' + blocked.join('、') + '</div>';
+  if (tilt.length) h += '<div class="rline" style="color:#ffc44d;margin-top:4px">' + tilt.join('、') + '</div>';
+  if (ok && !tilt.length) h += '<div class="rline good" style="margin-top:6px">全部可直接通过</div>';
+  h += '<div class="rule">计算口径：按内部尺寸（非外部）；硬物每件预留 2cm 间隙、软物 1cm，不足即判塞不进</div>';
+  h += '<div class="ractions">' +
+       '<button class="ract" data-r="back">返回改清单</button>' +
+       '<button class="ract" data-r="repack">重新检查</button>' +
+       '</div>';
+  els.result.innerHTML = h;
+  els.result.classList.add('show');
+  document.body.classList.add('ropen');
+  els.status.textContent = bin.name + ' 判定完成';
+  setTimeout(function () { resize(); fitCamera(); }, 320);
+}
+
+function doPack() {
+  if (bin.type === 'pass') { doPassCheck(); return; }
+  if (!cart.length) {
+    alert('清单还是空的。先点「添加物品」，把你要搬的东西加进来。');
+    els.status.textContent = '请先添加物品';
+    return;
+  }
+  var inst = [];
+  idMap = {};
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    for (var q = 0; q < c.qty; q++) {
+      var nm = c.name + '@' + i + '#' + q;
+      idMap[nm] = c;
+      inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft });
+    }
+  }
+  var r;
+  try {
+    r = pack({ l: bin.l, w: bin.w, h: bin.h }, inst);
+  } catch (err) {
+    alert('装填算法异常：' + err.message);
+    els.status.textContent = '算法异常';
+    return;
+  }
+
+  clearPlaced();
+
+  /* 装不下的堆在仓外侧，按物品实际尺寸错开，避免压到仓体 */
+  var outsideX = bin.l + 40, oy = 0, colW = 0;
+  for (var a = 0; a < r.failed.length; a++) {
+    var cat = idMap[r.failed[a]];
+    if (!cat) continue;
+    if (oy + cat.h > Math.max(bin.h, 120)) { outsideX += colW + 30; oy = 0; colW = 0; }
+    var cx = outsideX + cat.l / 2;
+    var cy = oy + cat.h / 2;
+    colW = Math.max(colW, cat.l);
+    var o = makeObj(cat);
+    o.userData.target = new T.Vector3(cx, cy, 0);
+    o.position.set(cx + 500, cy, 0);
+    o.userData.appearAt = nowMs() + (r.placed.length * 190) + (a * 140);
+    o.visible = false;
+    placedGroup.add(o);
+    oy += cat.h + 6;
+  }
+
+  /* 装下的按坐标放：用 placed 的实际占位尺寸重建，避免旋转/压缩导致穿模 */
+  var overflow = 0, overflowNames = [];
+  for (var b = 0; b < r.placed.length; b++) {
+    var p = r.placed[b];
+    var c2 = idMap[p.name];
+    if (!c2) continue;
+    var pad = c2.soft ? 1 : 2;   /* 与 pack 内 GAP_SOFT / GAP_HARD 保持一致 */
+    var obj = makeObjSized(c2, Math.max(1, p.l - pad), Math.max(1, p.h - pad), Math.max(1, p.w - pad), p);
+    var tx = p.x + p.l / 2, ty = p.z + p.h / 2, tz = p.y + p.w / 2;
+    obj.userData.target = new T.Vector3(tx, ty, tz);
+    obj.position.set(tx, ty + 350, tz);
+    obj.userData.appearAt = nowMs() + (b * 190);
+    obj.visible = false;
+    placedGroup.add(obj);
+    /* 立刻做世界包围盒越界校验 */
+    obj.position.copy(obj.userData.target);
+    obj.updateMatrixWorld(true);
+    var bb = new T.Box3().setFromObject(obj);
+    var tol = 1.0;
+    if (bb.min.x < -tol || bb.min.y < -tol || bb.min.z < -tol ||
+        bb.max.x > bin.l + tol || bb.max.y > bin.h + tol || bb.max.z > bin.w + tol) {
+      overflow++;
+      overflowNames.push(c2.name);
+    }
+  }
+  r._overflow = overflow;
+  r._overflowNames = overflowNames;
+  if (overflow > 0 && typeof console !== 'undefined') {
+    console.log('[越界] ' + overflow + ' 件超出仓体: ' + overflowNames.join(','));
+  }
+
+  showResult(r, inst);
+}
+
+function showResult(r, inst) {
+  var ok = r.failed.length === 0;
+  var partial = (!ok && r.count > 0);
+  var agg = {}, order = [];
+  for (var i = 0; i < r.failed.length; i++) {
+    var c = idMap[r.failed[i]];
+    if (!c) continue;
+    if (agg[c.name] === undefined) { agg[c.name] = 0; order.push(c.name); }
+    agg[c.name]++;
+  }
+  /* 先算搬运路径，路径阻断会直接否定整单 */
+  var rt = (cart && cart.length) ? checkRoute(cart) : { door: [], elevator: [], corridor: [], blocked: [] };
+  var routeBlocked = rt.blocked.length;
+
+  var headTxt, headCls;
+  if (routeBlocked) {
+    headTxt = '✕ 有 ' + routeBlocked + ' 件搬不进去';
+    headCls = 'bad';
+  } else if (ok) { headTxt = '✓ 全部装下，可直接搬运'; headCls = 'ok'; }
+  else if (partial) { headTxt = '⚠ 装下 ' + r.count + ' 件，还差 ' + r.failed.length + ' 件'; headCls = 'warn'; }
+  else { headTxt = '✕ 装不下'; headCls = 'bad'; }
+  /* ---------- 关卡结算 ---------- */
+  var lvBlock = '';
+  if (curLevel >= 0) {
+    var LV = LEVELS[curLevel];
+    var secs = levelRunning ? (nowMs() - levelStartMs) / 1000 : 0;
+    levelRunning = false;
+
+    var cornerN = 0;
+    for (var ci = 0; ci < rt.corridor.length; ci++) if (!rt.corridor[ci].ok) cornerN++;
+
+    var isPerfect = (r.failed.length === 0 && r.count === r.total);
+    var basePts = r.count * 100;
+    var perfectPts = isPerfect ? 500 : 0;
+
+    var binPts = 0;
+    if (isPerfect && LV.minCap > 0) {
+      var capM3 = bin.l * bin.w * bin.h / 1e6;
+      var slack = (capM3 - LV.minCap) / LV.minCap;
+      binPts = Math.round(300 * Math.max(0, 1 - Math.min(1, slack / 0.5)));
+    }
+
+    var speedPts = 0;
+    if (LV.limit > 0 && secs > 0) {
+      speedPts = Math.max(0, Math.round(200 - Math.max(0, secs - 30) * 4));
+    }
+
+    var penPts = cornerN * 50;
+    var pts = Math.max(0, basePts + perfectPts + binPts + speedPts - penPts);
+
+    var stars = 0;
+    if (isPerfect && cornerN === 0 && binPts >= 240) stars = 3;
+    else if (isPerfect && cornerN === 0) stars = 2;
+    else if (r.count * 2 >= Math.max(1, r.total)) stars = 1;
+
+    if (!levelBest[LV.id] || stars > levelBest[LV.id]) {
+      levelBest[LV.id] = stars;
+      try { localStorage.setItem('szxm_levels', JSON.stringify(levelBest)); } catch (e) {}
+    }
+
+    var brk = [];
+    brk.push('装下 ' + r.count + ' 件 ×100 = ' + basePts);
+    if (perfectPts) brk.push('全装下 +' + perfectPts);
+    if (binPts) brk.push('仓位选得准 +' + binPts);
+    if (binPts === 0 && LV.minCap > 0 && isPerfect) brk.push('仓位偏大 +0');
+    if (speedPts) brk.push('用时 ' + secs.toFixed(0) + 's +' + speedPts);
+    if (penPts) brk.push('拐角卡件 ' + cornerN + ' ×50 = -' + penPts);
+
+    var tip = '';
+    if (isPerfect && cornerN > 0) {
+      tip = '⚠ 装得下但搬不进去：' + cornerN + ' 件过不了走廊拐角，这单实际上发不了货';
+    } else if (isPerfect && binPts < 240 && LV.minCap > 0) {
+      tip = '↓ 还有更小的仓位能装下，换小一号分数更高';
+    } else if (!isPerfect && LV.minCap > 0) {
+      tip = '换 ' + LV.minCap.toFixed(1) + ' m³ 左右的仓位能全装下';
+    }
+
+    lvBlock += '<div class="lvscore">' +
+      '<div class="stars">' + starsHTML(stars) + '</div>' +
+      '<div class="pts">' + pts + '<span>分</span></div>' +
+      '<div class="brk">' + brk.join(' · ') + '</div>' +
+      (tip ? '<div class="tip">' + tip + '</div>' : '') +
+      '</div>';
+  }
+
+  var h = lvBlock + '<div class="rhead ' + headCls + '">' + headTxt + '</div>';
+  h += '<div class="rbig">' + r.count + '<span>/' + r.total + '</span> 件已装入</div>';
+  h += '<div class="rrow"><span>体积利用率</span><b>' + (r.util * 100).toFixed(1) + '%</b></div>';
+  h += '<div class="rrow"><span>占用 / 容积</span><b>' + r.vol.toFixed(2) + ' / ' + r.cap.toFixed(2) + ' m³</b></div>';
+  h += '<div class="rrow"><span>场景</span><b>' + (bin.name || '自定义') + '</b></div>';
+  h += '<div class="rrow"><span>内部尺寸</span><b>' + bin.l + '×' + bin.w + '×' + bin.h + ' cm</b></div>';
+  if (bin.doorW) {
+    h += '<div class="rrow"><span>仓门净宽×净高</span><b>' + bin.doorW + '×' + bin.doorH + ' cm</b></div>';
+  }
+  /* 贴边检查：与仓位壁间隙 < 2cm 的件数 */
+  var tightN = 0;
+  for (var tp = 0; tp < r.placed.length; tp++) {
+    var pb = r.placed[tp];
+    if (pb.x < 2 || pb.y < 2 || pb.z < 2 ||
+        (bin.l - (pb.x + pb.l)) < 2 || (bin.w - (pb.y + pb.w)) < 2 || (bin.h - (pb.z + pb.h)) < 2) {
+      tightN++;
+    }
+  }
+  if (tightN > 0) {
+    h += '<div class="rrow" style="color:#ffc44d"><span>贴边无余量</span><b style="color:#ffc44d">' +
+         tightN + ' 件（实际搬运建议留 2cm）</b></div>';
+  }
+  if (r._overflow) {
+    h += '<div class="rrow" style="color:#ff6b6b"><span>几何越界</span><b style="color:#ff6b6b">' +
+         r._overflow + ' 件超出仓体</b></div>';
+  }
+  if (!ok) {
+    h += '<div class="rmiss"><div class="mlabel">装不下的 ' + r.failed.length + ' 件</div>';
+    for (var k = 0; k < order.length; k++) {
+      var nmK = order[k];
+      var catK = null;
+      for (var q = 0; q < cart.length; q++) if (cart[q].name === nmK) { catK = cart[q]; break; }
+      var reason = '', cls2 = 'chip';
+      if (catK) {
+        var gp = catK.soft ? 1 : 2;
+        var catPad = { l: catK.l + gp, w: catK.w + gp, h: catK.h + gp };
+        if (!canEverFit(catPad, bin)) {
+          var maxSide = Math.max(catK.l, catK.w, catK.h);
+          var binMax = Math.max(bin.l, bin.w, bin.h);
+          reason = '尺寸超限（' + maxSide + ' + ' + gp + 'cm 间隙 > 内部 ' + binMax + '）';
+          cls2 = 'chip size';
+        } else {
+          reason = '空隙不足（尺寸放得下，剩余空间太碎）';
+          cls2 = 'chip space';
+        }
+      }
+      h += '<div class="missrow"><span class="' + cls2 + '">' + nmK + ' ×' + agg[nmK] + '</span>' +
+           '<span class="mreason">' + reason + '</span></div>';
+    }
+    h += '</div>';
+    var plan = planTrips(inst || [], bin);
+    if (plan.trips.length > 1) {
+      var ptxt = [];
+      for (var ti = 0; ti < plan.trips.length; ti++) ptxt.push('第' + (ti + 1) + '趟 ' + plan.trips[ti].count + ' 件');
+      h += '<div class="radv">分 ' + plan.trips.length + ' 趟可走完：' + ptxt.join('，') +
+           '<button class="playbtn" data-r="trips">▶ 看分趟</button></div>';
+    } else if (plan.trips.length === 1 && plan.left > 0) {
+      h += '<div class="radv">第 1 趟 ' + plan.trips[0].count + ' 件；剩余 ' + plan.left +
+           ' 件此仓位无论如何装不下，需换更大仓</div>';
+    }
+    h += '<div class="radv">或加大仓位</div>';
+  } else {
+    h += '<div class="radv good">全部装下，这一趟能走完。</div>';
+  }
+  /* M1：最小可行仓位推荐 */
+  if (inst && inst.length) {
+    var rec = recommendBin(inst);
+    if (rec.tier) {
+      var same = (rec.tier.l === bin.l && rec.tier.w === bin.w && rec.tier.h === bin.h);
+      var volm = (rec.tier.l * rec.tier.w * rec.tier.h / 1e6).toFixed(1);
+      if (same) {
+        h += '<div class="rec">已经是最小够用的仓位（' + rec.tier.name + ' 仓 ' + volm +
+             ' m³，还剩 ' + (100 - rec.util * 100).toFixed(0) + '% 余量）</div>';
+      } else {
+        h += '<div class="rec hot">最小够用：<b>' + rec.tier.name + ' 仓 ' +
+             rec.tier.l + '×' + rec.tier.w + '×' + rec.tier.h + ' cm，约 ' + volm +
+             ' m³，还剩 ' + (100 - rec.util * 100).toFixed(0) + '% 余量</b></div>';
+      }
+    } else {
+      h += '<div class="rec hot">现有档位都装不下，至少需要约 ' + rec.suggest +
+           ' cm 见方，约 ' + rec.vol.toFixed(1) + ' m³</div>';
+    }
+  }
+
+  /* M2-a 搬运路径：门 → 电梯 → 走廊，逐段给结论 */
+  if (cart && cart.length) {
+    var tiltN = 0;
+    var dNotes = [], eNotes = [], cNotes = [];
+    var dBad = 0, eBad = 0, cBad = 0;
+    for (var dz = 0; dz < rt.door.length; dz++) {
+      var dm = rt.door[dz];
+      if (!dm.ok) dBad++;
+      else if (dm.mode === 'side') { tiltN++; dNotes.push(dm.name + ' 需侧翻'); }
+      else if (dm.mode === 'tilt') { tiltN++; dNotes.push(dm.name + ' 需斜放 ' + Math.round(dm.angle) + '°'); }
+    }
+    for (var ez = 0; ez < rt.elevator.length; ez++) {
+      var ev = rt.elevator[ez];
+      if (!ev.ok) { eBad++; eNotes.push(ev.name + '（' + ev.why + '）'); }
+      else if (ev.car === 'tilt') { tiltN++; eNotes.push(ev.name + ' 轿厢内需斜放'); }
+    }
+    for (var cz = 0; cz < rt.corridor.length; cz++) {
+      var cv = rt.corridor[cz];
+      if (!cv.ok) { cBad++; cNotes.push(cv.name + '（' + (cv.why || '过不去') + '）'); }
+    }
+    var cls = routeBlocked ? 'route bad' : (tiltN ? 'route warn' : 'route');
+    h += '<div class="' + cls + '">';
+    h += '<div class="rtitle">搬运路径</div>';
+    h += '<div class="pstep"><b>' + (dBad ? '✗' : '✓') + ' 仓门</b><span>' +
+         (bin.doorW || ROUTE.doorW) + '×' + (bin.doorH || ROUTE.doorH) + ' cm' +
+         (dBad ? '｜过不去 ' + dBad + ' 件' : (dNotes.length ? '｜' + dNotes.join('、') : '｜全部直过')) +
+         '</span></div>';
+    h += '<div class="pstep"><b>' + (eBad ? '✗' : '✓') + ' 电梯</b><span>轿厢 ' +
+         ROUTE.elevD + '×' + ROUTE.elevW + '×' + ROUTE.elevH + '｜门 ' +
+         ROUTE.elevDW + '×' + ROUTE.elevDH +
+         (eBad ? '｜进不去 ' + eNotes.join('、') : (eNotes.length ? '｜' + eNotes.join('、') : '｜全部可进')) +
+         '</span></div>';
+    h += '<div class="pstep"><b>' + (cBad ? '✗' : '✓') + ' 走廊</b><span>最窄 ' +
+         ROUTE.corridor + ' cm · 90° 拐角 ' + ROUTE.cornerA + '×' + ROUTE.cornerB + ' cm' +
+         (cBad ? '｜过不去 ' + cNotes.join('、') : '｜全部可通过') +
+         '</span></div>';
+    if (routeBlocked) {
+      var bl = [];
+      for (var bz = 0; bz < rt.blocked.length; bz++) bl.push(rt.blocked[bz].name + '（' + rt.blocked[bz].where + '）');
+      h += '<div class="rline">卡在：' + bl.join('、') + '</div>';
+    }
+    h += '</div>';
+  }
+
+  h += '<div class="rule">计算口径：按内部尺寸（非外部）；硬物每件预留 2cm 间隙、软物 1cm，不足即判塞不进</div>';
+  h += '<div class="ractions">' +
+       '<button class="ract" data-r="back">返回改清单</button>' +
+       '<button class="ract" data-r="repack">重新装填</button>' +
+       '</div>';
+  els.result.innerHTML = h;
+  els.result.classList.add('show');
+  document.body.classList.add('ropen');
+  els.status.textContent = '计算完成 · ' + r.count + '/' + r.total + ' 件';
+  setTimeout(function () { resize(); fitCamera(); }, 320);
+}
+
+/* ---------- 事件绑定 ---------- */
+els.addBtn.addEventListener('click', function (e) {
+  e.preventDefault();
+  lastOrder = null;
+  els.photoPrev.style.display = 'none';
+  renderPicker();
+  showSheet(els.picker);
+  var tt = els.picker.querySelector('.ptitle');
+  if (tt) tt.textContent = '要搬什么东西？';
+});
+els.pickerClose.addEventListener('click', hideSheets);
+els.mask.addEventListener('click', hideSheets);
+els.cartBtn.addEventListener('click', function (e) {
+  e.preventDefault();
+  refreshCartUI(); bindCartEvents();
+  showSheet(els.cartSheet);
+});
+els.cartClose.addEventListener('click', hideSheets);
+els.packBtn.addEventListener('click', function (e) {
+  e.preventDefault();
+  doPack();
+});
+els.result.addEventListener('click', function (ev) {
+  var t = ev.target;
+  while (t && t !== els.result) {
+    var act = t.getAttribute ? t.getAttribute('data-r') : null;
+    if (act === 'back') { closeResult(); return; }
+    if (act === 'repack') { doPack(); return; }
+    if (act === 'trips') { playTrips(); return; }
+    t = t.parentNode;
+  }
+});
+
+function closeResult() {
+  els.result.classList.remove('show');
+  document.body.classList.remove('ropen');
+  setTimeout(function () { resize(); fitCamera(true); }, 320);
+}
+els.resultClose.addEventListener('click', closeResult);
+function showSheet(el) {
+  els.mask.classList.add('show');
+  el.classList.add('show');
+}
+function hideSheets() {
+  els.mask.classList.remove('show');
+  els.picker.classList.remove('show');
+  els.cartSheet.classList.remove('show');
+  els.binSheet.classList.remove('show');
+}
+
+function openBinSheet(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  els.binIn.value = bin.l + ',' + bin.w + ',' + bin.h;
+  renderScenes();
+if (typeof applyGreyboxUI === 'function') applyGreyboxUI();
+  showSheet(els.binSheet);
+}
+
+function applyBin(l, w, h) {
+  bin.l = l; bin.w = w; bin.h = h;
+  bin.type = 'store'; bin.name = '自定义仓位';
+  bin.doorW = 0; bin.doorH = 0;
+  var txt = l + '×' + w + '×' + h;
+  els.binLabel.textContent = txt + ' cm';
+  els.binBarVal.textContent = txt + ' cm';
+  hideSheets();
+  drawBin();
+  renderPreview();
+  els.status.textContent = '仓位已设为 ' + txt + ' cm';
+}
+
+els.binBtn.addEventListener('click', openBinSheet);
+els.binBar.addEventListener('click', openBinSheet);
+els.binCancel.addEventListener('click', hideSheets);
+function applyBinInput() {
+  var v = els.binIn.value || '';
+  var p = v.split(/[,，\s]+/).filter(function (x) { return x !== ''; });
+  if (p.length !== 3) { alert('请填三个数字：长,宽,高（cm）'); return; }
+  var nn = [];
+  for (var k = 0; k < 3; k++) {
+    var x = parseFloat(p[k]);
+    if (!isFinite(x) || x <= 0) { alert('第 ' + (k + 1) + ' 个值无效'); return; }
+    nn.push(Math.round(x * 10) / 10);
+  }
+  applyBin(nn[0], nn[1], nn[2]);
+}
+els.binApply.addEventListener('click', applyBinInput);
+els.binIn.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Enter') { ev.preventDefault(); applyBinInput(); }
+});
+
+/* 快捷键位 */
+var sceneGrid = document.getElementById('sceneGrid');
+
+function renderScenes() {
+  var h = '';
+  for (var i = 0; i < SCENES.length; i++) {
+    var sc = SCENES[i];
+    var on = (sc.l === bin.l && sc.w === bin.w && sc.h === bin.h) ? ' on' : '';
+    var dim, sub;
+    if (sc.type === 'pass') {
+      dim = sc.w ? '宽 ' + sc.l + ' / 高 ' + sc.w : '宽 ' + sc.l;
+      sub = sc.memo;
+    } else {
+      dim = '内部 ' + sc.l + '×' + sc.w + '×' + sc.h;
+      sub = (sc.outer ? '外部 ' + sc.outer.join('×') + '｜' : '') +
+            (sc.doorW ? '门 ' + sc.doorW + '×' + sc.doorH : '');
+    }
+    h += '<button class="sitem' + on + '" data-id="' + sc.id + '">' +
+         '<b>' + sc.name + (sc.type === 'pass' ? '（通过性）' : '') + '</b>' +
+         '<span>' + dim + '</span>' +
+         '<em>' + sub + '</em>' +
+         '</button>';
+  }
+  sceneGrid.innerHTML = h;
+  var its = sceneGrid.querySelectorAll('.sitem');
+  for (var j = 0; j < its.length; j++) {
+    (function (el) {
+      el.addEventListener('click', function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        var id = el.getAttribute('data-id');
+        for (var k = 0; k < SCENES.length; k++) {
+          if (SCENES[k].id === id) { applyScene(SCENES[k]); return; }
+        }
+      });
+    })(its[j]);
+  }
+}
+
+function applyScene(sc) {
+  bin.l = sc.l; bin.w = sc.w; bin.h = sc.h;
+  bin.name = sc.name; bin.type = sc.type;
+  bin.doorW = sc.doorW || 0; bin.doorH = sc.doorH || 0;
+  var txt = sc.type === 'pass'
+    ? (sc.w ? '宽 ' + sc.l + '/高 ' + sc.w : '宽 ' + sc.l)
+    : sc.l + '×' + sc.w + '×' + sc.h + (sc.outer ? '（内部 / 外部 ' + sc.outer.join('×') + '）' : '');
+  els.binLabel.textContent = sc.name + ' ' + txt;
+  els.binBarVal.textContent = sc.name + ' · ' + txt;
+  hideSheets();
+  if (sc.type === 'store') { drawBin(); renderPreview(); }
+  else { placedGroup.clear(); document.body.classList.remove('ropen'); fitCamera(); }
+  els.status.textContent = '场景已设为 ' + sc.name;
+}
+
+/* 拍照添加：选图 → 确认品类 → 入清单 */
+els.photoBtn.addEventListener('click', function (e) {
+  e.preventDefault();
+  els.photoIn.click();
+});
+els.photoIn.addEventListener('change', function () {
+  var f = els.photoIn.files && els.photoIn.files[0];
+  if (!f) return;
+  var url = URL.createObjectURL(f);
+  els.photoPrev.src = url;
+  els.photoPrev.style.display = 'block';
+  if (typeof Image === 'undefined') {
+    lastOrder = null; renderPicker(); els.picker.classList.add('show'); return;
+  }
+  var img = new Image();
+  img.onload = function () {
+    rankByImage(img, function (res) {
+      if (res) {
+        lastOrder = res.order;
+        els.status.textContent = '轮廓比例 ' + res.ratio.toFixed(2) + ':1，已把最接近的 3 个排在前面（推断，不是识别）';
+      } else {
+        lastOrder = null;
+        els.status.textContent = '读不出轮廓，请自己选一个品类。';
+      }
+      renderPicker();
+      showSheet(els.picker);
+      var tt = els.picker.querySelector('.ptitle');
+      if (tt) tt.textContent = '这张照片是什么？（点选确认）';
+    });
+  };
+  img.onerror = function () {
+    lastOrder = null;
+    renderPicker();
+    showSheet(els.picker);
+  };
+  img.src = url;
+});
+
+/* ---------- 渲染循环 ---------- */
+function resize() {
+  var w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w || canvas.height !== h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(h, 1);
+    camera.updateProjectionMatrix();
+  }
+}
+var clock = new T.Clock();
+function loop() {
+  requestAnimationFrame(loop);
+  resize();
+  var dt = Math.min(clock.getDelta(), 0.05);
+  var now = nowMs();
+  var flying = 0, waiting = 0;
+  for (var i = placedGroup.children.length - 1; i >= 0; i--) {
+    var o = placedGroup.children[i];
+    if (!o.userData.target) continue;
+    if (o.userData.appearAt && now < o.userData.appearAt) {
+      o.visible = false; waiting++; continue;
+    }
+    o.visible = true;
+    var d2 = o.position.distanceTo(o.userData.target);
+    if (d2 > 0.8) { flying++; }
+    o.position.lerp(o.userData.target, Math.min(1, dt * 7));
+  }
+  var tot = placedGroup.children.length;
+  if (waiting || flying) {
+    var doneN = tot - waiting - flying;
+    if (els.status) els.status.textContent = '装入中 ' + Math.max(0, doneN) + '/' + tot + ' 件…';
+    animWasRunning = true;
+  } else if (animWasRunning) {
+    animWasRunning = false;
+    if (els.status && tot > 0) els.status.textContent = '装填完成 · ' + tot + ' 件已落位';
+  }
+  renderer.render(scene, camera);
+}
+
+/* ---------- 启动 ---------- */
+drawBin();
+els.binLabel.textContent = bin.name + ' ' + bin.l + '×' + bin.w + '×' + bin.h;
+els.binBarVal.textContent = bin.name + ' · ' + bin.l + '×' + bin.w + '×' + bin.h;
+refreshCartUI();
+bindCartEvents();
+renderPreview();
+loop();
+els.status.textContent = '先添加你要搬的物品 · 共 0 件';
+
+window.__READY__ = true;
+window.__API__ = {
+  addToCart: addToCart, doPack: doPack, cart: function () { return cart; },
+  loadLevel: loadLevel, levels: function () { return LEVELS; },
+  manualStart: manualStart,
+  catalog: function () {
+    var out = [];
+    for (var i = 0; i < CATALOG.length; i++) {
+      out.push({ name: CATALOG[i].name, mesh: CATALOG[i].mesh || null,
+                 l: CATALOG[i].l, w: CATALOG[i].w, h: CATALOG[i].h,
+                 soft: !!CATALOG[i].soft, upright: !!CATALOG[i].upright });
+    }
+    return out;
+  },
+  meshKeys: function () { return Object.keys(MESH_DATA || {}); },
+  isGreybox: function () { return NoModelData; },
+  greyboxView: function () { return greyboxView; },
+  toggleGreybox: function () { greyboxView = !greyboxView; applyGreyboxUI(); },
+  probe: function (name) {
+    var cat = null;
+    for (var i = 0; i < CATALOG.length; i++) if (CATALOG[i].name === name) cat = CATALOG[i];
+    if (!cat) return null;
+    var pad = cat.soft ? 1 : 2;
+    var obj = makeObjSized(cat, cat.l, cat.h, cat.w, null);
+    placedGroup.add(obj);
+    obj.position.set(0, 0, 0);
+    obj.updateMatrixWorld(true);
+    var bb = new T.Box3().setFromObject(obj);
+    var sz = new T.Vector3(); bb.getSize(sz);
+    var kids = [];
+    obj.traverse(function (o) { if (o.type === 'Mesh' || o.type === 'LineSegments') kids.push(o.type); });
+    var hasReal = false;
+    obj.traverse(function (o) { if (o.type === 'Mesh' && o.geometry && o.geometry.attributes.position &&
+                                    o.geometry.attributes.position.count > 100) hasReal = true; });
+    placedGroup.remove(obj);
+    return { size: [sz.x, sz.y, sz.z], parts: kids, hasRealMesh: hasReal };
+  },
+  manualState: function () {
+    return {
+      on: manual.on, idx: manual.idx, total: manual.queue.length,
+      placed: manual.placed.length, layer: manual.layer,
+      cur: manual.cur ? { name: manual.cur.cat.name, l: manual.cur.box.l, w: manual.cur.box.w, h: manual.cur.box.h,
+                          x: manual.cur.pos.x, y: manual.cur.pos.y, z: manual.cur.pos.z } : null,
+      fit: manual.ghostOK
+    };
+  },
+  manualPut: function (ax, ay, az) {
+    if (!manual.cur) return false;
+    if (az != null) manual.layer = az;
+    manual.cur.pos.x = ax; manual.cur.pos.y = ay; manual.cur.pos.z = manual.layer;
+    updateManualVisual();
+    return manual.ghostOK;
+  },
+  manualDrop: dropCurrent,
+  manualRotate: rotateCurrent,
+  curLevel: function () { return curLevel; },
+  levelBest: function () { return levelBest; },
+  setBin: function (l, w, h) { bin.l = l; bin.w = w; bin.h = h; drawBin(); },
+  bin: function () { return bin; },
+  /* 供自动化校验：读出场景中每个物体的世界包围盒 */
+  objects: function () {
+    var out = [];
+    for (var i = 0; i < placedGroup.children.length; i++) {
+      var o = placedGroup.children[i];
+      o.updateMatrixWorld(true);
+      var bb = new T.Box3().setFromObject(o);
+      out.push({
+        min: [bb.min.x, bb.min.y, bb.min.z],
+        max: [bb.max.x, bb.max.y, bb.max.z],
+        visible: o.visible,
+        onTarget: o.userData.target ? o.position.distanceTo(o.userData.target) < 1 : false
+      });
+    }
+    return out;
+  },
+  /* 视口信息：结果卡是否遮挡、canvas 高度 */
+  viewport: function () {
+    return {
+      ropen: document.body.classList.contains('ropen'),
+      canvasH: canvas.clientHeight,
+      canvasW: canvas.clientWidth
+    };
+  }
+};
+})();
+</script>
+</body>
+</html>
