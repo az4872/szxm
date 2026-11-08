@@ -471,17 +471,17 @@ var CATALOG = [
   { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b },
   { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true },
   { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true },
-  { id:'desk',     name:'折叠桌',  l:120, w:60,  h:75,  color:0x9c7b52 },
-  { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   color:0xa9c4cf, upright:true },
-  { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  color:0xe8e8e8, upright:true },
+  { id:'desk',     name:'折叠桌',  l:120, w:60,  h:75,  mesh:'foldingtable', color:0x9c7b52 },
+  { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   mesh:'mirror',   color:0xa9c4cf, upright:true },
+  { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  mesh:'washer',   color:0xe8e8e8, upright:true },
   { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true },
   { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true },
-  { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  color:0x6b7b8c },
-  { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  color:0x5c7a63 },
-  { id:'tv',       name:'电视',    l:130, w:15,  h:75,  color:0x2a2a2a, upright:true },
-  { id:'table',    name:'茶几',    l:100, w:55,  h:45,  color:0x8a7355 },
-  { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, color:0x3a3f47 },
-  { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, color:0x7d6247, upright:true }
+  { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c },
+  { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63 },
+  { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true },
+  { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355 },
+  { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47 },
+  { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, mesh:'wardrobe', color:0x7d6247, upright:true }
 ];
 
 /* ---------- 状态 ---------- */
@@ -586,9 +586,13 @@ function buildRealMesh(key, fallbackColor) {
     geo.setIndex(new T.BufferAttribute(b64u32(d.idx), 1));
   }
   if (!d.nrm) geo.computeVertexNormals();
+  /* 顶点色：打包时随模型一起写入 uint8 RGB（归一化），单材质一模型，不引贴图 */
+  var useVC = !!d.col;
+  if (useVC) geo.setAttribute('color', new T.BufferAttribute(b64bytes(d.col), 3, true));
   var mat = new T.MeshStandardMaterial({
-    color: d.tex ? 0xffffff : fallbackColor,
-    roughness: 0.82, metalness: 0.04, side: T.DoubleSide
+    color: (d.tex || useVC) ? 0xffffff : fallbackColor,
+    roughness: 0.82, metalness: 0.04, side: T.DoubleSide,
+    vertexColors: useVC
   });
   if (d.tex) {
     var tex = texLoader.load('data:image/jpeg;base64,' + d.tex);
