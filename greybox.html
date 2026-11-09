@@ -342,8 +342,17 @@ body.manual #c{height:calc(100% - 128px)}
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 <script>if(!window.THREE){document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/scr'+'ipt>');}</script>
 
-<script>// 塞得下吗 · 装填判定内核 v2（贴合度贪心，纯 JS 无依赖）
-// 轴对齐 6 朝向 + 接触面积最大化放置
+<script>// 塞得下吗 · 装填判定内核 v3（真实几何支撑 + 物品间零间隙，纯 JS 无依赖）
+// P0-C：支撑/碰撞用真实网格体素化，不用包围盒顶面
+// P0-C2：物品之间零间隙（effDims 不再加 pad），仓壁安全量改为仓内尺寸内缩
+
+/* ===== 常量 ===== */
+const VOX_CELL = 5;        // 体素网格 5cm（任务书建议值；阈值标定见报告）
+const BIN_PAD = 1;         // 仓壁安全量：仓内每边内缩 1cm（共 2cm）
+const SUP_MIN = 0.6;       // 支撑率阈值：底面接触格被托住的比例（实测标定）
+/* 门洞余量（passDoor / cornerPass 用，P0-C2 明确保持现状不动） */
+const GAP_HARD = 2;
+const GAP_SOFT = 1;
 
 function orientations(d) {
   const { l, w, h } = d;
@@ -356,19 +365,14 @@ function orientations(d) {
   return out;
 }
 
-/* 有效占位 = 实际尺寸 + 搬运间隙
-   硬物每件预留 2cm，软物预留 1cm；不足则视为塞不进去 */
-const GAP_HARD = 2;
-const GAP_SOFT = 1;
-
+/* P0-C2：物品用真实尺寸参与碰撞与堆叠，不加任何间隙 */
 function effDims(it) {
-  const pad = it.soft ? GAP_SOFT : GAP_HARD;
-  return { l: it.l + pad, w: it.w + pad, h: it.h + pad };
+  return { l: it.l, w: it.w, h: it.h };
 }
-
+/* 门洞判定用的余量（保持原语义：硬 2 / 软 1） */
 function gapOf(it) { return it.soft ? GAP_SOFT : GAP_HARD; }
 
-function sep(a, b) { // 两个 AABB 是否分离
+function sep(a, b) { // 两个 AABB 是否分离（粗筛）
   return a.x >= b.x + b.l - 0.5 || b.x >= a.x + a.l - 0.5 ||
          a.y >= b.y + b.w - 0.5 || b.y >= a.y + a.w - 0.5 ||
          a.z >= b.z + b.h - 0.5 || b.z >= a.z + a.h - 0.5;
@@ -390,75 +394,204 @@ function contact(b, placed, W, D, H, penTop) {
   return s;
 }
 
+/* ===== 体素化 =====
+   verts：归一化顶点 [-0.5,0.5]，模型轴 x=长 l、y=高 h、z=宽 w（与前端 makeObjSized 一致）
+   faces：三角形索引（每 3 个一组）
+   dims ：{ l, w, h } 真实尺寸 cm
+   返回 6 个朝向，顺序与 orientations() 一一对应：
+     每个朝向 { a, b, c, nx, ny, nz, zmin, zmax }
+     zmin/zmax 长度 nx*ny，是每一列被网格覆盖的 z 区间（空列 zmax=-1）
+   柱状区间法：对每列取网格覆盖的 z 极值。对封闭网格即该列实体区间，比包围盒精确；
+   自行车车轮竖直时 XY 投影只覆盖轮圈厚度，不会把轮内空间填实。 */
+function voxelize(verts, faces, dims, cell) {
+  cell = cell || VOX_CELL;
+  const perms = [[0, 2, 1], [0, 1, 2], [2, 0, 1], [2, 1, 0], [1, 0, 2], [1, 2, 0]];
+  const nv = verts.length / 3;
+  const ors = orientations({ l: dims.l, w: dims.w, h: dims.h });
+  const out = [];
+
+  for (let oi = 0; oi < ors.length; oi++) {
+    const [A, B, C] = ors[oi];
+    const pm = perms[oi];
+    const nx = Math.max(1, Math.ceil(A / cell - 1e-9));
+    const ny = Math.max(1, Math.ceil(B / cell - 1e-9));
+    const nz = Math.max(1, Math.ceil(C / cell - 1e-9));
+    const zmin = new Float32Array(nx * ny).fill(1e9);
+    const zmax = new Float32Array(nx * ny).fill(-1e9);
+
+    const wx = new Float32Array(nv), wy = new Float32Array(nv), wz = new Float32Array(nv);
+    for (let i = 0; i < nv; i++) {
+      const q = [verts[i * 3], verts[i * 3 + 1], verts[i * 3 + 2]];
+      wx[i] = (q[pm[0]] + 0.5) * A;
+      wy[i] = (q[pm[1]] + 0.5) * B;
+      wz[i] = (q[pm[2]] + 0.5) * C;
+    }
+
+    for (let f = 0; f < faces.length; f += 3) {
+      const i0 = faces[f], i1 = faces[f + 1], i2 = faces[f + 2];
+      const x0 = wx[i0], y0 = wy[i0], z0 = wz[i0];
+      const x1 = wx[i1], y1 = wy[i1], z1 = wz[i1];
+      const x2 = wx[i2], y2 = wy[i2], z2 = wz[i2];
+      const minx = Math.max(0, Math.floor(Math.min(x0, x1, x2) / cell));
+      const maxx = Math.min(nx - 1, Math.floor(Math.max(x0, x1, x2) / cell));
+      const miny = Math.max(0, Math.floor(Math.min(y0, y1, y2) / cell));
+      const maxy = Math.min(ny - 1, Math.floor(Math.max(y0, y1, y2) / cell));
+      if (minx > maxx || miny > maxy) continue;
+      const den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+      if (Math.abs(den) < 1e-9) continue;
+      for (let gy = miny; gy <= maxy; gy++) {
+        for (let gx = minx; gx <= maxx; gx++) {
+          const cx = (gx + 0.5) * cell, cy = (gy + 0.5) * cell;
+          const w0 = ((y1 - y2) * (cx - x2) + (x2 - x1) * (cy - y2)) / den;
+          const w1 = ((y2 - y0) * (cx - x2) + (x0 - x2) * (cy - y2)) / den;
+          const w2 = 1 - w0 - w1;
+          if (w0 < -0.02 || w1 < -0.02 || w2 < -0.02) continue;
+          const cz = w0 * z0 + w1 * z1 + w2 * z2;
+          const k = gy * nx + gx;
+          if (cz < zmin[k]) zmin[k] = cz;
+          if (cz > zmax[k]) zmax[k] = cz;
+        }
+      }
+    }
+    for (let k = 0; k < zmin.length; k++) if (zmax[k] < -1e-6) { zmin[k] = 0; zmax[k] = -1; }
+    out.push({ a: A, b: B, c: C, nx, ny, nz, zmin, zmax });
+  }
+  return out;
+}
+
+/* 无 mesh 时（灰盒 / 老数据）：立方体体素，等价占位盒 */
+function voxelizeBox(dims, cell) {
+  cell = cell || VOX_CELL;
+  const ors = orientations({ l: dims.l, w: dims.w, h: dims.h });
+  return ors.map(([A, B, C]) => {
+    const nx = Math.max(1, Math.ceil(A / cell - 1e-9));
+    const ny = Math.max(1, Math.ceil(B / cell - 1e-9));
+    const nz = Math.max(1, Math.ceil(C / cell - 1e-9));
+    return { a: A, b: B, c: C, nx, ny, nz,
+             zmin: new Float32Array(nx * ny).fill(0),
+             zmax: new Float32Array(nx * ny).fill(C) };
+  });
+}
+
+function voxOf(it, oi) {
+  const v = it._vox;
+  if (v && v[oi]) return v[oi];
+  if (!it._voxBox) it._voxBox = voxelizeBox(it._d, VOX_CELL);
+  return it._voxBox[oi];
+}
+
+/* 两物体体素干涉：同一格子的 z 区间重叠 >0.5cm 即撞 */
+function voxHit(a, ax, ay, az, b, bx, by, bz, cell) {
+  const x0 = Math.max(ax, bx), x1 = Math.min(ax + a.a, bx + b.a);
+  const y0 = Math.max(ay, by), y1 = Math.min(ay + a.b, by + b.b);
+  const z0 = Math.max(az, bz), z1 = Math.min(az + a.c, bz + b.c);
+  if (x1 - x0 <= 1e-6 || y1 - y0 <= 1e-6 || z1 - z0 <= 1e-6) return false;
+  const gx0 = Math.max(0, Math.floor((x0 - ax) / cell));
+  const gx1 = Math.min(a.nx - 1, Math.floor((x1 - ax) / cell - 1e-6));
+  const gy0 = Math.max(0, Math.floor((y0 - ay) / cell));
+  const gy1 = Math.min(a.ny - 1, Math.floor((y1 - ay) / cell - 1e-6));
+  for (let gy = gy0; gy <= gy1; gy++) {
+    for (let gx = gx0; gx <= gx1; gx++) {
+      const ka = gy * a.nx + gx;
+      if (a.zmax[ka] < 0) continue;
+      const hx = Math.floor((ax + (gx + 0.5) * cell - bx) / cell);
+      const hy = Math.floor((ay + (gy + 0.5) * cell - by) / cell);
+      if (hx < 0 || hy < 0 || hx >= b.nx || hy >= b.ny) continue;
+      const kb = hy * b.nx + hx;
+      if (b.zmax[kb] < 0) continue;
+      const a0 = az + a.zmin[ka], a1 = az + a.zmax[ka];
+      const b0 = bz + b.zmin[kb], b1 = bz + b.zmax[kb];
+      if (a1 > b0 + 0.5 && b1 > a0 + 0.5) return true;
+    }
+  }
+  return false;
+}
+
+/* 支撑率：待放物体「底面接触格」中被下方几何托住的比例
+   底面接触格 = 该朝向体素中 zmin ≤ cell*1.5 的占据格（真正触底的那些列） */
+function supportRatio(vox, x, y, z, height, hn, cell) {
+  let tot = 0, ok = 0;
+  const layerTop = cell * 1.5;
+  for (let gy = 0; gy < vox.ny; gy++) {
+    for (let gx = 0; gx < vox.nx; gx++) {
+      const k = gy * vox.nx + gx;
+      if (vox.zmax[k] < 0) continue;
+      if (vox.zmin[k] > layerTop) continue;
+      tot++;
+      const gxi = Math.round((x + (gx + 0.5) * cell) / cell);
+      const gyi = Math.round((y + (gy + 0.5) * cell) / cell);
+      if (gxi < 0 || gyi < 0 || gxi >= hn || gyi >= hn) continue;
+      const h = height[gyi * hn + gxi];
+      if (h <= z + 1.0 && h >= z - 1.0) ok++;
+    }
+  }
+  return { ratio: tot ? ok / tot : 1, tot, ok };
+}
+
 function packCore(bin, items, topPenalty) {
-  const W = bin.l, D = bin.w, H = bin.h;
+  const cell = VOX_CELL;
+  /* P0-C2：仓壁安全量改为仓内尺寸内缩；物品之间零间隙 */
+  const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
+  const hn = Math.max(2, Math.ceil(Math.max(W, D) / cell) + 2);
+  const height = new Float32Array(hn * hn);
   const placed = [], points = [{ x: 0, y: 0, z: 0 }], failed = [];
 
-  // FFD：按体积降序，大件先放；单件失败只记该件，不影响其他
   const sorted = items.map(it => ({
     ...it, _d: effDims(it), _v: it.l * it.w * it.h
   })).sort((a, b) => b._v - a._v);
 
-  /* 候选点是否真有支撑（P0 悬空修复）
-     极值点是全局累积的：某个点的 z 来自 A 物体的顶面，但它可能落在 B 处、正下方是空的。
-     判定：z≈0（地板）算支撑；否则要求正下方存在物体，顶面与本点 z 相差 ≤1cm，
-     且待放物品的底面投影与该物体顶面投影有重叠。 */
-  function supported(p, a, b) {
-    if (p.z <= 0.5) return true;
-    for (const q of placed) {
-      if (Math.abs(q.z + q.h - p.z) > 1.0) continue;
-      if (p.x < q.x + q.l - 0.5 && q.x < p.x + a - 0.5 &&
-          p.y < q.y + q.w - 0.5 && q.y < p.y + b - 0.5) return true;
+  function stamp(b, vox) {
+    for (let gy = 0; gy < vox.ny; gy++) {
+      for (let gx = 0; gx < vox.nx; gx++) {
+        const k = gy * vox.nx + gx;
+        if (vox.zmax[k] < 0) continue;
+        const gxi = Math.round((b.x + (gx + 0.5) * cell) / cell);
+        const gyi = Math.round((b.y + (gy + 0.5) * cell) / cell);
+        if (gxi < 0 || gyi < 0 || gxi >= hn || gyi >= hn) continue;
+        const top = b.z + vox.zmax[k];
+        const idx = gyi * hn + gxi;
+        if (top > height[idx]) height[idx] = top;
+      }
     }
-    return false;
   }
 
   for (const it of sorted) {
     let best = null;
-    /* 不可倒置（冰箱/书架/衣柜）：只保留高度方向仍是自身高度的朝向 */
     let ors = orientations(it._d);
-    /* upright = 不可倒置；noSide = 不可侧躺（P1：纸箱/收纳箱的「可侧放」开关关闭时）
-       两者都只保留「高度方向仍是自身高」的朝向 */
     if (it.upright || it.noSide) {
       const keep = ors.filter(o => Math.abs(o[2] - it._d.h) < 0.01);
       if (keep.length) ors = keep;
     }
-    /* 两轮：先只在「有支撑」的候选点里选（保证不悬空）；
-       一件都放不下时再放开全部候选点，落位时下沉到支撑面兜底 */
-    for (const strict of [true, false]) {
-      for (const [a, b, c] of ors) {
-        if (a > W || b > D || c > H) continue;
-        for (const p of points) {
-          if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
-          if (strict && !supported(p, a, b)) continue;
-          const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
-          let ok = true;
-          for (const q of placed) if (!sep(box, q)) { ok = false; break; }
-          if (!ok) continue;
-          /* 接触面积越大越稳，但顶得太高会堵住上方空间，按顶高加罚 */
-          const score = contact(box, placed, W, D, H, topPenalty) - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
-          if (!best || score > best.score) best = { box, score };
+
+    for (let oi = 0; oi < ors.length; oi++) {
+      const [a, b, c] = ors[oi];
+      if (a > W || b > D || c > H) continue;
+      const vox = voxOf(it, oi);
+      for (const p of points) {
+        if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
+        const sr = supportRatio(vox, p.x, p.y, p.z, height, hn, cell);
+        if (sr.ratio < SUP_MIN) continue;
+        let hit = false;
+        for (let i = 0; i < placed.length; i++) {
+          const q = placed[i];
+          if (sep({ x: p.x, y: p.y, z: p.z, l: a, w: b, h: c }, q)) continue;
+          const qv = voxOf(q._src, q._oi);
+          if (voxHit(vox, p.x, p.y, p.z, qv, q.x, q.y, q.z, cell)) { hit = true; break; }
         }
+        if (hit) continue;
+        const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
+        const score = contact(box, placed, W, D, H, topPenalty) + sr.ratio * 40
+                      - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
+        if (!best || score > best.score) best = { box, score, oi, vox };
       }
-      if (best) break;
     }
+
     if (best) {
-      let b = best.box;
-      /* 兜底：非 strict 轮选中的点可能无支撑，落位时把底面沉到正下方最高顶面 */
-      let zs = 0;
-      for (const q of placed) {
-        if (b.x < q.x + q.l - 0.5 && q.x < b.x + b.l - 0.5 &&
-            b.y < q.y + q.w - 0.5 && q.y < b.y + b.w - 0.5 &&
-            q.z + q.h <= b.z + 0.5) zs = Math.max(zs, q.z + q.h);
-      }
-      if (b.z > zs + 0.01) {
-        const cand = { x: b.x, y: b.y, z: zs, l: b.l, w: b.w, h: b.h, name: b.name, orig: b.orig };
-        let okDown = true;
-        for (const q of placed) if (!sep(cand, q)) { okDown = false; break; }
-        if (okDown) b = cand;
-      }
+      const b = best.box;
+      b._oi = best.oi;
+      b._src = it;
       placed.push(b);
-      /* 极值点：角点 + 顶面投影到两墙的点（让后续物品能叠放到已有堆顶上）*/
+      stamp(b, best.vox);
       const cand = [
         { x: b.x + b.l, y: b.y, z: b.z },
         { x: b.x, y: b.y + b.w, z: b.z },
@@ -488,7 +621,6 @@ function packCore(bin, items, topPenalty) {
            util: vol / cap, vol: vol / 1e6, cap: cap / 1e6 };
 }
 
-/* 两轮择优：先按"别顶天"策略，装不全再退回不惩罚策略，取装得多的一轮 */
 function pack(bin, items) {
   const a = packCore(bin, items, 60);
   if (a.failed.length === 0) return a;
@@ -496,8 +628,12 @@ function pack(bin, items) {
   return (b.count > a.count) ? b : a;
 }
 
-if (typeof module !== 'undefined') module.exports = { pack, orientations, effDims, gapOf, GAP_HARD, GAP_SOFT };
-</script>
+if (typeof module !== 'undefined') module.exports = {
+  pack, packCore, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN,
+  voxelize, voxelizeBox, voxHit, supportRatio, GAP_HARD, GAP_SOFT
+};
+//</script>
+
 <script>var MESH_DATA = {};</script>
 <script>
 /* ===== 塞得下吗 v7 · 用户自建清单 ===== */
@@ -621,6 +757,27 @@ var greyboxView = false;
 function GREYBOX_ON() { return NoModelData || greyboxView; }
 var meshCache = {};
 var texLoader = new T.TextureLoader();
+
+/* ---------- P0-C 体素缓存：真实几何支撑 ----------
+   把量化网格解码成顶点/索引，按 6 朝向体素化（5cm），按 meshKey+尺寸缓存。
+   灰盒模式 / 无模型数据返回 null，pack 内部自动退化成立方体体素。 */
+var voxCache = {};
+function voxFor(cat) {
+  if (!cat || !cat.mesh || GREYBOX_ON() || typeof voxelize !== 'function') return null;
+  var k = cat.mesh + '|' + cat.l + ',' + cat.w + ',' + cat.h;
+  if (voxCache[k] !== undefined) return voxCache[k];
+  var d = MESH_DATA[cat.mesh];
+  if (!d || !d.qscale) { voxCache[k] = null; return null; }
+  try {
+    var qi = b64i16(d.pos), fv = new Float32Array(qi.length), qs = d.qscale;
+    for (var i = 0; i < qi.length; i++) fv[i] = qi[i] * qs;
+    voxCache[k] = voxelize(fv, b64u16(d.idx), { l: cat.l, w: cat.w, h: cat.h }, VOX_CELL);
+  } catch (e) {
+    if (typeof console !== 'undefined') console.log('[体素] ' + cat.mesh + ' 失败: ' + e.message);
+    voxCache[k] = null;
+  }
+  return voxCache[k];
+}
 
 function buildRealMesh(key, fallbackColor) {
   if (meshCache[key]) return meshCache[key].clone(true);
@@ -1600,7 +1757,8 @@ function finishManual() {
       idMap[nm2] = cart[ci];
       inst.push({ name: nm2, l: cart[ci].l, w: cart[ci].w, h: cart[ci].h, soft: !!cart[ci].soft,
                   upright: !!cart[ci].upright,
-                  noSide: cart[ci].side === undefined ? false : !cart[ci].side });
+                  noSide: cart[ci].side === undefined ? false : !cart[ci].side,
+                  _vox: voxFor(cart[ci]) });
     }
   }
   var autoR = null;
@@ -1683,6 +1841,7 @@ var LEVELS = [
 ];
 
 var curLevel = -1;
+var binBeforeLevel = null;   /* P0-D：进关前的自由仓位，退出时还原 */
 var routeCornerCheck = true;   /* 自由模式默认查拐角；关卡只有 L05 查 */
 var levelStartMs = 0;
 var levelRunning = false;
@@ -1724,6 +1883,10 @@ function renderLevels() {
 function loadLevel(idx) {
   var L = LEVELS[idx];
   if (!L) return;
+  /* P0-D：第一次进关时记下自由仓位，退出后还原 */
+  if (curLevel < 0) {
+    binBeforeLevel = { l: bin.l, w: bin.w, h: bin.h, name: bin.name, type: bin.type };
+  }
   curLevel = idx;
 
   /* 设仓位 */
@@ -1756,10 +1919,45 @@ function loadLevel(idx) {
   hideSheets();
   placedGroup.clear();
   document.body.classList.remove('ropen');
+  els.lvBtn.textContent = '退出关卡';     /* P0-D */
+}
+
+/* P0-D 退出关卡：把关卡里改过的运行态逐条还原，回到进关前的自由模式 */
+function exitLevel() {
+  levelRunning = false;                    /* 停表，避免残留计时被下次结算读到 */
+  levelStartMs = 0;
+  curLevel = -1;                           /* 之后的 showResult 不再走关卡结算 */
+  routeCornerCheck = true;                 /* 自由模式默认查拐角 */
+  tripPlaying = false;
+  cart = [];                               /* 清空清单 */
+  idMap = {};
+  placedGroup.clear();                     /* 清空已放物体 */
+  if (manual.obj) { placedGroup.remove(manual.obj); manual.obj = null; }
+  manual.on = false;
+  manual.placed = [];
+  manual.queue = [];
+  document.body.classList.remove('manual');
+  els.result.classList.remove('show');     /* 隐藏结果卡（含三星展示） */
+  els.result.innerHTML = '';
+  els.tripBadge.classList.remove('show');  /* 隐藏分趟浮标 */
+  els.tripBadge.textContent = '';
+  document.body.classList.remove('ropen');
+  hideSheets();                            /* 关卡表 / 选仓表等全部面板 */
+  if (binBeforeLevel) {                    /* 仓位还原为进关前的自由仓位 */
+    bin.l = binBeforeLevel.l; bin.w = binBeforeLevel.w; bin.h = binBeforeLevel.h;
+    bin.name = binBeforeLevel.name; bin.type = binBeforeLevel.type;
+  }
+  binBeforeLevel = null;
+  els.lvBtn.textContent = '关卡';          /* 按钮文案回退 */
+  refreshCartUI();
+  drawBin();
+  fitCamera();
+  els.status.textContent = '先添加你要搬的物品 · 共 0 件';
 }
 
 els.lvBtn.addEventListener('click', function (ev) {
   if (ev && ev.preventDefault) ev.preventDefault();
+  if (curLevel >= 0) { exitLevel(); return; }   /* P0-D：关卡内点按钮 = 退出 */
   renderLevels();
   showSheet(els.levelSheet);
 });
@@ -1778,7 +1976,9 @@ function playTrips() {
     var c = cart[i];
     for (var q = 0; q < c.qty; q++) {
       cartInst.push({ name: c.name + '@' + i + '#' + q, l: c.l, w: c.w, h: c.h, soft: !!c.soft, cat: c,
-                      noSide: c.side === undefined ? false : !c.side });
+                      upright: !!c.upright,
+                      noSide: c.side === undefined ? false : !c.side,
+                      _vox: voxFor(c) });
     }
   }
   var plan = planTrips(cartInst, bin);
@@ -1815,8 +2015,8 @@ function playTrips() {
         var p = r2.placed[j];
         var src = byName[p.name];
         if (!src) continue;
-        var pad2 = src.soft ? 1 : 2;
-        var obj = makeObjSized(src.cat, Math.max(1, p.l - pad2), Math.max(1, p.h - pad2), Math.max(1, p.w - pad2), p);
+        /* P0-C2 零间隙：真实尺寸 */
+        var obj = makeObjSized(src.cat, p.l, p.h, p.w, p);
         var tx = p.x + p.l / 2, ty = p.z + p.h / 2, tz = p.y + p.w / 2;
         obj.userData.target = new T.Vector3(tx, ty, tz);
         obj.position.set(tx, ty + 350, tz);
@@ -1920,7 +2120,9 @@ function doPack() {
       var nm = c.name + '@' + i + '#' + q;
       idMap[nm] = c;
       inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft,
-                  noSide: c.side === undefined ? false : !c.side });
+                  upright: !!c.upright,
+                  noSide: c.side === undefined ? false : !c.side,
+                  _vox: voxFor(c) });
     }
   }
   var r;
@@ -1958,8 +2160,8 @@ function doPack() {
     var p = r.placed[b];
     var c2 = idMap[p.name];
     if (!c2) continue;
-    var pad = c2.soft ? 1 : 2;   /* 与 pack 内 GAP_SOFT / GAP_HARD 保持一致 */
-    var obj = makeObjSized(c2, Math.max(1, p.l - pad), Math.max(1, p.h - pad), Math.max(1, p.w - pad), p);
+    /* P0-C2 零间隙：placed 的 l/w/h 就是物品真实尺寸，不再减 pad */
+    var obj = makeObjSized(c2, p.l, p.h, p.w, p);
     var tx = p.x + p.l / 2, ty = p.z + p.h / 2, tz = p.y + p.w / 2;
     obj.userData.target = new T.Vector3(tx, ty, tz);
     obj.position.set(tx, ty + 350, tz);
@@ -2501,6 +2703,27 @@ window.__API__ = {
   manualDrop: dropCurrent,
   manualRotate: rotateCurrent,
   curLevel: function () { return curLevel; },
+  /* P0-D：关卡退出（也供自动化测试驱动） */
+  exitLevel: exitLevel,
+  lvBtnText: function () { return els.lvBtn.textContent; },
+  statusText: function () { return els.status.textContent; },
+  /* 截图/测试用：按名字取完整品类、清空清单 */
+  cat: function (name) {
+    for (var i = 0; i < CATALOG.length; i++) if (CATALOG[i].name === name) return CATALOG[i];
+    return null;
+  },
+  clearCart: function () { cart = []; idMap = {}; refreshCartUI(); renderPreview(); },
+  /* 体素诊断：某品类 6 朝向体素规模 */
+  voxInfo: function (name) {
+    var c = null;
+    for (var i = 0; i < CATALOG.length; i++) if (CATALOG[i].name === name) c = CATALOG[i];
+    if (!c) return null;
+    var v = voxFor(c);
+    if (!v) return { ok: false, reason: GREYBOX_ON() ? 'greybox' : 'no-mesh' };
+    return { ok: true, cell: VOX_CELL, ori: v.length,
+             grids: v.map(function (o) { return o.nx + 'x' + o.ny; }) };
+  },
+  fitCamera: function () { fitCamera(); },
   levelBest: function () { return levelBest; },
   setBin: function (l, w, h) { bin.l = l; bin.w = w; bin.h = h; drawBin(); },
   bin: function () { return bin; },
