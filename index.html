@@ -59,6 +59,12 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .pitem.hasqty .pdim{padding-right:26px}
 .pqty{position:absolute;top:7px;right:8px;font-size:11px;font-weight:700;color:#08131f;
   background:#4da3ff;border-radius:9px;padding:1px 6px;font-variant-numeric:tabular-nums}
+.pside{position:absolute;right:8px;bottom:7px;height:22px;padding:0 8px;line-height:20px;font-size:10px;
+  border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);
+  color:#9fb3c9;font-family:inherit;cursor:pointer;white-space:nowrap}
+.pside.on{border-color:rgba(255,178,71,.65);background:rgba(255,178,71,.16);color:#ffcf8a}
+.pitem.hasqty .pside{bottom:7px;right:38px}
+.smark{font-style:normal;font-size:10px;color:#ffcf8a;font-weight:600}
 .pminus{position:absolute;right:8px;bottom:7px;width:23px;height:23px;padding:0;line-height:1;
   border-radius:7px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
   color:#c9d6e8;font-size:15px;font-family:inherit;cursor:pointer}
@@ -260,7 +266,7 @@ body.manual #c{height:calc(100% - 128px)}
 <div id="binBar">
   <span class="bl">当前仓位</span>
   <b id="binBarVal">200×150×120 cm</b>
-  <span class="bc">点这里改 ›</span>
+  <span class="bc">点进选仓室 ›</span>
 </div>
 
 <div id="tripBadge"></div>
@@ -393,29 +399,64 @@ function packCore(bin, items, topPenalty) {
     ...it, _d: effDims(it), _v: it.l * it.w * it.h
   })).sort((a, b) => b._v - a._v);
 
+  /* 候选点是否真有支撑（P0 悬空修复）
+     极值点是全局累积的：某个点的 z 来自 A 物体的顶面，但它可能落在 B 处、正下方是空的。
+     判定：z≈0（地板）算支撑；否则要求正下方存在物体，顶面与本点 z 相差 ≤1cm，
+     且待放物品的底面投影与该物体顶面投影有重叠。 */
+  function supported(p, a, b) {
+    if (p.z <= 0.5) return true;
+    for (const q of placed) {
+      if (Math.abs(q.z + q.h - p.z) > 1.0) continue;
+      if (p.x < q.x + q.l - 0.5 && q.x < p.x + a - 0.5 &&
+          p.y < q.y + q.w - 0.5 && q.y < p.y + b - 0.5) return true;
+    }
+    return false;
+  }
+
   for (const it of sorted) {
     let best = null;
     /* 不可倒置（冰箱/书架/衣柜）：只保留高度方向仍是自身高度的朝向 */
     let ors = orientations(it._d);
-    if (it.upright) {
+    /* upright = 不可倒置；noSide = 不可侧躺（P1：纸箱/收纳箱的「可侧放」开关关闭时）
+       两者都只保留「高度方向仍是自身高」的朝向 */
+    if (it.upright || it.noSide) {
       const keep = ors.filter(o => Math.abs(o[2] - it._d.h) < 0.01);
       if (keep.length) ors = keep;
     }
-    for (const [a, b, c] of ors) {
-      if (a > W || b > D || c > H) continue;
-      for (const p of points) {
-        if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
-        const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
-        let ok = true;
-        for (const q of placed) if (!sep(box, q)) { ok = false; break; }
-        if (!ok) continue;
-        /* 接触面积越大越稳，但顶得太高会堵住上方空间，按顶高加罚 */
-        const score = contact(box, placed, W, D, H, topPenalty) - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
-        if (!best || score > best.score) best = { box, score };
+    /* 两轮：先只在「有支撑」的候选点里选（保证不悬空）；
+       一件都放不下时再放开全部候选点，落位时下沉到支撑面兜底 */
+    for (const strict of [true, false]) {
+      for (const [a, b, c] of ors) {
+        if (a > W || b > D || c > H) continue;
+        for (const p of points) {
+          if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
+          if (strict && !supported(p, a, b)) continue;
+          const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
+          let ok = true;
+          for (const q of placed) if (!sep(box, q)) { ok = false; break; }
+          if (!ok) continue;
+          /* 接触面积越大越稳，但顶得太高会堵住上方空间，按顶高加罚 */
+          const score = contact(box, placed, W, D, H, topPenalty) - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
+          if (!best || score > best.score) best = { box, score };
+        }
       }
+      if (best) break;
     }
     if (best) {
-      const b = best.box;
+      let b = best.box;
+      /* 兜底：非 strict 轮选中的点可能无支撑，落位时把底面沉到正下方最高顶面 */
+      let zs = 0;
+      for (const q of placed) {
+        if (b.x < q.x + q.l - 0.5 && q.x < b.x + b.l - 0.5 &&
+            b.y < q.y + q.w - 0.5 && q.y < b.y + b.w - 0.5 &&
+            q.z + q.h <= b.z + 0.5) zs = Math.max(zs, q.z + q.h);
+      }
+      if (b.z > zs + 0.01) {
+        const cand = { x: b.x, y: b.y, z: zs, l: b.l, w: b.w, h: b.h, name: b.name, orig: b.orig };
+        let okDown = true;
+        for (const q of placed) if (!sep(cand, q)) { okDown = false; break; }
+        if (okDown) b = cand;
+      }
       placed.push(b);
       /* 极值点：角点 + 顶面投影到两墙的点（让后续物品能叠放到已有堆顶上）*/
       const cand = [
@@ -466,7 +507,7 @@ var T = THREE;
 
 /* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
 var CATALOG = [
-  { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55 },
+  { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55, side:false },
   { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'suitcase', color:0x3f5b78 },
   { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b },
   { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true },
@@ -477,7 +518,7 @@ var CATALOG = [
   { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true },
   { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true },
   { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c },
-  { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63 },
+  { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63, side:false },
   { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true },
   { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355 },
   { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47 },
@@ -485,7 +526,20 @@ var CATALOG = [
 ];
 
 /* ---------- 状态 ---------- */
-var cart = [];                                  /* [{id, name, l,w,h, qty, soft, compress, color, mesh, warn}] */
+var cart = [];                                  /* [{id, name, l,w,h, qty, soft, compress, color, mesh, warn, side}] */
+/* P1 可侧放：用户按品类勾选，默认取 CATALOG.side（纸箱/收纳箱默认 false = 不可侧躺）
+   用独立表存，不污染 CATALOG（关卡数据要按设计放开，见 loadLevel） */
+var sidePref = {};
+function sideOf(cat) {
+  if (cat.side === undefined) return undefined;              /* 其他品类没有这个概念 */
+  return sidePref[cat.id] !== undefined ? sidePref[cat.id] : !!cat.side;
+}
+function setSide(cat, val) {
+  if (cat.side === undefined) return;
+  sidePref[cat.id] = !!val;
+  /* 清单里同 id 的项一起同步（按类开关） */
+  for (var i = 0; i < cart.length; i++) if (cart[i].id === cat.id) cart[i].side = !!val;
+}
 var bin = { l:200, w:150, h:120, name:'迷你仓 M', type:'store' };
 
 /* 场景库
@@ -998,9 +1052,15 @@ function renderPicker() {
     var rank = lastOrder ? (i < 3 ? ' guess' : '') : '';
     var tag = lastOrder ? (i < 3 ? '<span class="mk guessmk">推荐' + (i + 1) + '</span>' : '') : '';
     var q = pickerQtyOf(c);
+    var sv = sideOf(c);
+    var sideMark = (sv === true) ? ' <i class="smark">· 可侧放</i>' : '';
+    var sideBtn = (c.side === undefined) ? '' :
+      '<button class="pside' + (sv ? ' on' : '') + '" data-act="side">' +
+      (sv ? '可侧放 ✓' : '不可侧放') + '</button>';
     h += '<div class="pitem' + rank + (q ? ' hasqty' : '') + '" data-i="' + ci + '">' +
-      '<div class="pname">' + c.name + tag + (c.mesh ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
+      '<div class="pname">' + c.name + sideMark + tag + (c.mesh ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
       '<div class="pdim">' + c.l + '×' + c.w + '×' + c.h + '</div>' +
+      sideBtn +
       (q ? '<span class="pqty">×' + q + '</span><button class="pminus" data-act="minus">−</button>' : '') +
       '</div>';
   }
@@ -1013,10 +1073,19 @@ function renderPicker() {
         var cat = CATALOG[+el.getAttribute('data-i')];
         if (!cat) return;
         /* 点到条目上的「−」= 减 1，其余位置 = 加 1；两种情况都留在面板里，可连续点 */
-        var t = ev && ev.target, dec = false;
+        var t = ev && ev.target, dec = false, sideToggle = false;
         while (t && t !== el) {
-          if (t.getAttribute && t.getAttribute('data-act') === 'minus') { dec = true; break; }
+          var act = t.getAttribute && t.getAttribute('data-act');
+          if (act === 'side') { sideToggle = true; break; }
+          if (act === 'minus') { dec = true; break; }
           t = t.parentNode;
+        }
+        if (sideToggle) {
+          /* P1：只切侧放开关，不加件、不关面板 */
+          setSide(cat, !sideOf(cat));
+          renderPicker();
+          els.pickerList.scrollTop = keepScroll;
+          return;
         }
         if (dec) decFromCart(cat); else addToCart(cat);
         renderPicker();
@@ -1083,7 +1152,8 @@ function addToCart(cat) {
   }
   cart.push({
     id: cat.id, name: cat.name, l: cat.l, w: cat.w, h: cat.h, qty: 1,
-    soft: cat.soft, compress: cat.compress, color: cat.color, mesh: cat.mesh, warn: cat.warn
+    soft: cat.soft, compress: cat.compress, color: cat.color, mesh: cat.mesh, warn: cat.warn,
+    side: sideOf(cat)
   });
   refreshCartUI(); bindCartEvents(); afterChange();
 }
@@ -1528,7 +1598,9 @@ function finishManual() {
     for (var q2 = 0; q2 < cart[ci].qty; q2++) {
       var nm2 = cart[ci].name + '@' + ci + '#' + q2;
       idMap[nm2] = cart[ci];
-      inst.push({ name: nm2, l: cart[ci].l, w: cart[ci].w, h: cart[ci].h, soft: !!cart[ci].soft, upright: !!cart[ci].upright });
+      inst.push({ name: nm2, l: cart[ci].l, w: cart[ci].w, h: cart[ci].h, soft: !!cart[ci].soft,
+                  upright: !!cart[ci].upright,
+                  noSide: cart[ci].side === undefined ? false : !cart[ci].side });
     }
   }
   var autoR = null;
@@ -1668,7 +1740,7 @@ function loadLevel(idx) {
         var it = {};
         for (var key in CATALOG[c]) it[key] = CATALOG[c][key];
         it.qty = qty;
-        cart.push(it);
+        cart.push(it);   /* P1：关卡与自由模式同规则，箱类按 CATALOG 默认 side:false（实测六关分数不受影响） */
         break;
       }
     }
@@ -1705,7 +1777,8 @@ function playTrips() {
   for (var i = 0; i < cart.length; i++) {
     var c = cart[i];
     for (var q = 0; q < c.qty; q++) {
-      cartInst.push({ name: c.name + '@' + i + '#' + q, l: c.l, w: c.w, h: c.h, soft: !!c.soft, cat: c });
+      cartInst.push({ name: c.name + '@' + i + '#' + q, l: c.l, w: c.w, h: c.h, soft: !!c.soft, cat: c,
+                      noSide: c.side === undefined ? false : !c.side });
     }
   }
   var plan = planTrips(cartInst, bin);
@@ -1846,7 +1919,8 @@ function doPack() {
     for (var q = 0; q < c.qty; q++) {
       var nm = c.name + '@' + i + '#' + q;
       idMap[nm] = c;
-      inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft });
+      inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft,
+                  noSide: c.side === undefined ? false : !c.side });
     }
   }
   var r;
@@ -2185,6 +2259,9 @@ function hideSheets() {
   els.picker.classList.remove('show');
   els.cartSheet.classList.remove('show');
   els.binSheet.classList.remove('show');
+  els.levelSheet.classList.remove('show');   /* P0-A：补上漏掉的关卡面板 */
+  els.result.classList.remove('show');       /* 同层浮层一并收，避免遮罩消失后残留 */
+  els.tripBadge.classList.remove('show');
 }
 
 function openBinSheet(e) {
