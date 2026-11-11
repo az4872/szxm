@@ -750,8 +750,13 @@ function packCore(bin, items, topPenalty) {
     let best = null;
     let ors = orientations(it._d);
     if (it.upright || it.noSide) {
+      /* [FIX-02] 原来是硬禁：只留"高度方向=原高"的朝向，书架180/衣柜200/冰箱170
+         在120高的仓里被判永不可能，而搬家师傅的标准做法就是侧倒/躺平。
+         改为"直立优先、躺倒兜底"：直立朝向排前面，直立装不下时自然用躺倒，
+         躺倒时由结果面板标注"需固定层板/静置"提醒。 */
       const keep = ors.filter(o => Math.abs(o[2] - it._d.h) < 0.01);
-      if (keep.length) ors = keep;
+      const rest = ors.filter(o => Math.abs(o[2] - it._d.h) >= 0.01);
+      ors = keep.concat(rest);
     }
 
     /* T-04/T-05：显式姿态分支。带 _poses 的品类（自行车 / 桌子）枚举的是「人给的三五种摆法」，
@@ -960,9 +965,15 @@ var POSE_SPEC = {
   /* 自行车：立放（真实网格体素，轮内空腔可用）/ 斜立（两段盒，车把下车架上方的三角净空可用）/ 平放（整块实心） */
   bike: [
     { id: 'upright', label: '立放', dims: [175, 60, 105], mesh: true, parts: null },
-    { id: 'lean', label: '斜立', dims: [175, 60, 120], parts: [
-      { x: 0, y: 0, z: 0, l: 175, w: 60, h: 45 },
-      { x: 0, y: 30, z: 45, l: 175, w: 30, h: 75 }
+    /* [FIX-05] 两处错：
+       ① 高度写 120，而仓内净高 = 仓高 - 2*BIN_PAD(1cm) = 118，任何 120 高仓都差 2cm 必判失败；
+       ② 深度写 60（= 车厚），但"斜靠"是立放后整体后仰约 25°，实际深度 = 105sin25+60cos25 ≈ 98。
+          写成 60 会让渲染端把倾斜后的真车硬塞进 60 深的盒子，等比缩放被压到 0.33，
+          车缩成一小坨——这才是"点斜立画面不对"的第二个根源。
+       改 175×98×118 后，倾斜 25° 的真车（约 168×101×58）投影正好落在盒内。 */
+    { id: 'lean', label: '斜靠', dims: [175, 98, 118], parts: [
+      { x: 0, y: 0, z: 0, l: 175, w: 98, h: 45 },
+      { x: 0, y: 30, z: 45, l: 175, w: 68, h: 73 }
     ] },
     { id: 'flat', label: '平放', dims: [175, 105, 60], mesh: false, parts: null }
   ],
@@ -1362,9 +1373,27 @@ function drawBin() {
 /* ---------- 相机 ---------- */
 var camTarget = new T.Vector3(), camDist = 500, camTheta = 0.9, camPhi = 1.05;
 function fitCamera(wide) {
+  /* [FIX-09] 原来只按仓位尺寸定距离和目标点，而 renderPreview 把待装物品排在仓外
+     （px = bin.l + 55 起，沿 Z 排一行），镜头却只框住仓位本身 → 加完物品画面里一件都看不见，
+     只有最靠前的那件露出一角，用户以为"模型没生成/模型不对"。装填后仓外那堆 failed 件同理。
+     这里把 placedGroup 的实际包围盒并进来，取更大的距离、更外的目标点。 */
   var diag = Math.sqrt(bin.l * bin.l + bin.h * bin.h + bin.w * bin.w);
-  camDist = diag * (wide ? 1.95 : 1.35);
-  camTarget.set(bin.l / 2, bin.h * 0.45, bin.w / 2);
+  var camDist0 = diag * (wide ? 1.95 : 1.35);
+  var tx = bin.l / 2, ty = bin.h * 0.45, tz = bin.w / 2;
+  try {
+    if (placedGroup && placedGroup.children.length && typeof T !== 'undefined') {
+      var bbObj = new T.Box3().setFromObject(placedGroup);
+      if (isFinite(bbObj.min.x) && isFinite(bbObj.max.x)) {
+        var bbAll = new T.Box3(new T.Vector3(0, 0, 0), new T.Vector3(bin.l, bin.h, bin.w)).union(bbObj);
+        var cA = new T.Vector3(); bbAll.getCenter(cA);
+        var sA = new T.Vector3(); bbAll.getSize(sA);
+        var dA = Math.sqrt(sA.x * sA.x + sA.y * sA.y + sA.z * sA.z) * (wide ? 1.95 : 1.35);
+        if (dA > camDist0) { camDist0 = dA; tx = cA.x; ty = cA.y; tz = cA.z; }
+      }
+    }
+  } catch (e) {}
+  camDist = camDist0;
+  camTarget.set(tx, ty, tz);
   updateCam();
 }
 function updateCam() {
@@ -1426,7 +1455,10 @@ var placedGroup = new T.Group();
 scene.add(placedGroup);
 
 function makeObj(cat) {
-  return makeObjSized(cat, cat.l, cat.w, cat.h);
+  /* [FIX-01] 原为 (cat, cat.l, cat.w, cat.h) → 签名是 (pl=X长, ph=Y高, pw=Z深)，
+     w 被当成"高"、h 被当成"深"，书架 80×30×180 被画成 80长×30高×180深 的扁长条，
+     正是用户说的"书架模型不对"；自行车 175×60×105 被画成 175×60×105 的普通立方。 */
+  return makeObjSized(cat, cat.l, cat.h, cat.w);
 }
 
 /* 按实际占位尺寸建物体：pl=X长 ph=Y高 pw=Z深
@@ -1450,6 +1482,37 @@ function matchDim(val, orig) {
 
 function makeObjSized(cat, pl, ph, pw, placed) {
   var g = new T.Group();
+  /* [FIX-03] parts 复合占位必须画出来。原来整函数只读 placed.orig（轴向），
+     从不读 placed._parts，所以"斜立"和"立放"画出来的包围盒完全一样
+     （实测 lean 171.5×58.8×102.9 = flat 同值），用户点斜立看不出任何变化。
+     这里按 parts 逐块画实体：斜立=下段厚板+上段窄条（能直接看到上方净空），
+     茶几=桌面+4 条腿（能直接看到腿间空腔）。 */
+  if (placed && placed._parts && placed._parts.length > 1 &&
+      !(cat.mesh && MESH_DATA[cat.mesh] && !GREYBOX_ON())) {
+    /* [FIX-08a] 上面这个额外条件必须有：自行车这类有真实模型的品类，parts 只是给算法算碰撞的
+       两段占位，不能拿来渲染——否则一点"斜立"，2.3 万面的真车就被两个半透明灰盒子顶掉。 */
+    for (var pi = 0; pi < placed._parts.length; pi++) {
+      var pp = placed._parts[pi];
+      var pg = new T.BoxGeometry(pp.l * 0.985, pp.h * 0.985, pp.w * 0.985);
+      var pm = new T.MeshStandardMaterial({
+        color: cat.color, roughness: 0.8, metalness: 0.0,
+        transparent: true, opacity: 0.55
+      });
+      var pmesh = new T.Mesh(pg, pm);
+      /* parts 本地坐标原点=左前下角，z 是高度；本 group 原点=占位盒中心 */
+      pmesh.position.set(
+        pp.x + pp.l / 2 - pl / 2,
+        pp.z + pp.h / 2 - ph / 2,
+        pp.y + pp.w / 2 - pw / 2
+      );
+      pmesh.add(new T.LineSegments(
+        new T.EdgesGeometry(pg),
+        new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })
+      ));
+      g.add(pmesh);
+    }
+    return g;
+  }
   var body = null;
   if (cat.mesh && MESH_DATA[cat.mesh] && !GREYBOX_ON()) {
     var real = buildRealMesh(cat.mesh, cat.color);
@@ -1457,9 +1520,15 @@ function makeObjSized(cat, pl, ph, pw, placed) {
       /* 算法若旋转过朝向，先把模型转到同一朝向，否则会被误压扁 */
       if (placed && placed.orig) {
         var o = placed.orig;
-        var bx = axisOfDim(matchDim(placed.l, o));
-        var by = axisOfDim(matchDim(placed.h, o));
-        var bz = axisOfDim(matchDim(placed.w, o));
+        /* [FIX-08b] 斜靠的占位高 118 是"倾斜后的净高"，与真实车高 105 对不上，
+           matchDim(118, [175,60,105]) 匹配不到 → 三个基向量退化、det≠1 → 整段重排被跳过，
+           模型保持出厂朝向（高在 Z 轴），后面无论怎么缩放都摆不正（实测渲染成 94×125×125 一坨）。
+           这里把重排用的尺寸换成真实尺寸，斜靠与立放的朝向就一致了。 */
+        var _rl = placed.l, _rh = placed.h, _rw = placed.w;
+        if (placed._pose === 'lean') { _rh = o[2]; _rw = o[1]; }
+        var bx = axisOfDim(matchDim(_rl, o));
+        var by = axisOfDim(matchDim(_rh, o));
+        var bz = axisOfDim(matchDim(_rw, o));
         var det = bx.x * (by.y * bz.z - by.z * bz.y)
                 - bx.y * (by.x * bz.z - by.z * bz.x)
                 + bx.z * (by.x * bz.y - by.y * bz.x);
@@ -1674,7 +1743,9 @@ function pickerQtyOf(cat) {
 function decFromCart(cat) {
   for (var i = 0; i < cart.length; i++) {
     var it = cart[i];
-    var psCur = POSE_SEL[cat.id] || (POSE_SPEC[cat.id] ? POSE_SPEC[cat.id][0].id : null);
+    /* [FIX-06a] 与 FIX-06 配套：cart 里未选姿态时存 null，这里也必须用 null 才能匹配上，
+       否则「减一件」永远匹配不到、点减号没反应。 */
+    var psCur = POSE_SEL[cat.id] || null;
     if (it.id === cat.id && it.l === cat.l && it.w === cat.w && it.h === cat.h &&
         (!POSE_SPEC[cat.id] || (it.pose || null) === (psCur || null))) {
       it.qty--;
@@ -1776,14 +1847,28 @@ function renderPicker() {
         if (posePick) {
           /* T-04：只切姿态选项，不加件、不关面板；装填形状随之变化 */
           POSE_SEL[cat.id] = posePick;
+          /* [FIX-07] 原来这里只重绘按钮高亮，已经加进清单的件尺寸一个字都不改——
+             用户点「斜立」看到清单还是 175×60×105、预览也没变，就是"点了没反应"。
+             这里把该品类在清单里的每一件同步成新姿态的尺寸，清单/预览/判定三处才一致。 */
+          var _pz = poseById(cat.id, posePick);
+          for (var _qi = 0; _qi < cart.length; _qi++) {
+            if (cart[_qi].id === cat.id) {
+              cart[_qi].pose = posePick;
+              if (_pz && _pz.dims) {
+                cart[_qi].l = _pz.dims[0]; cart[_qi].w = _pz.dims[1]; cart[_qi].h = _pz.dims[2];
+              }
+            }
+          }
           renderPicker();
+          refreshCartUI(); afterChange();
           els.pickerList.scrollTop = keepScroll;
           return;
         }
         if (sideToggle) {
           /* P1：只切侧放开关，不加件、不关面板 */
           setSide(cat, !sideOf(cat));
-          renderPicker();
+          /* [FIX-07b] 同上：改了侧放许可要立刻反映到预览，否则也是"点了没反应" */
+          renderPicker(); refreshCartUI(); afterChange();
           els.pickerList.scrollTop = keepScroll;
           return;
         }
@@ -1845,9 +1930,19 @@ function rankByImage(img, done) {
 function addToCart(cat) {
   /* P1：箱子按当前选项取有效尺寸（插口箱已放大）与材质颜色 */
   var bo = cat.box ? boxOptOf(cat) : null;
-  var dm = cat.box ? boxDims(cat, bo) : { l: cat.l, w: cat.w, h: cat.h };
+  /* [FIX-04] 原为「非箱品类一律用 cat.l/w/h」，PoseSpec 的 dims 完全没读。
+     于是点"斜立"后清单仍显示 175×60×105（立放值），而算法侧用的是 120 高，
+     清单和判定两套数——用户看到的尺寸和系统算的尺寸不是同一个东西。 */
+  var _ps = poseById(cat.id, POSE_SEL[cat.id]);
+  var dm = cat.box ? boxDims(cat, bo)
+         : (_ps && _ps.dims ? { l: _ps.dims[0], w: _ps.dims[1], h: _ps.dims[2] }
+                            : { l: cat.l, w: cat.w, h: cat.h });
   var col = bo ? BOX_MATS[bo.mat].color : cat.color;
-  var poseSel = POSE_SEL[cat.id] || (POSE_SPEC[cat.id] ? POSE_SPEC[cat.id][0].id : null);
+  /* [FIX-06b] 原来这里把"没选过"写成第一项（自行车的立放），于是 posesFor 只返回这一种，
+     算法永远不试平放/斜立。自行车立放占 105 高，几乎顶满 118 净高，剩下的纸箱就被判
+     "空隙不足 · 塞不进"——而同一组数据用纯 pack（姿态全开）实测 3 件全装。
+     改为：没点过就留 null，让算法枚举全部摆法按贴合分择优 = 师傅现场判断怎么摆最省地方。 */
+  var poseSel = POSE_SEL[cat.id] || null;
   for (var i = 0; i < cart.length; i++) {
     if (cart[i].id === cat.id && cart[i].l === dm.l && cart[i].w === dm.w && cart[i].h === dm.h &&
         (cart[i].pose || null) === (poseSel || null)) {
@@ -2905,7 +3000,9 @@ var LEVELS = [
     items:[['沙发',1],['床垫',1],['自行车',1]], minCap:6.15, limit:0 },
   { id:'L03', name:'能小一号吗', hint:'6m³ 装得下，但 3m³ 就够了——省一半租金', bin:'L',
     items:[['纸箱',6],['收纳箱',4],['椅子',2],['折叠桌',1]], minCap:3.05, limit:0 },
-  { id:'L04', name:'高的进矮仓就废了', hint:'书架 180 高，矮仓放不下，而且不能倒着放', bin:'XL',
+  /* [FIX-10] FIX-02 之后"不能倒着放"已经是假的：书架可以躺平进矮仓。
+     留着这句会教用户错的做法，改成与判定一致的说法。 */
+  { id:'L04', name:'高的进矮仓就废了', hint:'书架 180 高，仓高不够就躺平放倒——立着塞不进别硬立', bin:'XL',
     items:[['床垫',1],['书架',2],['椅子',2],['洗衣机',1]], minCap:12.32, limit:0 },
   { id:'L05', name:'那个拐角', hint:'全都装进去了，不等于搬得进去', bin:'XL',
     items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:12.32, limit:0, corner:true },
