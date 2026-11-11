@@ -68,6 +68,22 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .pitem.hasqty .pside{bottom:7px;right:38px}
 /* P1 箱子专属行：材质 / 插口箱 / 标准箱折算（网格里两列布局，行内换行不挤） */
 .pbox{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap;position:relative}
+/* [v40] 显式「加入」按钮。
+   根因（真机坐标实测）：自行车/茶几有姿态按钮行，pitem 整行又被当「加入」按钮，
+   姿态按钮几乎铺满 pitem 下半部 —— 用户点车行中心（真机 y=559）落进姿态按钮，
+   只切姿态、不加件，于是「点了平放/斜立，加不进清单」。
+   现在给一个占满整行、明确写「加入清单」的按钮，点它一定加件。 */
+.padd{display:block;width:100%;margin-top:8px;height:32px;line-height:30px;font-size:12.5px;font-weight:600;
+  position:relative;z-index:1;
+  border-radius:8px;border:1px solid rgba(77,163,255,.55);background:rgba(77,163,255,.18);
+  color:#cfe3ff;font-family:inherit;cursor:pointer}
+.padd:active{background:rgba(77,163,255,.34)}
+/* [v43] 「不可侧放 / 可侧放」这类裸 pside 原本是 absolute 贴卡片右下角（bottom:7px），
+   v40 加的 .padd 全宽按钮正好占满右下角，两者在纸箱等无姿态行上重叠约 56×18px
+   （真机坐标：pside[144,480,58,22] 与 padd[25,466,175,32] 相交）。
+   只有 pbox 内的姿态按钮在 v40 被改成 static，裸 pside 漏了 —— 现在一并改成
+   独占一行、右对齐，排在「加入清单」上方。 */
+.pitem > .pside{position:static;display:block;width:max-content;margin-left:auto;margin-top:7px}
 .pbox .pside,.pitem.hasqty .pbox .pside{position:static !important;right:auto !important;bottom:auto !important;
   height:20px;line-height:18px;padding:0 6px;font-size:9px}
 .pstd{font-size:9px;color:#7cc0ff;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -967,6 +983,14 @@ var POSE_SPEC = {
   /* 自行车：立放（真实网格体素，轮内空腔可用）/ 斜立（两段盒，车把下车架上方的三角净空可用）/ 平放（整块实心） */
   bike: [
     { id: 'upright', label: '立放', dims: [175, 60, 105], mesh: true, parts: null },
+    /* [v39] 车把转向：把前轮/车把绕转向轴转到约 48 度。
+       几何推导（bike_geo.py 可复算）：
+         立放总长 = 轴距 W + max(前轮外沿 r*cosθ, 车把末端 (B/2)*sinθ) + 后轮半径 r
+         两项相等时最省 -> tanθ = D/B（D 车轮外径，B 双把手总长）
+         26寸 D=66 B=60 -> θ=47.7°；27.5寸 D=70 B=62 -> θ=48.5°；700c D=68 B=58 -> θ=49.5°
+         取 48°：175 -> 163.2 cm（省 11.8），总宽 60 -> 52
+       注意：转 90 度几乎没用（175 -> 171），因为车把跟着转、横过来反而占满长度方向。 */
+    { id: 'turned', label: '车把转向', dims: [163, 52, 105], mesh: true, parts: null },
     /* P0-1（第7轮）：斜立占位高 120 → 110。
        真实斜靠墙一辆 175 长的车只比立放抬高约 5cm（立放 105），原值 120 是拍脑袋，
        后果是标准仓 200×150×120 里斜立必然判失败（实测仓高 105/110/115/120 全失败，125 才成功）。
@@ -1955,9 +1979,21 @@ function renderPicker() {
     }
     h += '<div class="pitem' + rank + (q ? ' hasqty' : '') + '" data-i="' + ci + '">' +
       '<div class="pname">' + c.name + sideMark + tag + (c.mesh ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
-      '<div class="pdim">' + c.l + '×' + c.w + '×' + c.h + '</div>' +
+      '<div class="pdim">' + (function () {
+        /* [v40] 尺寸要跟着当前选的姿态走。原来恒显示 CATALOG 原尺寸，
+           点了「平放」「车把转向」下面的 175×60×105 纹丝不动，看不出选了什么。 */
+        var pa = POSE_SPEC[c.id];
+        if (pa && pa.length) {
+          var cp = POSE_SEL[c.id] || pa[0].id;
+          for (var k = 0; k < pa.length; k++) {
+            if (pa[k].id === cp && pa[k].dims) return pa[k].dims[0] + '×' + pa[k].dims[1] + '×' + pa[k].dims[2] + ' cm';
+          }
+        }
+        return c.l + '×' + c.w + '×' + c.h;
+      })() + '</div>' +
       poseLine + sideBtn + boxLine +
       (q ? '<span class="pqty">×' + q + '</span><button class="pminus" data-act="minus">−</button>' : '') +
+      '<button class="padd" data-act="add">＋ 加入清单</button>' +
       '</div>';
   }
   var keepScroll = els.pickerList.scrollTop || 0;
@@ -2002,14 +2038,23 @@ function renderPicker() {
              这里把清单里同类件一起改姿态与尺寸，并触发预览重排。 */
           try {
             var _po = poseById(cat.id, posePick);
-            for (var _ci = 0; _ci < cart.length; _ci++) {
-              var _it = cart[_ci];
-              if (_it.id !== cat.id) continue;
-              _it.pose = posePick;
-              if (_po && _po.dims && _po.dims.length === 3) {
-                _it.l = _po.dims[0]; _it.w = _po.dims[1]; _it.h = _po.dims[2];
+            /* [v41] 只在「该品类在清单里恰好一行」时同步改。
+               原来无条件把同品类所有行都改成本次选的姿态 —— 用户加了一台立放、
+               再点平放、再加入，两台都被改成平放并合并成 qty=2，等于「加不了第二种姿态」。
+               一行时同步符合直觉（就这一台，当然跟着变）；多行时不批量改，
+               只影响下一次「加入清单」用的尺寸。 */
+            var _sameLines = 0;
+            for (var _k0 = 0; _k0 < cart.length; _k0++) if (cart[_k0].id === cat.id) _sameLines++;
+            if (_sameLines === 1) {
+              for (var _ci = 0; _ci < cart.length; _ci++) {
+                var _it = cart[_ci];
+                if (_it.id !== cat.id) continue;
+                _it.pose = posePick;
+                if (_po && _po.dims && _po.dims.length === 3) {
+                  _it.l = _po.dims[0]; _it.w = _po.dims[1]; _it.h = _po.dims[2];
+                }
+                _it.poseParts = _po && _po.parts ? _po.parts : null;
               }
-              _it.poseParts = _po && _po.parts ? _po.parts : null;
             }
             refreshCartUI(); bindCartEvents(); afterChange();
           } catch (e) {}
@@ -2766,12 +2811,20 @@ function checkRoute(cart2) {
 }
 
 /* ---------- M1 最小可行仓位推荐（照抄 Calcumate / AI Smart Size Finder 的做法）---------- */
-var TIERS = [
-  { name: 'S', l: 100, w: 100, h: 100 },
-  { name: 'M', l: 200, w: 150, h: 120 },
-  { name: 'L', l: 360, w: 220, h: 200 },
-  { name: 'XL', l: 480, w: 240, h: 220 }
-];
+/* [v42] TIERS 不再是第二套数字，直接从 SCENES 派生。
+   原来这里硬编码 200×150×120 / 360×220×200 / 480×240×220 —— 全是现实中不存在的仓型，
+   结果页推荐的最小够用仓位用户根本选不到，选到真仓又装不进（推荐链路自相矛盾）。
+   判定用内部尺寸 l/w/h（pack 需要），给用户看的数字用 nominal（标称）。 */
+var TIERS = (function () {
+  var out = [];
+  for (var i = 0; i < SCENES.length; i++) {
+    var sc = SCENES[i];
+    if (!sc.nominal) continue;          /* 只取分格仓，电梯/货车不进推荐档 */
+    out.push({ id: sc.id, name: sc.id, l: sc.l, w: sc.w, h: sc.h,
+               nominal: sc.nominal.slice(), sceneId: sc.id });
+  }
+  return out;
+})();
 
 function recommendBin(inst) {
   for (var i = 0; i < TIERS.length; i++) {
@@ -3688,13 +3741,14 @@ function showResult(r, inst) {
     var rec = recommendBin(inst);
     if (rec.tier) {
       var same = (rec.tier.l === bin.l && rec.tier.w === bin.w && rec.tier.h === bin.h);
-      var volm = (rec.tier.l * rec.tier.w * rec.tier.h / 1e6).toFixed(1);
+      var _nm = rec.tier.nominal || [rec.tier.l, rec.tier.w, rec.tier.h];
+      var volm = (_nm[0] * _nm[1] * _nm[2] / 1e6).toFixed(1);
       if (same) {
         h += '<div class="rec">已经是最小够用的仓位（' + rec.tier.name + ' 仓 ' + volm +
              ' m³，还剩 ' + (100 - rec.util * 100).toFixed(0) + '% 余量）</div>';
       } else {
         h += '<div class="rec hot">最小够用：<b>' + rec.tier.name + ' 仓 ' +
-             rec.tier.l + '×' + rec.tier.w + '×' + rec.tier.h + ' cm，约 ' + volm +
+             (rec.tier.nominal ? rec.tier.nominal.join('×') : (rec.tier.l + '×' + rec.tier.w + '×' + rec.tier.h)) + ' cm，约 ' + volm +
              ' m³，还剩 ' + (100 - rec.util * 100).toFixed(0) + '% 余量</b></div>';
       }
     } else {
