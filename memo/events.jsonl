@@ -21,3 +21,4 @@
 {"t": "2026-11-12 03:20", "author": "开发", "kind": "待裁", "title": "test_v13 case05/10 判据过期是否批准更新", "artifact": "", "note": "", "state": "open"}
 {"t": "2026-11-12 03:20", "author": "开发", "kind": "待裁", "title": "移动端 .lvbtn 遮挡+37px 触控本轮修否", "artifact": "", "note": "", "state": "open"}
 {"t": "2026-11-12 03:26", "author": "文创", "kind": "机制", "title": "备忘录改为事件流+渲染总览，GitHub raw 作固定读入口", "artifact": "", "note": "memo/events.jsonl", "state": "done"}
+{"t": "2026-11-12 04:14", "author": "文创", "kind": "机制", "title": "全量汇编工具上线：58份原文/2.56MB 单册，替代摘要式总览", "artifact": "备忘录_全量汇编_202611120412.md", "note": "卷二备忘录全文+卷三任务书+卷四交付回报+卷一事件流", "state": "done"}
