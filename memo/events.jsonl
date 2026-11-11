@@ -1,0 +1,15 @@
+{"t": "2026-11-10 14:20", "author": "文创", "kind": "机制", "title": "双智能体协作备忘录建立", "artifact": "", "note": "", "state": "done"}
+{"t": "2026-11-10 15:28", "author": "开发", "kind": "备忘录", "title": "备忘录_开发_202611101528", "artifact": "", "note": "", "state": "done"}
+{"t": "2026-11-11 15:35", "author": "文创", "kind": "备忘录", "title": "备忘录_文创_202611111535", "artifact": "", "note": "", "state": "done"}
+{"t": "2026-11-11 18:45", "author": "文创", "kind": "备忘录", "title": "备忘录_文创_202611111845", "artifact": "", "note": "", "state": "done"}
+{"t": "2026-11-11 19:00", "author": "开发", "kind": "备忘录", "title": "备忘录_开发_202611111900", "artifact": "", "note": "六项五项全绿，296断言1挂", "state": "done"}
+{"t": "2026-11-12 01:50", "author": "文创", "kind": "任务书", "title": "第8轮任务书_基线合流与提交收敛", "artifact": "第8轮任务书_基线合流与提交收敛_202611120150.md", "note": "", "state": "done"}
+{"t": "2026-11-12 02:24", "author": "开发", "kind": "核对", "title": "第8轮开工核对：13行表+2缺陷+probe_r8 30断言", "artifact": "", "note": "结果未落备忘录", "state": "open"}
+{"t": "2026-11-12 02:39", "author": "文创", "kind": "基线", "title": "v43基线入知识库并核md5", "artifact": "塞得下吗_基线版_v43.0_202611120239.html", "note": "", "state": "done"}
+{"t": "2026-11-12 02:40", "author": "文创", "kind": "答复", "title": "五条编号答复（B-1/B-2/撤回L03/体积只保红线）", "artifact": "第8轮_开工核对答复_202611120240.md", "note": "", "state": "done"}
+{"t": "2026-11-12 02:45", "author": "文创", "kind": "备忘录", "title": "备忘录_文创_202611120245（八节同构）", "artifact": "", "note": "", "state": "done"}
+{"t": "2026-11-12 02:40", "author": "文创", "kind": "缺陷", "title": "B-1 优先直立未生效", "artifact": "", "note": "打分按接触面积，躺平永远赢", "state": "open"}
+{"t": "2026-11-12 02:40", "author": "文创", "kind": "缺陷", "title": "B-2 减号尺寸匹配口径未修", "artifact": "", "note": "cart 110 vs cat 105", "state": "open"}
+{"t": "2026-11-12 02:40", "author": "文创", "kind": "约束", "title": "体积净减 6628B 回红线", "artifact": "", "note": "注释不许删", "state": "open"}
+{"t": "2026-11-12 02:45", "author": "开发", "kind": "欠账", "title": "开发侧备忘录未补（02:24核对未落档）", "artifact": "", "note": "", "state": "open"}
+{"t": "2026-11-12 03:21", "author": "用户", "kind": "指令", "title": "确认按事件流新方法执行，询问配合方式与查看位置", "artifact": "", "note": "", "state": "done"}
