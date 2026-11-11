@@ -66,6 +66,12 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
   color:#9fb3c9;font-family:inherit;cursor:pointer;white-space:nowrap}
 .pside.on{border-color:rgba(255,178,71,.65);background:rgba(255,178,71,.16);color:#ffcf8a}
 .pitem.hasqty .pside{bottom:7px;right:38px}
+/* P1 箱子专属行：材质 / 插口箱 / 标准箱折算（网格里两列布局，行内换行不挤） */
+.pbox{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap;position:relative}
+.pbox .pside,.pitem.hasqty .pbox .pside{position:static !important;right:auto !important;bottom:auto !important;
+  height:20px;line-height:18px;padding:0 6px;font-size:9px}
+.pstd{font-size:9px;color:#7cc0ff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pitem.hasqty .pbox{padding-right:0}
 .smark{font-style:normal;font-size:10px;color:#ffcf8a;font-weight:600}
 .pminus{position:absolute;right:8px;bottom:7px;width:23px;height:23px;padding:0;line-height:1;
   border-radius:7px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
@@ -108,6 +114,9 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .cf input{background:none;border:0;color:#e8eef7;font-size:16px;font-family:inherit;
   width:100%;padding:0;outline:none;font-variant-numeric:tabular-nums}
 .cf em{font-size:10px;color:#5f7089;font-style:normal}
+#pCornerList .crow{display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:6px;align-items:center;margin:0 0 8px}
+#pCornerList .crow em{font-style:normal;font-size:11px;color:#8a94a6;white-space:nowrap}
+#pCornerList .crow input{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e8ecf5;border-radius:8px;padding:7px 8px;font-size:13px}
 .cnote2{font-size:11px;color:#7f8fa6;line-height:1.5}
 #binNote{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
   color:#e8eef7;border-radius:10px;padding:11px 12px;font-size:13px;font-family:inherit;margin:8px 0}
@@ -222,7 +231,7 @@ body.manual footer{display:none}
 .mb-head span.ok{color:#54d68a}
 .mb-head span.bad{color:#ff6b6b}
 .mb-head span.warn{color:#ffaa33}
-.mb-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.mb-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .btn.manual{background:rgba(77,163,255,.18);border:1px solid rgba(77,163,255,.45);color:#8fc4ff}
 .mb-btn{background:#1c2534;border:1px solid #2b3849;color:#d6e2f2;font-size:12px;
   font-weight:600;padding:11px 2px;border-radius:9px;font-family:inherit;cursor:pointer}
@@ -230,11 +239,14 @@ body.manual footer{display:none}
 .mb-btn.ok{background:#1d4d33;border-color:#2f7a4f;color:#7ff0b0}
 .mb-btn.skip{background:#3a2630;border-color:#5e3a46;color:#ff9db0}
 .mb-btn:disabled{opacity:.35}
-body.manual #c{height:calc(100% - 128px)}
-.gbtn{position:absolute;right:14px;top:58px;z-index:12;background:rgba(20,26,36,.9);
-  border:1px solid #33455e;color:#9fb2c9;font-size:11.5px;font-weight:700;
-  padding:8px 12px;border-radius:9px;cursor:pointer;font-family:inherit}
-.gbtn.on{background:rgba(255,209,102,.16);border-color:rgba(255,209,102,.6);color:#ffd166}
+body.manual #c{height:calc(100% - 182px)}
+/* v36 T-02：版本号 + 构建时间移到右下角小字（footer 之上），肉眼一眼看出线上是不是最新 */
+#verTag{position:fixed;right:10px;bottom:150px;z-index:13;font-size:10px;line-height:14px;
+  color:#8b9db5;font-variant-numeric:tabular-nums;letter-spacing:.2px;pointer-events:none;
+  background:rgba(12,16,22,.55);padding:2px 6px;border-radius:6px}
+#verTag b{color:#6db4ff;font-weight:700}
+body.manual #verTag{bottom:12px}
+body.shotmode #verTag{display:none}
 .lvbtn{position:absolute;right:14px;top:14px;z-index:12;background:rgba(77,163,255,.16);
   border:1px solid rgba(77,163,255,.5);color:#8fc4ff;font-size:12px;font-weight:700;
   padding:9px 14px;border-radius:10px;cursor:pointer;font-family:inherit}
@@ -304,14 +316,14 @@ body.shotmode{background:#11151c}
 <canvas id="c"></canvas>
 
 <header>
-  <h1>塞得下吗 · <em>我能装走多少</em></h1>
+  <h1>塞得下吗 · <em>搬过便知</em></h1>
   <button class="binbtn" id="binBtn">
     <span id="binLabel">200×150×120 cm</span>
     <small>我的仓位 · 点改</small>
   </button>
   <button class="lvbtn" id="lvBtn">关卡</button>
-  <button class="gbtn" id="gbBtn">灰盒</button>
 </header>
+<div id="verTag"><b>v36</b> · 202611111222</div>
 
 <div id="binBar">
   <span class="bl">当前仓位</span>
@@ -389,14 +401,15 @@ body.shotmode{background:#11151c}
     <label class="cf"><span>走廊长度</span><input id="pCorLen" inputmode="decimal" placeholder="不填"><em>cm</em></label>
   </div>
   <div class="cgrid">
-    <label class="cf"><span>拐角 A 边</span><input id="pCrnA" inputmode="decimal" placeholder="120"><em>cm</em></label>
-    <label class="cf"><span>拐角 B 边</span><input id="pCrnB" inputmode="decimal" placeholder="100"><em>cm</em></label>
-    <label class="cf"><span>拐角净高</span><input id="pCrnH" inputmode="decimal" placeholder="200"><em>cm</em></label>
+    <label class="cf"><span>拐角 1 · A 边</span><input id="pCrnA" inputmode="decimal" placeholder="120"><em>cm</em></label>
+    <label class="cf"><span>拐角 1 · B 边</span><input id="pCrnB" inputmode="decimal" placeholder="100"><em>cm</em></label>
+    <label class="cf"><span>拐角 1 · 净高</span><input id="pCrnH" inputmode="decimal" placeholder="200"><em>cm</em></label>
     <label class="cf"><span>拐角数量</span><input id="pCorners" inputmode="numeric" placeholder="1"><em>个</em></label>
   </div>
+  <div id="pCornerList"></div>
   <div class="cgrid one">
     <label class="cf"><span>中间门</span><input id="pDoors" inputmode="numeric" placeholder="0"><em>道</em></label>
-    <div class="cnote2">中间门指楼道里还要过的门（净宽同入户门）。<br>拐角 A/B 填转角两侧的净空，量不准就保守填小 5cm。</div>
+    <div class="cnote2">中间门指楼道里还要过的门（净宽同入户门）。<br>有 2 个以上拐角时，每个拐角单独填 A/B/净高，还要填「距上一拐」的直线长度 —— 这段太短，长件会在两个拐角之间摆不正。<br>拐角 A/B 填转角两侧的净空，量不准就保守填小 5cm。</div>
   </div>
   <div id="pPathErr"></div>
   <div id="pPathWarn" class="pw"></div>
@@ -407,7 +420,9 @@ body.shotmode{background:#11151c}
 <div id="manualBar">
   <div class="mb-head"><b id="mbName">—</b><span id="mbState">拖动到仓内</span></div>
   <div class="mb-btns">
-    <button class="mb-btn" id="mbRotate">↻ 转向</button>
+    <button class="mb-btn" id="mbRotate">↻ 转 90°</button>
+    <button class="mb-btn" id="mbSide">⟲ 侧倒</button>
+    <button class="mb-btn" id="mbFlip">⇅ 翻倒</button>
     <button class="mb-btn" id="mbUp">↑ 上一格</button>
     <button class="mb-btn" id="mbDown">↓ 落地</button>
     <button class="mb-btn ok" id="mbDrop">放下</button>
@@ -615,6 +630,67 @@ function supportRatio(vox, x, y, z, height, hn, cell) {
   return { ratio: tot ? ok / tot : 1, tot, ok };
 }
 
+/* ===== 复合占位（parts）=====
+   T-04 自行车 / T-05 桌子：一件物品拆成若干实心小块，块与块之间的空腔可以被别的物品使用。
+   parts 用「物品本地坐标」描述：{ x, y, z, l, w, h }，原点在物品 AABB 的左前下角。
+   为什么必须这么做：高度场是单值的，桌面把下方腿间那一列的高度写成 45，
+   后面任何东西放腿间都会被判「悬空」—— 这正是台账 #19「腿间空腔装不进」的根因，
+   不是模型体素不准（实测茶几体素柱状区间已能表达 zmin=40 的悬空桌面）。
+   parts 件不走高度场，逐块判边界 / 碰撞 / 支撑，逐块写高度场。 */
+function partListOf(it, ors) {
+  /* 返回 [{a,b,c,parts}]：parts 为 null 表示该姿态是整块（走体素路径） */
+  if (it._poses && it._poses.length) {
+    return it._poses.map(p => ({ a: p.dims[0], b: p.dims[1], c: p.dims[2], parts: p.parts || null, label: p.label || '' }));
+  }
+  return ors.map(([a, b, c]) => ({ a, b, c, parts: null }));
+}
+
+function partAbs(p, org) {
+  return { x: org.x + p.x, y: org.y + p.y, z: org.z + p.z, l: p.l, w: p.w, h: p.h };
+}
+function partVox(p) {
+  if (!p._vox) p._vox = voxelizeBox({ l: p.l, w: p.w, h: p.h }, VOX_CELL)[0];
+  return p._vox;
+}
+/* parts 件的支撑判定：底面（z=0 的那些块）被托住的比例 */
+function partsSupport(parts, org, height, hn, cell) {
+  let tot = 0, ok = 0;
+  for (const p of parts) {
+    if (p.z > 0.5) continue;             /* 悬空块（如桌面）由同件其它块支撑，不算接触面 */
+    const ap = partAbs(p, org);
+    const gx0 = Math.floor(ap.x / cell), gx1 = Math.floor((ap.x + ap.l - 1e-6) / cell);
+    const gy0 = Math.floor(ap.y / cell), gy1 = Math.floor((ap.y + ap.w - 1e-6) / cell);
+    for (let gy = gy0; gy <= gy1; gy++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        tot++;
+        if (gx < 0 || gy < 0 || gx >= hn || gy >= hn) continue;
+        const h = height[gy * hn + gx];
+        if (h <= org.z + 1.0 && h >= org.z - 1.0) ok++;
+      }
+    }
+  }
+  return { ratio: tot ? ok / tot : 1, tot, ok };
+}
+/* parts 件的碰撞：逐块与已放件判；已放件是整块则用其体素精确判，是 parts 件则逐块 AABB 判 */
+function partsHit(parts, org, placed, cell) {
+  for (const p of parts) {
+    const ap = partAbs(p, org);
+    const pv = partVox(p);
+    for (const q of placed) {
+      if (q._parts) {
+        for (const qp of q._parts) {
+          if (!sep(ap, qp)) return true;     /* parts 都是实心小块，AABB 相交即真撞 */
+        }
+      } else {
+        if (sep(ap, q)) continue;
+        const qv = voxOf(q._src, q._oi);
+        if (voxHit(pv, ap.x, ap.y, ap.z, qv, q.x, q.y, q.z, cell)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 function packCore(bin, items, topPenalty) {
   const cell = VOX_CELL;
   /* P0-C2：仓壁安全量改为仓内尺寸内缩；物品之间零间隙 */
@@ -622,6 +698,34 @@ function packCore(bin, items, topPenalty) {
   const hn = Math.max(2, Math.ceil(Math.max(W, D) / cell) + 2);
   const height = new Float32Array(hn * hn);
   const placed = [], points = [{ x: 0, y: 0, z: 0 }], failed = [];
+  const _seen = new Set(['0_0_0']);
+  function addPoint(x, y, z) {
+    x = Math.max(0, Math.round(x * 100) / 100);
+    y = Math.max(0, Math.round(y * 100) / 100);
+    z = Math.max(0, Math.round(z * 100) / 100);
+    const k = x + '_' + y + '_' + z;
+    if (_seen.has(k)) return;
+    _seen.add(k);
+    points.push({ x: x, y: y, z: z });
+  }
+  /* 平台表：parts 件的悬空块（如桌面）顶面。高度场是单值的，表达不了「同一列底下空、上面有板」，
+     所以悬空块顶面单独记一份，支撑判定时按水平覆盖率认平台（≥SUP_MIN 才算托住）。 */
+  const platforms = [];
+  function supportAt(box, p, vox, parts) {
+    let sr = 0;
+    if (parts) sr = partsSupport(parts, p, height, hn, cell).ratio;
+    else sr = supportRatio(vox, p.x, p.y, p.z, height, hn, cell).ratio;
+    if (sr >= SUP_MIN) return sr;
+    const area = Math.max(1e-6, box.l * box.w);
+    let bestP = 0;
+    for (const pf of platforms) {
+      if (Math.abs(pf.z - p.z) > 1.0) continue;
+      const ox = Math.min(p.x + box.l, pf.x + pf.l) - Math.max(p.x, pf.x);
+      const oy = Math.min(p.y + box.w, pf.y + pf.w) - Math.max(p.y, pf.y);
+      if (ox > 0 && oy > 0) bestP = Math.max(bestP, (ox * oy) / area);
+    }
+    return bestP >= SUP_MIN ? bestP : sr;
+  }
 
   const sorted = items.map(it => ({
     ...it, _d: effDims(it), _v: it.l * it.w * it.h
@@ -650,17 +754,71 @@ function packCore(bin, items, topPenalty) {
       if (keep.length) ors = keep;
     }
 
+    /* T-04/T-05：显式姿态分支。带 _poses 的品类（自行车 / 桌子）枚举的是「人给的三五种摆法」，
+       每种摆法可以是整块（走体素，如自行车立放）或拆成 parts（如桌子=桌面+4 腿、自行车斜立=两段盒）。 */
+    if (it._poses && it._poses.length) {
+      for (let pi = 0; pi < it._poses.length; pi++) {
+        const ps = it._poses[pi];
+        const a = ps.dims[0], b = ps.dims[1], c = ps.dims[2];
+        if (a > W + 0.5 || b > D + 0.5 || c > H + 0.5) continue;
+        const parts = ps.parts || null;
+        let vox = null;
+        if (!parts) {
+          if (ps.mesh !== false) {
+            const orsMine = orientations(it._d);
+            for (let k = 0; k < orsMine.length; k++) {
+              if (Math.abs(orsMine[k][0] - a) < 0.01 && Math.abs(orsMine[k][1] - b) < 0.01 &&
+                  Math.abs(orsMine[k][2] - c) < 0.01) { vox = voxOf(it, k); break; }
+            }
+          }
+          if (!vox) vox = voxelizeBox({ l: a, w: b, h: c }, cell)[0];
+        }
+        for (const p of points) {
+          if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
+          const box0 = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c };
+          const srR = supportAt(box0, p, vox, parts);
+          if (srR < SUP_MIN) continue;
+          const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
+          if (parts) {
+            if (partsHit(parts, p, placed, cell)) continue;
+          } else {
+            let hit = false;
+            for (let i = 0; i < placed.length; i++) {
+              const q = placed[i];
+              if (q._parts) {
+                for (const qp of q._parts) { if (!sep(box, qp)) { hit = true; break; } }
+                if (hit) break;
+                continue;
+              }
+              if (sep(box, q)) continue;
+              const qv = voxOf(q._src, q._oi);
+              if (voxHit(vox, p.x, p.y, p.z, qv, q.x, q.y, q.z, cell)) { hit = true; break; }
+            }
+            if (hit) continue;
+          }
+          const score = contact(box, placed, W, D, H, topPenalty) + srR * 40
+                        - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
+          if (!best || score > best.score) best = { box, score, oi: 0, vox: vox, parts: parts, pose: ps.id || pi };
+        }
+      }
+    } else {
     for (let oi = 0; oi < ors.length; oi++) {
       const [a, b, c] = ors[oi];
       if (a > W || b > D || c > H) continue;
       const vox = voxOf(it, oi);
       for (const p of points) {
         if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
-        const sr = supportRatio(vox, p.x, p.y, p.z, height, hn, cell);
+        const sr = { ratio: supportAt({ x: p.x, y: p.y, z: p.z, l: a, w: b, h: c }, p, vox, null) };
         if (sr.ratio < SUP_MIN) continue;
         let hit = false;
         for (let i = 0; i < placed.length; i++) {
           const q = placed[i];
+          if (q._parts) {
+            const nb = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c };
+            for (const qp of q._parts) { if (!sep(nb, qp)) { hit = true; break; } }
+            if (hit) break;
+            continue;
+          }
           if (sep({ x: p.x, y: p.y, z: p.z, l: a, w: b, h: c }, q)) continue;
           const qv = voxOf(q._src, q._oi);
           if (voxHit(vox, p.x, p.y, p.z, qv, q.x, q.y, q.z, cell)) { hit = true; break; }
@@ -672,13 +830,46 @@ function packCore(bin, items, topPenalty) {
         if (!best || score > best.score) best = { box, score, oi, vox };
       }
     }
+    }
 
     if (best) {
       const b = best.box;
       b._oi = best.oi;
       b._src = it;
+      if (best.parts) {
+        /* parts 件：只有触底块写高度场（腿间列保持 0，后面的东西才塞得进去）；
+           所有块的顶面都登记为平台（桌面顶面要能放东西）。 */
+        b._parts = best.parts.map(pp => partAbs(pp, b));
+        b._pose = best.pose;
+        const orgParts = best.parts;
+        for (let pi2 = 0; pi2 < b._parts.length; pi2++) {
+          const qp = b._parts[pi2];
+          const op = orgParts[pi2];
+          const qv = voxelizeBox({ l: qp.l, w: qp.w, h: qp.h }, cell)[0];
+          if (op.z <= 0.5) stamp(qp, qv);
+          platforms.push({ x: qp.x, y: qp.y, z: qp.z + qp.h, l: qp.l, w: qp.w });
+        }
+        /* 关键：贪心装填的候选点只有「已放件的边界邻接点」，parts 件的内部空腔（腿间/车架上方）
+           永远不在候选里，空腔再正确也用不上。这里在 AABB 内按 2 倍格宽扫描，
+           z 取底面 + 各块顶面，把空腔内部也变成候选点。 */
+        const zLev = [b.z];
+        for (const qp of b._parts) zLev.push(qp.z + qp.h);
+        const step = cell * 2;
+        for (let zz of zLev) {
+          for (let xx = b.x; xx <= b.x + b.l - step * 0.5; xx += step) {
+            for (let yy = b.y; yy <= b.y + b.w - step * 0.5; yy += step) addPoint(xx, yy, zz);
+          }
+        }
+        /* 边界与贴壁投影点（原整块件的 7 点逻辑补到 parts 件上） */
+        addPoint(b.x + b.l, b.y, b.z);
+        addPoint(b.x, b.y + b.w, b.z);
+        addPoint(b.x, b.y, b.z + b.h);
+        addPoint(b.x + b.l, 0, b.z);
+        addPoint(0, b.y + b.w, b.z);
+      } else {
+        stamp(b, best.vox);
+      }
       placed.push(b);
-      stamp(b, best.vox);
       const cand = [
         { x: b.x + b.l, y: b.y, z: b.z },
         { x: b.x, y: b.y + b.w, z: b.z },
@@ -728,6 +919,18 @@ if (typeof module !== 'undefined') module.exports = {
 'use strict';
 var T = THREE;
 
+/* P0-R5：捕获运行期错误，供浏览器可运行性证明读取（只读，不改变任何行为） */
+if (typeof window !== 'undefined' && !window.__ERRLOG__) {
+  window.__ERRLOG__ = [];
+  window.addEventListener('error', function (e) {
+    window.__ERRLOG__.push(String((e && e.message) || e));
+    window.__ERR__ = String((e && e.message) || e);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    window.__ERRLOG__.push('unhandledrejection: ' + String(e && e.reason));
+  });
+}
+
 /* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
 var CATALOG = [
   { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55, side:false },
@@ -748,16 +951,138 @@ var CATALOG = [
   { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, mesh:'wardrobe', color:0x7d6247, upright:true }
 ];
 
+/* ---------- T-04 / T-05 显式姿态表（可带 parts 复合占位） ----------
+   parts 坐标是「物品本地坐标」，原点在 AABB 左前下角，与 items 的 l/w/h 独立。
+   为什么桌子必须拆：高度场单值 —— 桌面把腿间那一列的高度写成 45，任何东西放腿间
+   都会被判悬空，所以「腿间能塞」在算法上原本等于不存在（台账 #19 的根因）。
+   拆成「桌面 + 4 腿」后，腿间列只有腿占位（4 个 5×5 角柱），空腔才真的可用。 */
+var POSE_SPEC = {
+  /* 自行车：立放（真实网格体素，轮内空腔可用）/ 斜立（两段盒，车把下车架上方的三角净空可用）/ 平放（整块实心） */
+  bike: [
+    { id: 'upright', label: '立放', dims: [175, 60, 105], mesh: true, parts: null },
+    { id: 'lean', label: '斜立', dims: [175, 60, 120], parts: [
+      { x: 0, y: 0, z: 0, l: 175, w: 60, h: 45 },
+      { x: 0, y: 30, z: 45, l: 175, w: 30, h: 75 }
+    ] },
+    { id: 'flat', label: '平放', dims: [175, 105, 60], mesh: false, parts: null }
+  ],
+  /* 茶几：正放（桌面在 z40..45，腿间 84×39×40 净空可放 2 件 30³）/ 倒扣（桌面贴地 z0..5，桌面上方 100×55 可放 3 件） */
+  table: [
+    { id: 'upright', label: '正放', dims: [100, 55, 45], parts: [
+      { x: 0, y: 0, z: 40, l: 100, w: 55, h: 5 },
+      { x: 3, y: 3, z: 0, l: 5, w: 5, h: 40 }, { x: 92, y: 3, z: 0, l: 5, w: 5, h: 40 },
+      { x: 3, y: 47, z: 0, l: 5, w: 5, h: 40 }, { x: 92, y: 47, z: 0, l: 5, w: 5, h: 40 }
+    ] },
+    { id: 'inverted', label: '倒扣', dims: [100, 55, 45], parts: [
+      { x: 0, y: 0, z: 0, l: 100, w: 55, h: 5 },
+      { x: 3, y: 3, z: 5, l: 5, w: 5, h: 40 }, { x: 92, y: 3, z: 5, l: 5, w: 5, h: 40 },
+      { x: 3, y: 47, z: 5, l: 5, w: 5, h: 40 }, { x: 92, y: 47, z: 5, l: 5, w: 5, h: 40 }
+    ] }
+  ]
+};
+function posesOf(id) { return POSE_SPEC[id] || null; }
+var POSE_SEL = {};       /* T-04：用户在物品面板里选的姿态 id（不改 CATALOG，只影响装填） */
+function posesFor(id, poseId) {
+  var arr = POSE_SPEC[id] || null;
+  if (!arr) return null;
+  if (!poseId) return arr;
+  for (var i = 0; i < arr.length; i++) if (arr[i].id === poseId) return [arr[i]];
+  return arr;
+}
+function poseById(id, pid) {
+  var arr = POSE_SPEC[id] || null;
+  if (!arr) return null;
+  for (var i = 0; i < arr.length; i++) if (arr[i].id === pid) return arr[i];
+  return arr[0];
+}
+
+/* ---------- P1 搬家箱体系（6 规格 · 标准箱折算 · 纸板/塑料 · 插口箱） ----------
+   基准：50×40×40 = 80000 cm³ 记 1 个标准箱，其余规格按体积折算。
+   材质：纸板 / 塑料（塑料箱默认可侧放，纸板默认不可）。
+   插口箱（上大下小）：标称体积 ×1.06 估算，尺寸每维 ×1.06^(1/3)≈1.0196，
+   直接改有效尺寸而不是只改体积数字 —— 这样"算得下"和"装得下"用同一套数字。 */
+var STD_VOL = 50 * 40 * 40;
+var TAPER_K = 1.06;
+var TAPER_DIM = Math.pow(TAPER_K, 1 / 3);
+var BOX_MATS = {
+  cardboard: { label: '纸板', color: 0xb98a55 },
+  plastic:   { label: '塑料', color: 0x4f7f9a }
+};
+var BOX_LIST = [
+  { id: 'stdS',   name: '标准箱 S',   l: 40, w: 30, h: 30 },
+  { id: 'stdM',   name: '标准箱 M',   l: 50, w: 40, h: 40 },
+  { id: 'stdL',   name: '标准箱 L',   l: 60, w: 40, h: 40 },
+  { id: 'stdXL',  name: '标准箱 XL',  l: 60, w: 40, h: 50 },
+  { id: 'stdXXL', name: '标准箱 XXL', l: 60, w: 50, h: 50 },
+  { id: 'stdMAX', name: '标准箱 MAX', l: 70, w: 50, h: 50 }
+];
+for (var _bi = 0; _bi < BOX_LIST.length; _bi++) {
+  var _b = BOX_LIST[_bi];
+  _b.box = true; _b.mesh = 'box'; _b.side = false;
+  _b.vol = _b.l * _b.w * _b.h;
+  _b.std = Math.round(_b.vol / STD_VOL * 10000) / 10000;
+  _b.mat = 'cardboard';
+  _b.tapered = false;
+  _b.color = BOX_MATS.cardboard.color;
+}
+CATALOG = CATALOG.concat(BOX_LIST);
+
+/* 每个人的箱子选项（材质 / 插口箱）单独存，不污染 CATALOG —— 关卡按 CATALOG 取值 */
+var boxOpt = {};
+function boxOptOf(cat) {
+  if (!cat || !cat.box) return null;
+  if (!boxOpt[cat.id]) boxOpt[cat.id] = { mat: 'cardboard', tapered: false, side: false };
+  return boxOpt[cat.id];
+}
+/* 有效尺寸：插口箱每维放大约 1.0196（体积 +6%）；返回四舍五入到 0.1cm 的值 */
+function boxDims(cat, opt) {
+  var o = opt || boxOptOf(cat) || { mat: 'cardboard', tapered: false };
+  var k = o.tapered ? TAPER_DIM : 1;
+  return {
+    l: Math.round(cat.l * k * 10) / 10,
+    w: Math.round(cat.w * k * 10) / 10,
+    h: Math.round(cat.h * k * 10) / 10
+  };
+}
+/* 有效体积（升）：插口箱按标称 ×1.06 */
+function boxVolL(cat, opt) {
+  var o = opt || boxOptOf(cat) || { tapered: false };
+  return cat.l * cat.w * cat.h * (o.tapered ? TAPER_K : 1) / 1000;
+}
+function setBoxMat(cat, mat) {
+  var o = boxOptOf(cat); if (!o) return;
+  o.mat = (mat === 'plastic') ? 'plastic' : 'cardboard';
+  o.side = (o.mat === 'plastic');          /* 塑料箱默认可侧放 */
+  for (var i = 0; i < cart.length; i++) {
+    if (cart[i].id === cat.id) { cart[i].mat = o.mat; cart[i].color = BOX_MATS[o.mat].color; cart[i].side = o.side; }
+  }
+}
+function setTapered(cat, val) {
+  var o = boxOptOf(cat); if (!o) return;
+  o.tapered = !!val;
+  var d = boxDims(cat, o);
+  for (var i = 0; i < cart.length; i++) {
+    if (cart[i].id === cat.id) { cart[i].tapered = o.tapered; cart[i].l = d.l; cart[i].w = d.w; cart[i].h = d.h; }
+  }
+}
+
 /* ---------- 状态 ---------- */
 var cart = [];                                  /* [{id, name, l,w,h, qty, soft, compress, color, mesh, warn, side}] */
 /* P1 可侧放：用户按品类勾选，默认取 CATALOG.side（纸箱/收纳箱默认 false = 不可侧躺）
    用独立表存，不污染 CATALOG（关卡数据要按设计放开，见 loadLevel） */
 var sidePref = {};
 function sideOf(cat) {
+  if (cat.box) return !!(boxOptOf(cat) || {}).side;           /* 箱子走自己的选项表 */
   if (cat.side === undefined) return undefined;              /* 其他品类没有这个概念 */
   return sidePref[cat.id] !== undefined ? sidePref[cat.id] : !!cat.side;
 }
 function setSide(cat, val) {
+  if (cat.box) {
+    var bo = boxOptOf(cat);
+    bo.side = !!val;
+    for (var j = 0; j < cart.length; j++) if (cart[j].id === cat.id) cart[j].side = !!val;
+    return;
+  }
   if (cat.side === undefined) return;
   sidePref[cat.id] = !!val;
   /* 清单里同 id 的项一起同步（按类开关） */
@@ -834,16 +1159,31 @@ var camera = new T.PerspectiveCamera(45, 1, 1, 20000);
 
 /* P0-E：把半球光的地面色从 0x2a3240 提到 0x36404f —— 朝下的面（凹陷、箱底、部件背面）
    原来只吃这颗极暗的地面反射，在画面里会显出成片近黑的“污染”；抬高后暗部有层次不死黑 */
-scene.add(new T.HemisphereLight(0xffffff, 0x36404f, 1.15));
-var d1 = new T.DirectionalLight(0xffffff, 1.45); d1.position.set(300, 600, 400); scene.add(d1);
-var d2 = new T.DirectionalLight(0xbfd4ff, 0.72); d2.position.set(-400, 300, -300); scene.add(d2);
+var hemi = new T.HemisphereLight(0xffffff, 0x36404f, 1.05); scene.add(hemi);
+/* P0.5 环境光：给所有面一个与朝向无关的基础照度，深色件的背光面不再掉到近黑。
+   注意顺序 —— hemi 必须是 scene.children[0]（setLight 依赖它调强度/地面色）。 */
+var amb = new T.AmbientLight(0xcfe0ff, 0.72); scene.add(amb);
+var d1 = new T.DirectionalLight(0xffffff, 1.03); d1.position.set(300, 600, 400); scene.add(d1);
+var d2 = new T.DirectionalLight(0xbfd4ff, 0.62); d2.position.set(-400, 300, -300); scene.add(d2);
+/* P0.5 前后两盏补光：位置每帧跟随相机（见 loop），始终从观察者前方 / 背后各补一盏，
+   解决「自行车这类深色模型转到背光角度就糊成剪影」的问题 */
+var fillFront = new T.DirectionalLight(0xfff4e2, 0.82); scene.add(fillFront);
+var fillBack = new T.DirectionalLight(0xc8d8ff, 0.74); scene.add(fillBack);
+/* T-03（第6轮）B 判据：底部上射柔光 —— 深色件的底面/背光面只吃 ambient，
+   实测自行车最暗面仅最亮面的 40%（轮胎与车架背光侧糊成剪影），加一盏自下而上的补光把暗面拉起来 */
+var fillBottom = new T.DirectionalLight(0xffffff, 0.55); fillBottom.position.set(20, -400, 160); scene.add(fillBottom);
+/* T-03（第6轮）B 判据续：左右两盏水平侧光 —— 折叠桌/衣柜这类「正面受光、侧腿与背面背光」的件，
+   单靠前后补光最暗面仍只有最亮面的 44%，侧光直接照进侧腔；同时把主平行光压低一点压对比，避免死白 */
+var fillLeft = new T.DirectionalLight(0xffffff, 0.46); fillLeft.position.set(-700, 120, 60); scene.add(fillLeft);
+var fillRight = new T.DirectionalLight(0xffffff, 0.46); fillRight.position.set(700, 120, 60); scene.add(fillRight);
 
 /* ---------- 真实模型 ---------- */
 /* NoModelData：构建时就没有模型（纯灰盒包）
-   greyboxView：用户主动切到灰盒视图（有模型也能切） */
+   v36 T-06：用户可见的「看占位」开关已删除，greyboxView 永为 false；
+   GREYBOX_ON 只表达「没有模型数据、只能用立方体占位」这一种客观情况 */
 var NoModelData = (typeof MESH_DATA === 'undefined') || !MESH_DATA || Object.keys(MESH_DATA).length === 0;
 var greyboxView = false;
-function GREYBOX_ON() { return NoModelData || greyboxView; }
+function GREYBOX_ON() { return NoModelData; }
 var meshCache = {};
 var texLoader = new T.TextureLoader();
 
@@ -890,20 +1230,45 @@ function buildRealMesh(key, fallbackColor) {
   /* 顶点色：打包时随模型一起写入 uint8 RGB（归一化），单材质一模型，不引贴图 */
   var useVC = !!d.col;
   if (useVC) geo.setAttribute('color', new T.BufferAttribute(b64bytes(d.col), 3, true));
+  /* P0.5：深色物件最低亮度下限 —— 顶点色平均亮度 < 0.30 的模型（自行车/跑步机黑色件等），
+     材质乘数抬到 1.35：等比提亮、不改色相、不压明暗关系，避免在暗环境里糊成剪影 */
+  var darkBoost = 1.0;
+  if (useVC) {
+    var cc = b64bytes(d.col), step = Math.max(3, Math.floor(cc.length / 9000) * 3), sum = 0, cnt = 0;
+    for (var ci = 0; ci + 2 < cc.length; ci += step) {
+      sum += 0.2126 * cc[ci] + 0.7152 * cc[ci + 1] + 0.0722 * cc[ci + 2]; cnt++;
+    }
+    if (cnt) {
+      var avgL = (sum / cnt) / 255;
+      /* 分级：VertexColor 越暗提得越多（实测 bike 0.109 / tv 0.035 / storagebox 0.104） */
+      if (avgL < 0.15) darkBoost = 1.70;
+      else if (avgL < 0.30) darkBoost = 1.45;
+    }
+  }
   var mat = new T.MeshStandardMaterial({
     color: (d.tex || useVC) ? 0xffffff : fallbackColor,
     /* P0-E：材质参数统一（0.72/0.00），自行车与跑步机金属件 0.50/0.32；
        数值随网格一起打包进 MESH_DATA，改参数不用改代码 */
-    roughness: (d.rough != null ? d.rough : 0.72),
-    metalness: (d.metal != null ? d.metal : 0.0),
-    side: T.DoubleSide,
+    /* T-03（第6轮）B 判据：金属件 metalness 0.32 会让暗面几乎不参与漫反射（只剩镜面高光），
+       单件最暗面/最亮面比只有 40% → 假黑。统一把高金属度件降为 0.16 并把 roughness 抬到 ≥0.62，
+       让补光能真正落到暗面上；低金属度件参数不动。 */
+    roughness: (d.rough != null ? ((d.metal != null && d.metal > 0.2) ? Math.max(d.rough, 0.62) : d.rough) : 0.72),
+    metalness: (d.metal != null ? (d.metal > 0.2 ? 0.16 : d.metal) : 0.0),
+    /* T-03（第6轮）B 判据根因：DoubleSide 下背面法线朝内、光照方向判反 → 内侧/背光面
+       被算成纯黑（自行车最暗面只有最亮面 40%）。体素网格是闭合体，改 FrontSide 消除背面假黑，
+       同时在深色件上加一点点自发光地板（emissive 0.06）兜住自遮挡缝隙。 */
+    side: T.FrontSide,
+    emissive: 0x000000,
+    emissiveIntensity: 1,
     vertexColors: useVC
   });
+  if (darkBoost > 1.2) mat.emissive = new T.Color(0xffffff).multiplyScalar(0.13);
   if (d.tex) {
     var tex = texLoader.load('data:image/jpeg;base64,' + d.tex);
     tex.flipY = false;
     mat.map = tex; mat.needsUpdate = true;
   }
+  if (darkBoost > 1) mat.color.setScalar(darkBoost);   /* P0.5 深色件提亮 */
   var m = new T.Mesh(geo, mat);
   meshCache[key] = m;
   return m;
@@ -1161,12 +1526,13 @@ var els = {
   mbName: document.getElementById('mbName'),
   mbState: document.getElementById('mbState'),
   mbRotate: document.getElementById('mbRotate'),
+  mbSide: document.getElementById('mbSide'),
+  mbFlip: document.getElementById('mbFlip'),
   mbUp: document.getElementById('mbUp'),
   mbDown: document.getElementById('mbDown'),
   mbDrop: document.getElementById('mbDrop'),
   mbSkip: document.getElementById('mbSkip'),
   manualBtn: document.getElementById('manualBtn'),
-  gbBtn: document.getElementById('gbBtn'),
   levelSheet: document.getElementById('levelSheet'),
   levelList: document.getElementById('levelList'),
   levelClose: document.getElementById('levelClose'),
@@ -1197,6 +1563,7 @@ var els = {
   pCrnB: document.getElementById('pCrnB'),
   pCrnH: document.getElementById('pCrnH'),
   pCorners: document.getElementById('pCorners'),
+  pCornerList: document.getElementById('pCornerList'),   /* 动态拐角行容器（第 2 拐起） */
   pDoors: document.getElementById('pDoors'),
   pPathErr: document.getElementById('pPathErr'),
   pPathWarn: document.getElementById('pPathWarn'),
@@ -1307,7 +1674,9 @@ function pickerQtyOf(cat) {
 function decFromCart(cat) {
   for (var i = 0; i < cart.length; i++) {
     var it = cart[i];
-    if (it.id === cat.id && it.l === cat.l && it.w === cat.w && it.h === cat.h) {
+    var psCur = POSE_SEL[cat.id] || (POSE_SPEC[cat.id] ? POSE_SPEC[cat.id][0].id : null);
+    if (it.id === cat.id && it.l === cat.l && it.w === cat.w && it.h === cat.h &&
+        (!POSE_SPEC[cat.id] || (it.pose || null) === (psCur || null))) {
       it.qty--;
       if (it.qty <= 0) cart.splice(i, 1);
       refreshCartUI(); bindCartEvents(); afterChange();
@@ -1337,10 +1706,36 @@ function renderPicker() {
     var sideBtn = (c.side === undefined) ? '' :
       '<button class="pside' + (sv ? ' on' : '') + '" data-act="side">' +
       (sv ? '可侧放 ✓' : '不可侧放') + '</button>';
+    /* P1 箱子专属：材质切换 + 插口箱 + 标准箱折算 */
+    var boxLine = '';
+    if (c.box) {
+      var o = boxOptOf(c), d = boxDims(c, o), bl = BOX_MATS[o.mat].label;
+      boxLine = '<div class="pbox">' +
+        '<button class="pside' + (o.mat === 'plastic' ? ' on' : '') + '" data-act="mat">' + bl + '</button>' +
+        '<button class="pside' + (o.tapered ? ' on' : '') + '" data-act="taper">' +
+          (o.tapered ? '插口箱 ×1.06 ✓' : '插口箱') + '</button>' +
+        '<span class="pstd">' + (o.tapered ? d.l + '×' + d.w + '×' + d.h + ' · ' : '') +
+          '≈' + c.std.toFixed(2) + ' 标准箱</span>' +
+        '</div>';
+    }
+    /* T-04：有显式姿态的品类（自行车 / 茶几）给一排姿态按钮，选的姿态直接决定装填时的占位形状 */
+    var poseLine = '';
+    var pArr = POSE_SPEC[c.id];
+    if (pArr) {
+      var curP = POSE_SEL[c.id] || pArr[0].id;
+      poseLine = '<div class="pbox">';
+      for (var pi2 = 0; pi2 < pArr.length; pi2++) {
+        var pz = pArr[pi2];
+        poseLine += '<button class="pside' + (pz.id === curP ? ' on' : '') +
+          '" data-act="pose" data-pose="' + pz.id + '">' + pz.label + ' ' +
+          pz.dims[0] + '×' + pz.dims[1] + '×' + pz.dims[2] + '</button>';
+      }
+      poseLine += '</div>';
+    }
     h += '<div class="pitem' + rank + (q ? ' hasqty' : '') + '" data-i="' + ci + '">' +
       '<div class="pname">' + c.name + sideMark + tag + (c.mesh ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
       '<div class="pdim">' + c.l + '×' + c.w + '×' + c.h + '</div>' +
-      sideBtn +
+      poseLine + sideBtn + boxLine +
       (q ? '<span class="pqty">×' + q + '</span><button class="pminus" data-act="minus">−</button>' : '') +
       '</div>';
   }
@@ -1353,12 +1748,37 @@ function renderPicker() {
         var cat = CATALOG[+el.getAttribute('data-i')];
         if (!cat) return;
         /* 点到条目上的「−」= 减 1，其余位置 = 加 1；两种情况都留在面板里，可连续点 */
-        var t = ev && ev.target, dec = false, sideToggle = false;
+        var t = ev && ev.target, dec = false, sideToggle = false, act2 = '', posePick = '';
         while (t && t !== el) {
           var act = t.getAttribute && t.getAttribute('data-act');
           if (act === 'side') { sideToggle = true; break; }
+          if (act === 'pose') { posePick = t.getAttribute('data-pose'); break; }
+          if (act === 'mat' || act === 'taper') { act2 = act; break; }
           if (act === 'minus') { dec = true; break; }
           t = t.parentNode;
+        }
+        if (act2 === 'mat') {
+          /* P1 材质切换：纸板 ⇄ 塑料（塑料默认可侧放），只改选项不删清单里的件 */
+          var bo = boxOptOf(cat);
+          setBoxMat(cat, bo.mat === 'plastic' ? 'cardboard' : 'plastic');
+          renderPicker(); refreshCartUI(); afterChange();
+          els.pickerList.scrollTop = keepScroll;
+          return;
+        }
+        if (act2 === 'taper') {
+          /* P1 插口箱：勾上后按体积 ×1.06 放大有效尺寸（真的更难装，不是只改数字） */
+          var bt = boxOptOf(cat);
+          setTapered(cat, !bt.tapered);
+          renderPicker(); refreshCartUI(); afterChange();
+          els.pickerList.scrollTop = keepScroll;
+          return;
+        }
+        if (posePick) {
+          /* T-04：只切姿态选项，不加件、不关面板；装填形状随之变化 */
+          POSE_SEL[cat.id] = posePick;
+          renderPicker();
+          els.pickerList.scrollTop = keepScroll;
+          return;
         }
         if (sideToggle) {
           /* P1：只切侧放开关，不加件、不关面板 */
@@ -1423,19 +1843,43 @@ function rankByImage(img, done) {
 }
 
 function addToCart(cat) {
+  /* P1：箱子按当前选项取有效尺寸（插口箱已放大）与材质颜色 */
+  var bo = cat.box ? boxOptOf(cat) : null;
+  var dm = cat.box ? boxDims(cat, bo) : { l: cat.l, w: cat.w, h: cat.h };
+  var col = bo ? BOX_MATS[bo.mat].color : cat.color;
+  var poseSel = POSE_SEL[cat.id] || (POSE_SPEC[cat.id] ? POSE_SPEC[cat.id][0].id : null);
   for (var i = 0; i < cart.length; i++) {
-    if (cart[i].id === cat.id && cart[i].l === cat.l && cart[i].w === cat.w && cart[i].h === cat.h) {
+    if (cart[i].id === cat.id && cart[i].l === dm.l && cart[i].w === dm.w && cart[i].h === dm.h &&
+        (cart[i].pose || null) === (poseSel || null)) {
       cart[i].qty++;
       refreshCartUI(); bindCartEvents(); afterChange();
       return;
     }
   }
   cart.push({
-    id: cat.id, name: cat.name, l: cat.l, w: cat.w, h: cat.h, qty: 1,
-    soft: cat.soft, compress: cat.compress, color: cat.color, mesh: cat.mesh, warn: cat.warn,
-    side: sideOf(cat)
+    id: cat.id, name: cat.name, l: dm.l, w: dm.w, h: dm.h, qty: 1,
+    soft: cat.soft, compress: cat.compress, color: col, mesh: cat.mesh, warn: cat.warn,
+    side: sideOf(cat), pose: poseSel,
+    std: cat.std, box: !!cat.box, mat: bo ? bo.mat : null, tapered: bo ? bo.tapered : null,
+    /* T-07 判据4：upright 必须随 cart 项带进手动模式，否则 updateManualVisual 里
+       「这件通常要立着放」的黄色提示永远不触发（manual.cur.cat.upright 恒 undefined） */
+    upright: !!cat.upright
   });
   refreshCartUI(); bindCartEvents(); afterChange();
+}
+
+/* P1：清单里所有箱子的标准箱合计（含插口箱 +6%），P3 双读数与换箱提示都用它 */
+function boxesStdTotal() {
+  var s = 0, n = 0, volL = 0;
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    if (!c.box) continue;
+    var k = c.tapered ? TAPER_K : 1;
+    volL += c.l * c.w * c.h * c.qty / 1000;
+    s += (c.l * c.w * c.h) / STD_VOL * c.qty;
+    n += c.qty;
+  }
+  return { count: n, std: Math.round(s * 100) / 100, liters: Math.round(volL * 10) / 10 };
 }
 
 function afterChange() {
@@ -1461,10 +1905,40 @@ var ROUTE = {
   cornerA: 120, cornerB: 100, cornerH: 200   /* 90° 拐角：两段净宽 120/100，净高 200 */
 };
 
+/* ===== v35.0 T3-05 数值读取：显式判空，不再用 `0 || ''` 这种写法 =====
+   numOf(0) → 0（旧实现在这里得 NaN，数字 0 会被当成"没填"）
+   numOf('') → NaN；numOf('abc') → NaN；numOf('12.5cm') → 12.5 */
+function numOf(v) {
+  if (v === null || v === undefined) return NaN;
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  var s = String(v).trim();
+  if (s === '') return NaN;                 /* 空串 = 没填 */
+  var m = s.replace(/[^\d.\-]/g, '');
+  if (m === '' || m === '-' || m === '.' || m === '-.' || m === '--') return NaN;
+  var f = parseFloat(m);
+  return isFinite(f) ? f : NaN;
+}
+function numOr(v, d) { var f = numOf(v); return isFinite(f) ? f : d; }
+
+/* ===== v35.0 T3-03 性能：三层记忆化（结果一律不变，只省重复计算）=====
+   ① _cmCache  cornerMaxLen(a,b,w)  → 按 cm×100 整数化做 key
+   ② _cpCache  cornerPass(六姿态枚举) → 同上
+   ③ _segCache 单段判定结果 → 跨仓型复用（6 仓型只有仓门不同，前段完全同参）
+   ④ _verCache 整条路径结论 → 按 路径签名 + 清单签名 脏标记失效
+   上限保护：任一缓存超过 20000 条即整体清空，避免长会话内存膨胀。 */
+var _cmCache = {}, _cpCache = {}, _segCache = {}, _verCache = {};
+var _CACHE_MAX = 20000;
+function _k100(v) { var f = numOr(v, 0); return Math.round(f * 100); }
+function _ck(a, b, c, d, e, f) { return _k100(a) + ',' + _k100(b) + ',' + _k100(c) + ',' +
+                                       _k100(d) + ',' + _k100(e) + ',' + _k100(f); }
+var _cacheStat = { cm: 0, cp: 0, seg: 0, ver: 0, hit: 0 };
+
 /* 长条物体过 90° 直角拐角的最大可行长度（钢琴搬运问题的矩形解）
    贴墙通过时，进入段横向占 a，离开段纵向占 b，取各角度最优 */
 function cornerMaxLen(a, b, w) {
-  if (w > Math.min(a, b)) return 0;
+  var key = _ck(a, b, w, 0, 0, 0);
+  if (_cmCache[key] !== undefined) { _cacheStat.hit++; return _cmCache[key]; }
+  if (w > Math.min(a, b)) { _cmCache[key] = 0; return 0; }
   var best = 0;
   for (var deg = 1; deg < 90; deg++) {
     var t = deg * Math.PI / 180;
@@ -1476,11 +1950,21 @@ function cornerMaxLen(a, b, w) {
       if (m > best) best = m;
     }
   }
+  if (_cacheStat.cm++ > _CACHE_MAX) _cacheStat.cm = 0;
+  else _cmCache[key] = best;
   return best;
 }
 
 /* 拐角通过性：枚举三种摆放姿态（哪一维朝前进方向），任一满足即算通过 */
 function cornerPass(it, a, b, H) {
+  var key = _ck(it.l, it.w, it.h, a, b, H);
+  if (_cpCache[key] !== undefined) { _cacheStat.hit++; return _cpCache[key]; }
+  var res = _cornerPassRaw(it, a, b, H);
+  if (_cacheStat.cp++ > _CACHE_MAX) _cacheStat.cp = 0;
+  else _cpCache[key] = res;
+  return res;
+}
+function _cornerPassRaw(it, a, b, H) {
   /* 六种姿态：哪一维朝前进方向 × 剩下两维怎么分配水平宽/垂直高。
      只枚举 3 种会漏掉"长边朝前、薄边当宽"，床垫竖起来侧着过走廊就是这种 */
   var poses = [
@@ -1488,17 +1972,21 @@ function cornerPass(it, a, b, H) {
     [it.w, it.l, it.h], [it.w, it.h, it.l],
     [it.h, it.l, it.w], [it.h, it.w, it.l]
   ];
-  var near = null;
+  var near = null, wOnly = 0, hOnly = 0;
   for (var i = 0; i < poses.length; i++) {
     var len = poses[i][0], wHz = poses[i][1], hVt = poses[i][2];
-    if (wHz > Math.min(a, b)) continue;
-    if (hVt > H) continue;
+    var wOK = wHz <= Math.min(a, b), hOK = hVt <= H;
+    if (!wOK) continue;                       /* 宽度就过不去，与净高无关 */
+    if (!hOK) { hOnly++; continue; }           /* 宽度够、净高不够 */
+    wOnly++;
     var lm = cornerMaxLen(a, b, wHz);
     if (len <= lm) return { ok: true, len: len, w: wHz, limit: Math.round(lm) };
     var gap = len - lm;
     if (!near || gap < near.gap) near = { ok: false, len: len, w: wHz, limit: Math.round(lm), gap: gap };
   }
-  return near || { ok: false, reason: '截面超过拐角净宽/净高' };
+  if (near) return near;
+  if (hOnly) return { ok: false, code: 'cornerH', reason: '截面净高不足' };
+  return { ok: false, code: 'corner', reason: '截面超过拐角净宽/净高' };
 }
 
 /* 物品截面能否穿过矩形门洞：先试正交，不行再算斜放角 */
@@ -1553,24 +2041,85 @@ var PATH_RANGE = {
   doorW: [60, 200], doorH: [180, 260],
   corridorW: [60, 300], corridorLen: [100, 2000],
   cornerA: [60, 300], cornerB: [60, 300], cornerH: [180, 260],
+  cornerGap: [0, 2000],
   corners: [1, 3], doors: [0, 2]
 };
+
+/* ===== v35.0 T3-04 归因枚举（唯一一套字符串，UI 与 report 共用）=====
+   door        门洞净宽不足
+   doorH       门洞净高不足
+   corridor    走廊净宽不足
+   corridorLen 走廊太短，物料在走廊里转不过 90°
+   corner      拐角长度上限不足（转角两侧净空不够）
+   cornerH     拐角净高不足（立起来顶到天花）
+   gap         两拐之间太短，物料摆不正（转向余量不够）
+   height      转弯处净高不足
+*/
+var BLOCK_ORDER = ['door', 'doorH', 'corridor', 'corridorLen', 'corner', 'cornerH', 'gap', 'height'];
+var BLOCK_TEXT = {
+  door: '门洞净宽不足', doorH: '门洞净高不足',
+  corridor: '走廊净宽不足', corridorLen: '走廊太短，转不过弯',
+  corner: '拐角转不过', cornerH: '拐角净高不足',
+  gap: '两拐之间太短，摆不正', height: '转弯处净高不足'
+};
+
+/* 拐角列表归一化：新结构 cornerList 优先；旧结构（corners + 单组 A/B/H）自动迁移 */
+function normCorners(p) {
+  p = p || defaultPath();
+  var out = [], i;
+  if (p.cornerList && p.cornerList.length) {
+    for (i = 0; i < p.cornerList.length; i++) {
+      var c = p.cornerList[i] || {};
+      out.push({ a: numOf(c.a), b: numOf(c.b), h: numOf(c.h), gapBefore: numOf(c.gapBefore) });
+    }
+    for (i = 0; i < out.length; i++) {
+      if (!isFinite(out[i].a) || out[i].a <= 0) out[i].a = numOr(p.cornerA, 120);
+      if (!isFinite(out[i].b) || out[i].b <= 0) out[i].b = numOr(p.cornerB, 100);
+      if (!isFinite(out[i].h) || out[i].h <= 0) out[i].h = numOr(p.cornerH, 200);
+      if (!isFinite(out[i].gapBefore) || out[i].gapBefore < 0) out[i].gapBefore = 0;
+    }
+    return out;
+  }
+  var n = Math.max(1, Math.round(numOr(p.corners, 1)));
+  for (i = 0; i < n; i++) {
+    out.push({ a: numOr(p.cornerA, 120), b: numOr(p.cornerB, 100),
+               h: numOr(p.cornerH, 200), gapBefore: 0 });
+  }
+  return out;
+}
+
 function defaultPath() {
   return { doorW: 90, doorH: 200, corridorW: 120, corridorH: 200, corridorLen: 0,
-           cornerA: 120, cornerB: 100, cornerH: 200, corners: 1, doors: 0 };
+           cornerA: 120, cornerB: 100, cornerH: 200, corners: 1, doors: 0,
+           cornerList: [{ a: 120, b: 100, h: 200, gapBefore: 0 }] };
 }
 var MY_PATH = { segments: [], params: defaultPath() };
 
-/* 由参数重建有序段：入户门 → 中间门(0~2) → 走廊 → 拐角(1~3) */
+/* 由参数重建有序段：
+   入户门 → 中间门(0~2) → 走廊(入户门到第一拐) → 拐角1 → 走廊(拐1到拐2) → 拐角2 …
+   每段的 gapBefore = 该拐与上一拐之间的直线走廊长度；第一拐的 gapBefore
+   与 corridorLen 同义（入户门到第一拐），填了 gapBefore 优先用它的值。
+   走廊段带 need=1 表示"这一段要完成 90° 转向"，需按长度判能否转过去。 */
 function pathSegments(p) {
-  var segs = [{ kind: 'door', w: p.doorW, h: p.doorH, label: '入户门' }];
-  for (var m = 0; m < (p.doors || 0); m++) {
-    segs.push({ kind: 'door', w: p.doorW, h: p.doorH, label: '中间门 ' + (m + 1) });
+  var q = p || defaultPath();
+  var segs = [{ kind: 'door', w: q.doorW, h: q.doorH, label: '入户门' }];
+  for (var m = 0; m < (q.doors || 0); m++) {
+    segs.push({ kind: 'door', w: q.doorW, h: q.doorH, label: '中间门 ' + (m + 1) });
   }
-  segs.push({ kind: 'corridor', w: p.corridorW, h: p.corridorH, len: p.corridorLen || 0, label: '走廊' });
-  for (var i = 0; i < (p.corners || 1); i++) {
-    segs.push({ kind: 'corner', a: p.cornerA, b: p.cornerB, h: p.cornerH, turn: 90,
-                label: (p.corners > 1 ? '拐角 ' + (i + 1) : '拐角') });
+  var cl = normCorners(q);
+  var lead = (cl[0] && cl[0].gapBefore > 0) ? cl[0].gapBefore : (q.corridorLen || 0);
+  segs.push({ kind: 'corridor', w: q.corridorW, h: q.corridorH, len: lead,
+              doorW: q.doorW, between: false, turn: 1, label: '走廊' });
+  for (var i = 0; i < cl.length; i++) {
+    var c = cl[i];
+    if (i > 0 && numOr(c.gapBefore, 0) > 0) {   /* 间距不填（0）= 紧贴，不做摆正判定 */
+      segs.push({ kind: 'corridor', w: q.corridorW, h: q.cornerH, len: c.gapBefore,
+                  doorW: q.doorW, between: true, turn: 1,
+                  label: '拐角 ' + i + ' 与 ' + (i + 1) + ' 之间' });
+    }
+    segs.push({ kind: 'corner', a: c.a, b: c.b, h: c.h, turn: 90, idx: i + 1,
+                gapBefore: c.gapBefore || 0,
+                label: (cl.length > 1 ? '拐角 ' + (i + 1) : '拐角') });
   }
   return segs;
 }
@@ -1578,6 +2127,7 @@ function pathRebuild(p) {
   var q = p || defaultPath();
   MY_PATH.params = q;
   MY_PATH.segments = pathSegments(q);
+  _verCache = {};                 /* T3-03 脏标记：路径变了，旧结论作废 */
   return MY_PATH;
 }
 /* 选仓预判用：同一条路径 + 该仓型的仓门（仓门是路径的末段） */
@@ -1608,12 +2158,14 @@ function judgeDoorSeg(it, s) {
              gap: Math.round(slack), need: Math.round(Math.min(cand[0][0], cand[1][0], cand[2][0])), limit: s.w };
   }
   /* 失败：找总缺口最小的姿态，报「需要多宽 / 多高」 */
-  var best = null;
+  var best = null, wFitsHNo = 0;
   for (var j = 0; j < cand.length; j++) {
     var g = Math.max(0, cand[j][0] - s.w) + Math.max(0, cand[j][1] - s.h);
+    if (cand[j][0] <= s.w && cand[j][1] > s.h) wFitsHNo++;   /* 宽度挤得进、净高不够 */
     if (!best || g < best.g) best = { g: g, nw: cand[j][0], nh: cand[j][1] };
   }
-  return { kind: 'door', label: s.label, ok: false, need: Math.round(best.nw), limit: s.w,
+  return { kind: 'door', code: wFitsHNo ? 'doorH' : 'door', label: s.label, ok: false,
+           need: Math.round(best.nw), limit: s.w,
            needH: Math.round(best.nh), limitH: s.h, gap: Math.round(best.g) };
 }
 function judgeCorridorSeg(it, s) {
@@ -1622,20 +2174,52 @@ function judgeCorridorSeg(it, s) {
      间隙只在门段（passDoor 内置 2/1cm）生效。 */
   var a = it.l, b = it.w, c = it.h;
   var cand = [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]];
-  var best = null;
+  var best = null, anyW = false, wOKhNo = 0;
   for (var i = 0; i < cand.length; i++) {
-    if (cand[i][1] <= s.w && cand[i][2] <= s.h) {
+    var wOK = cand[i][1] <= s.w, hOK = cand[i][2] <= s.h;
+    if (wOK) anyW = true;
+    if (wOK && hOK) {
       var slack = Math.min(s.w - cand[i][1], s.h - cand[i][2]);
-      if (!best || slack > best.gap) best = { gap: slack, w: cand[i][1] };
-    }
+      if (!best || slack > best.gap) best = { gap: slack, w: cand[i][1], len: cand[i][0] };
+    } else if (wOK && !hOK) wOKhNo++;
   }
-  if (best) return { kind: 'corridor', label: s.label, ok: true, gap: Math.round(best.gap),
-                     need: Math.round(best.w), limit: s.w };
-  /* 失败：报最薄截面 —— 走廊比物件最薄边还窄时，明确「任何大件都过不去」 */
+  if (best) {
+    /* T3-04 转向判定：门洞朝向与走廊走向垂直，物料要在走廊内完成 90° 转向。
+       Lneed = 物料沿前进方向的长 + 门洞净宽（从门口斜插进来所需的长度跨度）。
+       长度不够时还有一条退路：走廊够宽（≥ 物料旋转包络对角线）就能在原地转身。 */
+    var segLen = numOr(s.len, 0);
+    if (segLen > 0 && s.turn !== 0) {
+      var need = best.len + numOr(s.doorW, 90);
+      if (segLen < need) {
+        var diag = Math.sqrt(best.w * best.w + best.len * best.len);
+        if (s.w >= diag) {
+          /* 原地可转，长度不构成约束（余量仍按宽度算） */
+          return { kind: 'corridor', code: '', ok: true, gap: Math.round(best.gap),
+                   need: Math.round(best.w), limit: s.w, segLen: segLen, rot: 'inplace',
+                   label: s.label };
+        }
+        return { kind: 'corridor', code: s.between ? 'gap' : 'corridorLen', ok: false,
+                 rot: true, between: !!s.between, segLen: segLen,
+                 need: Math.round(need), limit: segLen,
+                 gap: Math.round(need - segLen),      /* 正值 = 还差多少（与其它失败分支同号） */
+                 needW: Math.round(diag), wLimit: s.w,
+                 label: s.label, segLabel: s.label };
+      }
+      return { kind: 'corridor', code: '', ok: true,
+               gap: Math.round(Math.min(best.gap, segLen - need)),
+               need: Math.round(best.w), limit: s.w, segLen: segLen, rot: 'along',
+               label: s.label };
+    }
+    return { kind: 'corridor', code: '', ok: true, gap: Math.round(best.gap),
+             need: Math.round(best.w), limit: s.w, segLen: segLen,
+             rot: segLen ? 'none' : 'free', label: s.label };
+  }
+  /* 失败：宽度不够 vs 高度不够要分开归因（UI 文案不同） */
   var thin = Math.min(a, b, c);
-  return { kind: 'corridor', label: s.label, ok: false, thin: true,
-           need: Math.round(thin), limit: s.w, needH: Math.round(Math.min(a, b, c)),
-           limitH: s.h, gap: Math.round(thin - s.w) };
+  var code = anyW ? 'height' : 'corridor';
+  return { kind: 'corridor', code: code, ok: false, thin: true,
+           need: Math.round(thin), limit: s.w, needH: Math.round(thin),
+           limitH: s.h, gap: Math.round(thin - s.w), label: s.label };
 }
 /* 已知「前进方向长 len、横向宽 w」，反推第三维（竖向高）—— 用于把净高余量也算进 gap */
 function restDim(it, len, w) {
@@ -1663,14 +2247,44 @@ function judgeCornerSeg(it, s) {
              a: s.a, b: s.b };
   }
   if (cp.reason) {
-    /* 截面超限：这个拐角连最薄的那一维都过不去 */
-    return { kind: 'corner', label: s.label, ok: false, corner: true, zero: capForThin <= 0,
+    /* 截面超限：这个拐角连最薄的那一维都过不去。净高不够单列 code=cornerH */
+    if (cp.code === 'cornerH') {
+      return { kind: 'corner', code: 'cornerH', label: s.label, ok: false, corner: true,
+               zero: capForThin <= 0, byH: true,
+               need: Math.round(thin), limit: Math.min(s.a, s.b),
+               needH: Math.round(thin), limitH: s.h,
+               gap: Math.round(thin - Math.min(s.a, s.b)), a: s.a, b: s.b };
+    }
+    return { kind: 'corner', code: 'corner', label: s.label, ok: false, corner: true, zero: capForThin <= 0,
              need: Math.round(thin), limit: Math.min(s.a, s.b),
              gap: Math.round(thin - Math.min(s.a, s.b)), a: s.a, b: s.b };
   }
-  return { kind: 'corner', label: s.label, ok: false, corner: true, zero: capForThin <= 0,
+  return { kind: 'corner', code: 'corner', label: s.label, ok: false, corner: true, zero: capForThin <= 0,
            need: Math.round(cp.len), limit: Math.round(cp.limit), gap: Math.round(cp.gap),
            a: s.a, b: s.b, w: cp.w };
+}
+
+/* 单段判定 + 记忆化（T3-03）：6 个仓型只有末段仓门不同，前面所有段同参，
+   所以同一件物料的前 7 段判定只算一次，后面 5 个仓型全部命中缓存。
+   缓存只存纯函数结果，不引用 item 对象，返回值不写回，结论与不缓存时逐字段相同。 */
+function segKey(s) {
+  if (s.kind === 'door') return 'D' + _k100(s.w) + 'x' + _k100(s.h);
+  if (s.kind === 'corridor') return 'C' + _k100(s.w) + 'x' + _k100(s.h) + 'l' + _k100(s.len) +
+                                    'd' + _k100(s.doorW) + (s.between ? 'b' : '') + (s.turn === 0 ? 'n' : '');
+  return 'K' + _k100(s.a) + 'x' + _k100(s.b) + 'h' + _k100(s.h);
+}
+function segJudge(item, s) {
+  var key = _k100(item.l) + ',' + _k100(item.w) + ',' + _k100(item.h) + ',' +
+            (item.soft ? 1 : 0) + '|' + segKey(s);
+  var c = _segCache[key];
+  if (c !== undefined) { _cacheStat.hit++; return c; }
+  var r;
+  if (s.kind === 'door') r = judgeDoorSeg(item, s);
+  else if (s.kind === 'corridor') r = judgeCorridorSeg(item, s);
+  else r = judgeCornerSeg(item, s);
+  if (_cacheStat.seg++ > _CACHE_MAX) { _cacheStat.seg = 0; _segCache = {}; }
+  else _segCache[key] = r;
+  return r;
 }
 
 /* 单件过整条路径（含仓门末段）—— 判定唯一事实来源 */
@@ -1678,24 +2292,38 @@ function pathJudgeItem(it, segs, endDoor) {
   var item = { l: it.l, w: it.w, h: it.h, soft: !!it.soft };
   var notes = [], blocked = 0, worst = null, minGap = Infinity, tightSeg = null;
   for (var i = 0; i < segs.length; i++) {
-    var s = segs[i], r;
-    if (s.kind === 'door') r = judgeDoorSeg(item, s);
-    else if (s.kind === 'corridor') r = judgeCorridorSeg(item, s);
-    else r = judgeCornerSeg(item, s);
+    var s = segs[i];
+    var r = segJudge(item, s);
     notes.push(r);
     if (!r.ok) { blocked++; if (!worst || r.gap > worst.gap) worst = r; }
     else if (r.gap < minGap) { minGap = r.gap; tightSeg = r; }
   }
   var dr = null;
   if (endDoor && endDoor.w) {
-    dr = judgeDoorSeg(item, { kind: 'door', w: endDoor.w, h: endDoor.h, label: '仓门' });
+    dr = segJudge(item, { kind: 'door', w: endDoor.w, h: endDoor.h, label: '仓门' });
     notes.push(dr);
     if (!dr.ok) { blocked++; if (!worst || dr.gap > worst.gap) worst = dr; }
     else if (dr.gap < minGap) { minGap = dr.gap; tightSeg = dr; }
   }
   return { ok: blocked === 0, blocked: blocked, notes: notes, door: dr, tightSeg: tightSeg,
-           blockedBy: worst ? worst.kind : '', blockedLabel: worst ? worst.label : '',
+           blockedBy: worst ? (worst.code || worst.kind) : '',
+           blockedLabel: worst ? worst.label : '',
            worst: worst, minGap: isFinite(minGap) ? Math.round(minGap) : null };
+}
+
+/* 路径签名 / 清单签名：T3-03 脏标记的判据，只有这两样变了才作废结论 */
+function segsSig(segs) {
+  var a = [];
+  for (var i = 0; i < segs.length; i++) a.push(segKey(segs[i]));
+  return a.join(',');
+}
+function itemsSig(items) {
+  var a = [];
+  for (var i = 0; i < items.length; i++) {
+    var t = items[i];
+    a.push(t.name + '|' + _k100(t.l) + '|' + _k100(t.w) + '|' + _k100(t.h) + '|' + (t.soft ? 1 : 0));
+  }
+  return a.join(';');
 }
 
 /* T2 选仓预判：纯函数，不碰 DOM，可单测 */
@@ -1706,6 +2334,20 @@ function routeVerdict(path, items) {
   var out = { level: 'empty', label: '待添加', blockedBy: '', blockedLabel: '',
               worst: null, rows: [], blocked: 0, minGap: null, ms: 0, segs: segs.length };
   if (!items || !items.length) { out.ms = 0; return out; }
+
+  /* 结论缓存：同一个 路径签名 + 清单签名 直接返回上次结论（ms 记真实耗时，不伪造） */
+  var vkey = segsSig(segs) + '@' + itemsSig(items) +
+             (endDoor ? ('|E' + _k100(endDoor.w) + 'x' + _k100(endDoor.h)) : '');
+  var hit = _verCache[vkey];
+  if (hit) {
+    _cacheStat.ver++;
+    var t1h = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var cpy = {};
+    for (var ck in hit) cpy[ck] = hit[ck];     /* 浅拷贝：调用方改字段不影响缓存本体 */
+    cpy.ms = Math.round((t1h - t0) * 100) / 100;
+    cpy.cached = true;
+    return cpy;
+  }
   var blocked = 0, minGap = Infinity, worst = null, worstGap = -Infinity;
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
@@ -1717,19 +2359,24 @@ function routeVerdict(path, items) {
       if (pj.worst && pj.worst.gap > worstGap) {
         worstGap = pj.worst.gap;
         worst = { name: it.name, where: pj.worst.label, kind: pj.worst.kind,
+                  code: pj.worst.code || pj.worst.kind,
                   need: pj.worst.need, limit: pj.worst.limit, gap: Math.round(pj.worst.gap),
                   zero: !!pj.worst.zero, thin: !!pj.worst.thin,
+                  segLen: pj.worst.segLen, needW: pj.worst.needW, wLimit: pj.worst.wLimit,
+                  between: !!pj.worst.between, rot: pj.worst.rot,
+                  needH: pj.worst.needH, limitH: pj.worst.limitH,
                   a: pj.worst.a, b: pj.worst.b };
-        out.blockedBy = pj.worst.kind; out.blockedLabel = pj.worst.label;
+        out.blockedBy = pj.worst.code || pj.worst.kind; out.blockedLabel = pj.worst.label;
       }
     } else if (pj.minGap != null && pj.minGap < minGap) {
       minGap = pj.minGap;
       if (pj.tightSeg) {           /* 能过也要能点开看「最紧卡在哪段、差多少」 */
         var ts = pj.tightSeg;
-        worst = { name: it.name, where: ts.label, kind: ts.kind,
+        worst = { name: it.name, where: ts.label, kind: ts.kind, code: ts.code || ts.kind,
                   need: ts.need, limit: ts.limit, gap: Math.round(ts.gap),
                   zero: !!ts.zero, thin: !!ts.thin, a: ts.a, b: ts.b,
-                  byH: !!ts.byH, hneed: ts.hneed, hlimit: ts.hlimit };
+                  byH: !!ts.byH, hneed: ts.hneed, hlimit: ts.hlimit,
+                  segLen: ts.segLen, rot: ts.rot };
       }
     }
   }
@@ -1741,6 +2388,9 @@ function routeVerdict(path, items) {
   else { out.level = 'ok'; out.label = '可进'; }
   var t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   out.ms = Math.round((t1 - t0) * 100) / 100;
+  out.cached = false;
+  if (_cacheStat.ver++ > _CACHE_MAX) { _cacheStat.ver = 0; _verCache = {}; }
+  else _verCache[vkey] = out;
   return out;
 }
 
@@ -1761,6 +2411,21 @@ function verdictText(v) {
     }
     if (v.level === 'tight') return '能进但很勉强：拐角最多过 ' + w.limit + 'cm，' + w.name + '要 ' + w.need + 'cm，只剩 ' + w.gap + 'cm 余量';
     return '再装也进不去：这个拐角最多过 ' + w.limit + 'cm' + tail;
+  }
+  if (w.code === 'corridorLen') {
+    return '走廊太短转不过来：这段只有 ' + w.segLen + 'cm，' + w.name + '进门要转 90°，需 ' +
+           w.need + 'cm，差 ' + w.gap + 'cm';
+  }
+  if (w.code === 'gap') {
+    return '两个拐角之间摆不正：只有 ' + w.segLen + 'cm，' + w.name + '转过来要 ' +
+           w.need + 'cm，差 ' + w.gap + 'cm';
+  }
+  if (w.code === 'height') {
+    return '转弯处净高不够：' + w.where + '只有 ' + w.limitH + 'cm 高，' + w.name +
+           '要 ' + w.needH + 'cm' + (v.level === 'tight' ? '' : '，差 ' + w.gap + 'cm');
+  }
+  if (w.code === 'cornerH') {
+    return '拐角净高不够：只有 ' + w.hlimit + 'cm，' + w.name + '立起来要 ' + w.hneed + 'cm';
   }
   if (w.kind === 'corridor') {
     if (w.thin) return '卡在走廊：最窄 ' + w.limit + 'cm，这件最薄也要 ' + w.need + 'cm，任何大件都过不去';
@@ -1899,12 +2564,38 @@ var manual = {
   queue: [],        /* 待摆放物品实例 */
   idx: 0,
   placed: [],       /* 已放 {x,y,z,l,w,h} 算法坐标 */
-  cur: null,        /* 当前手上的 {cat, box:{l,w,h}, pos:{x,y,z}, obj} */
+  cur: null,        /* 当前手上的 {cat, box:{l,w,h}, base:{l,w,h}, pose:{x,y,z}, pos:{x,y,z}, obj} */
   obj: null,
   layer: 0,         /* 当前层高（算法 z） */
   rotStep: 0,
+  poseSteps: 0,     /* 本次手动会话累计旋转步数（仅统计） */
   ghostOK: false
 };
+
+/* ---------- T-07 手动全向旋转 ----------
+   算法坐标 x=长(l) / y=宽(w) / z=高(h)；three 坐标 x=长 / y=高 / z=宽。
+   pose 记录三个算法轴各转了几个 90°：
+     pose.x → 绕「长度轴」转（横轴·侧倒）  交换 w↔h
+     pose.y → 绕「宽度轴」转（另一横轴·翻倒）交换 l↔h
+     pose.z → 绕「竖直轴」转（纵轴·转向）  交换 l↔w
+   每次都从 base（原始含间隙尺寸）重算，绝不在已转过的 box 上继续交换，
+   否则「转了两次以为回到原样、其实尺寸漂了」——这正是 #21 要防的错。 */
+function poseDimsOf(base, pose) {
+  var v = [base.l, base.w, base.h];
+  var sx = ((pose.x % 4) + 4) % 4, sy = ((pose.y % 4) + 4) % 4, sz = ((pose.z % 4) + 4) % 4;
+  var i;
+  for (i = 0; i < sx; i++) v = [v[0], v[2], v[1]];   /* 绕长度轴：宽↔高 */
+  for (i = 0; i < sy; i++) v = [v[2], v[1], v[0]];   /* 绕宽度轴：长↔高 */
+  for (i = 0; i < sz; i++) v = [v[1], v[0], v[2]];   /* 绕竖直轴：长↔宽 */
+  return { l: v[0], w: v[1], h: v[2] };
+}
+function poseEulerDeg(pose) {
+  return { x: pose.x * 90, y: pose.z * 90, z: pose.y * 90 };
+}
+function poseIsOdd(base, pose) {
+  var d = poseDimsOf(base, pose);
+  return Math.abs(d.l - base.l) > 1e-6 || Math.abs(d.w - base.w) > 1e-6 || Math.abs(d.h - base.h) > 1e-6;
+}
 
 var _ray = new T.Raycaster();
 var _ndc = new T.Vector2();
@@ -1950,7 +2641,8 @@ function spawnNext() {
 
   /* 初始放在仓外左侧地面 */
   var pos = { x: -box.l - 20, y: 0, z: 0 };
-  manual.cur = { cat: cat, pad: pad, box: box, base: { l: box.l, w: box.w, h: box.h }, r: 0,
+  manual.cur = { cat: cat, pad: pad, box: box, base: { l: box.l, w: box.w, h: box.h },
+                 pose: { x: 0, y: 0, z: 0 }, r: 0,
                  pos: { x: pos.x, y: pos.y, z: pos.z } };
   manual.layer = 0;
 
@@ -1982,7 +2674,8 @@ function updateManualVisual() {
   var b = manual.cur;
   var t = A2T(b.pos.x + b.box.l / 2, b.pos.y + b.box.w / 2, b.pos.z + b.box.h / 2);
   manual.obj.position.set(t.x, t.y, t.z);
-  manual.obj.rotation.y = -b.r * Math.PI / 2;
+  var eu = poseEulerDeg(b.pose);
+  manual.obj.rotation.set(eu.x * Math.PI / 180, eu.y * Math.PI / 180, eu.z * Math.PI / 180);
 
   var st = checkManualFit(b);
   var ok = (st === 'ok');
@@ -1996,8 +2689,13 @@ function updateManualVisual() {
     }
   });
   var txt = { ok: '可以放', out: '超出仓位范围', high: '超高', collide: '和别的东西撞了', 'float': '悬空——底下没东西托着' };
-  els.mbState.textContent = txt[st] || '放不下';
-  els.mbState.className = ok ? 'ok' : (st === 'float' ? 'warn' : 'bad');
+  /* T-07：不合理姿态只给黄色提示，不阻止 —— 用户想怎么摆就怎么摆，责任在提示里说清 */
+  var warnTip = '';
+  if (ok && b.cat && b.cat.upright && poseIsOdd(b.base, b.pose)) {
+    warnTip = ' · 这件通常要立着放，现在侧倒/翻倒了，压坏自己负责';
+  }
+  els.mbState.textContent = (txt[st] || '放不下') + warnTip;
+  els.mbState.className = warnTip ? 'warn' : (ok ? 'ok' : (st === 'float' ? 'warn' : 'bad'));
   els.mbDrop.disabled = !ok;
 }
 
@@ -2059,12 +2757,33 @@ function moveCurrentTo(clientX, clientY) {
   updateManualVisual();
 }
 
-function rotateCurrent() {
+/* T-07：手动模式三个旋转键，22 品类全部可转，不再有「这件是方的不能转」这类硬锁。
+   绕哪根轴由 axis 决定：'z'=竖直轴（纵轴·转向）/ 'x'=长度轴（横轴·侧倒）/ 'y'=宽度轴（横轴·翻倒） */
+function rotateCurrentAxis(axis) {
   if (!manual.cur) return;
   var b = manual.cur;
-  if (b.base.l === b.base.w) { els.status.textContent = '这件是方的，转不转一样'; return; }
-  var t = b.box.l; b.box.l = b.box.w; b.box.w = t;
+  var key = (axis === 'x' || axis === 'y') ? axis : 'z';
+  b.pose[key] = (b.pose[key] + 1) % 4;
   b.r = (b.r + 1) % 4;
+  manual.poseSteps++;
+  var d = poseDimsOf(b.base, b.pose);
+  b.box.l = d.l; b.box.w = d.w; b.box.h = d.h;   /* 姿态一变，长宽高真的换位 */
+  /* 旋转后物件的水平中心尽量保持不动，避免「一转就跳到仓外」 */
+  b.pos.x = Math.round(b.pos.x + 0);
+  b.pos.y = Math.round(b.pos.y + 0);
+  updateManualVisual();
+  var p = poseEulerDeg(b.pose);
+  els.mbName.textContent = b.cat.name + '（占 ' + Math.round(d.l) + '×' + Math.round(d.w) + '×' + Math.round(d.h) + '）';
+  els.status.textContent = '第 ' + (manual.idx + 1) + '/' + manual.queue.length + ' 件 · 姿态 X' + p.x + '° Y' + p.y + '° Z' + p.z + '°';
+}
+function rotateCurrent() { rotateCurrentAxis('z'); }
+function rotateCurrentSide() { rotateCurrentAxis('x'); }
+function rotateCurrentFlip() { rotateCurrentAxis('y'); }
+function resetPose() {
+  if (!manual.cur) return;
+  var b = manual.cur;
+  b.pose.x = b.pose.y = b.pose.z = 0;
+  b.box.l = b.base.l; b.box.w = b.base.w; b.box.h = b.base.h;
   updateManualVisual();
 }
 
@@ -2131,7 +2850,7 @@ function finishManual() {
       var nm2 = cart[ci].name + '@' + ci + '#' + q2;
       idMap[nm2] = cart[ci];
       inst.push({ name: nm2, l: cart[ci].l, w: cart[ci].w, h: cart[ci].h, soft: !!cart[ci].soft,
-                  upright: !!cart[ci].upright,
+                  upright: !!cart[ci].upright, _poses: posesFor(cart[ci].id, cart[ci].pose),
                   noSide: cart[ci].side === undefined ? false : !cart[ci].side,
                   _vox: voxFor(cart[ci]) });
     }
@@ -2160,38 +2879,17 @@ function finishManual() {
 /* 灰盒视图切换：同一份数据，换一种画法。
    有模型时切灰盒 = 隐藏模型看占位盒；无模型时按钮禁用 */
 function applyGreyboxUI() {
-  if (els.gbBtn) {
-    if (GREYBOX_ON()) els.gbBtn.classList.add('on'); else els.gbBtn.classList.remove('on');
-    els.gbBtn.textContent = GREYBOX_ON() ? '灰盒·开' : '灰盒';
-    els.gbBtn.disabled = NoModelData;
-    if (NoModelData) els.gbBtn.textContent = '灰盒（无模型包）';
-  }
+  /* v36 T-06：灰盒按钮已删，这里只保留「无模型包时渲染退化」的副作用，不再有任何用户可见开关 */
   drawBin();
   if (GREYBOX_ON()) document.body.classList.add('grey'); else document.body.classList.remove('grey');
 }
-function rebuildSceneAfterViewSwitch() {
-  placedGroup.clear();
-  drawBin();
-  if (manual.on) {
-    els.status.textContent = '已切换视图，手动装需要重新开始';
-    manual.on = false;
-    document.body.classList.remove('manual');
-  } else if (cart.length) {
-    els.status.textContent = '已切到' + (GREYBOX_ON() ? '灰盒' : '写实') + '视图，点「一键装填」重画';
-  }
-}
-els.gbBtn.addEventListener('click', function (e) {
-  if (e && e.preventDefault) e.preventDefault();
-  if (NoModelData) { alert('这个包没有模型数据，本来就是灰盒。要用真实模型请打开写实版。'); return; }
-  greyboxView = !greyboxView;
-  applyGreyboxUI();
-  rebuildSceneAfterViewSwitch();
-});
 els.manualBtn.addEventListener('click', function (e) {
   if (e && e.preventDefault) e.preventDefault();
   manualStart();
 });
 els.mbRotate.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); rotateCurrent(); });
+els.mbSide.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); rotateCurrentSide(); });
+els.mbFlip.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); rotateCurrentFlip(); });
 els.mbUp.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); liftCurrent(1); });
 els.mbDown.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); liftCurrent(-1); });
 els.mbDrop.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); dropCurrent(); });
@@ -2355,7 +3053,7 @@ function playTrips() {
     var c = cart[i];
     for (var q = 0; q < c.qty; q++) {
       cartInst.push({ name: c.name + '@' + i + '#' + q, l: c.l, w: c.w, h: c.h, soft: !!c.soft, cat: c,
-                      upright: !!c.upright,
+                      upright: !!c.upright, _poses: posesFor(c.id, c.pose),
                       noSide: c.side === undefined ? false : !c.side,
                       _vox: voxFor(c) });
     }
@@ -2501,7 +3199,7 @@ function doPack() {
       var nm = c.name + '@' + i + '#' + q;
       idMap[nm] = c;
       inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft,
-                  upright: !!c.upright,
+                  upright: !!c.upright, _poses: posesFor(c.id, c.pose),
                   noSide: c.side === undefined ? false : !c.side,
                   _vox: voxFor(c) });
     }
@@ -2993,26 +3691,75 @@ function ptRead() {
     var o = JSON.parse(s);
     if (!o) return null;
     var d = defaultPath(), k;
-    for (k in d) { if (!isFinite(o[k])) o[k] = d[k]; }
+    for (k in d) { if (k === 'cornerList') continue; if (!isFinite(o[k])) o[k] = d[k]; }
+    /* v35.0 T3-02 旧格式迁移：老存档只有 corners + 单组 A/B/H（没有 cornerList），
+       按「每拐同参数、间距 0」补出 cornerList，升级后行为与老版一致 */
+    if (!o.cornerList || !o.cornerList.length) {
+      var n = Math.max(1, Math.round(numOr(o.corners, 1))), cl = [];
+      for (var i = 0; i < n; i++) {
+        cl.push({ a: numOr(o.cornerA, 120), b: numOr(o.cornerB, 100),
+                  h: numOr(o.cornerH, 200), gapBefore: 0 });
+      }
+      cl[0].gapBefore = numOr(o.corridorLen, 0);
+      o.cornerList = cl;
+    }
+    o.corners = o.cornerList.length;
+    o.cornerA = numOr(o.cornerList[0].a, 120);
+    o.cornerB = numOr(o.cornerList[0].b, 100);
+    o.cornerH = numOr(o.cornerList[0].h, 200);
     return o;
   } catch (e) { return null; }
 }
 function ptWrite(p) { try { localStorage.setItem(PATH_KEY, JSON.stringify(p)); } catch (e) { } }
-function ptNum(el) {
-  var v = parseFloat(String((el && el.value) || '').replace(/[^\d.\-]/g, ''));
-  return isFinite(v) ? v : NaN;
+/* 面板读数值：等价于 numOf(el && el.value)，保留函数签名不动（旧测试直接调 ptNum） */
+function ptNum(el) { return numOf(el === null || el === undefined ? '' : el.value); }
+
+/* 动态拐角行（第 2 行起由界面动态生成）：读不到容器就返回 null，回落到扁平输入 */
+function ptCornerRows() {
+  /* 无 DOM 环境（测试桩 / 旧面板）可直接注入数组，字段同动态行 {a,b,h,gapBefore} */
+  if (els && els.pCornerData && els.pCornerData.length) return els.pCornerData;
+  var box = els && els.pCornerList;
+  if (!box || !box.querySelectorAll) return null;
+  var rows = box.querySelectorAll('.crow');
+  if (!rows || !rows.length) return null;
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i], gi = r.getAttribute ? (r.getAttribute('data-ci') || '') : '';
+    var q = function (sel) { return r.querySelector ? r.querySelector(sel) : null; };
+    out.push({ a: ptNum(q('.c-a')), b: ptNum(q('.c-b')), h: ptNum(q('.c-h')),
+               gapBefore: ptNum(q('.c-gap')), idx: numOr(gi, 0) });
+  }
+  return out;
 }
+
+/* 构造拐角列表：第 1 行数据来自扁平输入（pCrnA/B/H + pCorLen），
+   第 2 行起优先用动态行，动态行缺失时回落扁平值（保证旧面板/桩环境下行为不变） */
+function ptCornerList(v) {
+  var rows = ptCornerRows();
+  var n = Math.max(1, Math.round(numOr(v.corners, rows ? rows.length + 1 : 1)));
+  if (rows && rows.length + 1 > n) n = rows.length + 1;
+  function pick(r, f, d) { return (r && isFinite(numOf(r[f]))) ? numOf(r[f]) : d; }
+  var cl = [{ a: v.cornerA, b: v.cornerB, h: v.cornerH, gapBefore: numOr(v.corridorLen, 0) }];
+  for (var i = 1; i < n; i++) {
+    var r = rows && rows[i - 1];
+    cl.push({ a: pick(r, 'a', v.cornerA), b: pick(r, 'b', v.cornerB),
+              h: pick(r, 'h', v.cornerH), gapBefore: pick(r, 'gapBefore', 0) });
+  }
+  return cl;
+}
+
 function ptValidate() {
   var v = {
     doorW: ptNum(els.pDoorW), doorH: ptNum(els.pDoorH),
     corridorW: ptNum(els.pCorW), corridorLen: ptNum(els.pCorLen),
     corridorH: 200,
     cornerA: ptNum(els.pCrnA), cornerB: ptNum(els.pCrnB), cornerH: ptNum(els.pCrnH),
-    corners: ptNum(els.pCorners), doors: ptNum(els.pDoors)
+    corners: ptNum(els.pCorners), doors: ptNum(els.pDoors),
+    cornerGap: 0
   };
   var names = { doorW: '入户门宽', doorH: '入户门高', corridorW: '走廊净宽', corridorLen: '走廊长度',
                 cornerA: '拐角 A 边', cornerB: '拐角 B 边', cornerH: '拐角净高',
-                corners: '拐角数量', doors: '中间门数量' };
+                corners: '拐角数量', doors: '中间门数量', cornerGap: '与上一拐距离' };
   var err = '', k;
   for (k in PATH_RANGE) {
     var r = PATH_RANGE[k], x = v[k];
@@ -3023,6 +3770,26 @@ function ptValidate() {
   }
   if (!err && (v.corners % 1 !== 0 || v.doors % 1 !== 0)) err = '拐角 / 中间门数量必须是整数';
   v.corners = Math.round(v.corners); v.doors = Math.round(v.doors);
+  if (v.corners < PATH_RANGE.corners[0] || v.corners > PATH_RANGE.corners[1]) {
+    err = '拐角数量要在 ' + PATH_RANGE.corners[0] + '–' + PATH_RANGE.corners[1] + ' 之间';
+  }
+  v.cornerList = ptCornerList(v);
+  /* 逐个拐角校验（T3-02：每个拐角独立填 A/B/净高，不再共用一组） */
+  if (!err) {
+    var rr = PATH_RANGE.cornerGap;
+    for (var i = 0; i < v.cornerList.length; i++) {
+      var c = v.cornerList[i], tg = '拐角 ' + (i + 1);
+      if (!isFinite(c.a) || c.a < PATH_RANGE.cornerA[0] || c.a > PATH_RANGE.cornerA[1]) { err = tg + ' A 边要在 60–300 之间'; break; }
+      if (!isFinite(c.b) || c.b < PATH_RANGE.cornerB[0] || c.b > PATH_RANGE.cornerB[1]) { err = tg + ' B 边要在 60–300 之间'; break; }
+      if (!isFinite(c.h) || c.h < PATH_RANGE.cornerH[0] || c.h > PATH_RANGE.cornerH[1]) { err = tg + ' 净高要在 180–260 之间'; break; }
+      if (!isFinite(c.gapBefore)) c.gapBefore = 0;
+      if (c.gapBefore !== 0 && (c.gapBefore < rr[0] || c.gapBefore > rr[1])) { err = tg + ' 与上一拐的距离要在 0–2000 之间'; break; }
+    }
+  }
+  if (!err) {                                  /* 扁平字段回写成第 1 拐，保持旧调用方一致 */
+    v.cornerA = v.cornerList[0].a; v.cornerB = v.cornerList[0].b; v.cornerH = v.cornerList[0].h;
+    v.corners = v.cornerList.length;
+  }
   return { ok: !err, err: err, v: v };
 }
 /* 面板里的「反例预警」：这套尺寸下清单里最薄的件能不能过 */
@@ -3049,14 +3816,26 @@ function ptRefresh() {
   if (els.pPathApply) els.pPathApply.disabled = !r.ok;
   if (els.pPathErr) {
     els.pPathErr.className = r.ok ? 'ok' : '';
-    els.pPathErr.textContent = r.ok ? ('入户门 ' + r.v.doorW + '×' + r.v.doorH + ' · 走廊 ' + r.v.corridorW +
-      'cm' + (r.v.corridorLen ? '（长 ' + r.v.corridorLen + 'cm）' : '') +
-      ' · ' + r.v.corners + ' 个拐角 ' + r.v.cornerA + '×' + r.v.cornerB +
-      (r.v.doors ? ' · ' + r.v.doors + ' 道中间门' : '')) : r.err;
+    els.pPathErr.textContent = r.ok ? pathLineText(r.v) : r.err;
   }
   var w = ptWarn(r.v);
   if (els.pPathWarn) { els.pPathWarn.className = 'pw ' + w.cls; els.pPathWarn.textContent = w.txt; }
   return r;
+}
+/* 一句摘要：门 / 走廊 / 每个拐角独立列（多拐时把每个拐角的 A×B 和拐前间距都写出来） */
+function pathLineText(p) {
+  p = p || defaultPath();
+  var cl = normCorners(p), t = '入户门 ' + p.doorW + '×' + p.doorH + ' · 走廊 ' + p.corridorW + 'cm';
+  if (numOr(p.corridorLen, 0) > 0) t += '（长 ' + p.corridorLen + 'cm）';
+  t += ' · ' + cl.length + ' 个拐角 ' + cl[0].a + '×' + cl[0].b;
+  for (var i = 1; i < cl.length; i++) {
+    t += ' + ' + cl[i].a + '×' + cl[i].b;
+    if (cl[i].gapBefore > 0) t += '（距上拐 ' + cl[i].gapBefore + 'cm）';
+  }
+  if (cl.length === 1) { t += ' 净高 ' + cl[0].h; }
+  else { t += ' 净高 '; for (i = 0; i < cl.length; i++) t += (i ? '/' : '') + cl[i].h; }
+  if (p.doors) t += ' · ' + p.doors + ' 道中间门';
+  return t;
 }
 function ptApply(silent) {
   var r = ptValidate();
@@ -3068,24 +3847,44 @@ function ptApply(silent) {
     hideSheets();
     renderScenes();
     if (typeof renderPreview === 'function') renderPreview();
-    els.status.textContent = '通道已设为 入户门 ' + r.v.doorW + '×' + r.v.doorH + ' · 走廊 ' + r.v.corridorW +
-      'cm · ' + r.v.corners + ' 个拐角 ' + r.v.cornerA + '×' + r.v.cornerB;
+    els.status.textContent = '通道已设为 ' + pathLineText(r.v);
   }
   return true;
 }
-function pathSummary() {
-  var p = MY_PATH.params || defaultPath();
-  return '入户门 ' + p.doorW + '×' + p.doorH + ' · 走廊 ' + p.corridorW + 'cm' +
-         ' · ' + (p.corners > 1 ? p.corners + ' 个拐角' : '1 个拐角') + ' ' + p.cornerA + '×' + p.cornerB +
-         (p.doors ? ' · ' + p.doors + ' 道中间门' : '');
+function pathSummary() { return pathLineText(MY_PATH.params || defaultPath()); }
+
+/* 动态拐角行：数量变了就重建（第 1 行是面板里固定的那组，第 2 行起在这里生成） */
+function renderCornerRows(p) {
+  var box = els && els.pCornerList;
+  if (!box) return;
+  var cl = normCorners(p), h = '';
+  for (var i = 1; i < cl.length; i++) {
+    var c = cl[i];
+    h += '<div class="crow" data-ci="' + i + '">' +
+         '<em>拐角 ' + (i + 1) + '</em>' +
+         '<input class="c-a" type="number" inputmode="decimal" value="' + c.a + '" placeholder="A 边">' +
+         '<input class="c-b" type="number" inputmode="decimal" value="' + c.b + '" placeholder="B 边">' +
+         '<input class="c-h" type="number" inputmode="decimal" value="' + c.h + '" placeholder="净高">' +
+         '<input class="c-gap" type="number" inputmode="decimal" value="' + (c.gapBefore || '') + '" placeholder="距上一拐">' +
+         '</div>';
+  }
+  if (box.innerHTML !== undefined) box.innerHTML = h;
+  /* 动态行是重建的，事件只能委托在容器上；只绑一次，避免每次重建重复叠加 */
+  if (!box._wired && box.addEventListener) {
+    box._wired = 1;
+    box.addEventListener('input', ptRefresh);
+    box.addEventListener('change', ptRefresh);
+  }
 }
 function openPathSheet(e) {
   if (e && e.preventDefault) e.preventDefault();
   var p = MY_PATH.params || defaultPath();
   els.pDoorW.value = p.doorW; els.pDoorH.value = p.doorH;
   els.pCorW.value = p.corridorW; els.pCorLen.value = p.corridorLen || '';
-  els.pCrnA.value = p.cornerA; els.pCrnB.value = p.cornerB; els.pCrnH.value = p.cornerH;
-  els.pCorners.value = p.corners; els.pDoors.value = p.doors;
+  var cl = normCorners(p);
+  els.pCrnA.value = cl[0].a; els.pCrnB.value = cl[0].b; els.pCrnH.value = cl[0].h;
+  els.pCorners.value = cl.length; els.pDoors.value = p.doors;
+  renderCornerRows(p);
   renderScenes();
   ptRefresh();
   showSheet(els.pathSheet);
@@ -3269,6 +4068,12 @@ function loop() {
     animWasRunning = false;
     if (els.status && tot > 0) els.status.textContent = '装填完成 · ' + tot + ' 件已落位';
   }
+  /* P0.5：前后补光跟随相机 —— 前灯在观察者这一侧，后灯从背面勾轮廓，
+     任何视角下深色物件都有 ≥2 个受光方向，不会整块塌成黑影 */
+  var cp2 = camera.position;
+  var cd2 = Math.max(1, Math.sqrt(cp2.x * cp2.x + cp2.y * cp2.y + cp2.z * cp2.z));
+  fillFront.position.set(cp2.x / cd2 * 900, cp2.y / cd2 * 900 + 180, cp2.z / cd2 * 900);
+  fillBack.position.set(-cp2.x / cd2 * 900, 420, -cp2.z / cd2 * 900);
   renderer.render(scene, camera);
 }
 
@@ -3305,21 +4110,98 @@ els.status.textContent = '先添加你要搬的物品 · 共 0 件';
 window.__READY__ = true;
 window.__API__ = {
   addToCart: addToCart, doPack: doPack, cart: function () { return cart; },
+  posesOf: posesOf, POSE_SPEC: POSE_SPEC,
   loadLevel: loadLevel, levels: function () { return LEVELS; },
   manualStart: manualStart,
+  /* 探针：某品类的真实体素空腔统计（T-05 桌子腿间、T-04 自行车轮内空腔是否有空列） */
+  voxStats: function (name) {
+    var cat = null, i;
+    for (i = 0; i < CATALOG.length; i++) if (CATALOG[i].name === name || CATALOG[i].id === name) cat = CATALOG[i];
+    if (!cat) return null;
+    var v = voxFor(cat);
+    if (!v) return { name: cat.name, mesh: cat.mesh || null, hasVox: false, per: null };
+    return { name: cat.name, mesh: cat.mesh || null, hasVox: true,
+             per: v.map(function (o) {
+               var empty = 0, k;
+               for (k = 0; k < o.zmax.length; k++) if (o.zmax[k] < 0) empty++;
+               return { a: o.a, b: o.b, c: o.c, cols: o.nx * o.ny, empty: empty,
+                        emptyRatio: empty / (o.nx * o.ny) };
+             }) };
+  },
+  /* 探针：纯算法装填（不渲染），用于比对「真实体素」与「实心盒」的件数差 */
+  packOnly: function (binDims, list) {
+    var items = [], i;
+    for (i = 0; i < list.length; i++) {
+      var o = list[i];
+      var it = { name: o.name || ('item' + i), l: o.l, w: o.w, h: o.h,
+                 soft: !!o.soft, upright: !!o.upright, noSide: !!o.noSide,
+                 _poses: o.solid ? null : (o.poses || posesOf(o.id)) };
+      if (o.mesh && MESH_DATA[o.mesh] && !GREYBOX_ON()) {
+        var v = voxFor({ mesh: o.mesh, l: o.l, w: o.w, h: o.h });
+        if (v) it._vox = v;
+      }
+      it._solid = !!o.solid;
+      if (it._solid) it._vox = null;   /* 对照：强制走实心盒体素 */
+      items.push(it);
+    }
+    var r = pack(binDims, items);
+    return { count: r.count, total: r.total, failed: r.failed, util: r.util,
+             vol: r.vol, cap: r.cap,
+             boxes: r.placed.map(function (b) { return { name: b.name, x: b.x, y: b.y, z: b.z, l: b.l, w: b.w, h: b.h }; }) };
+  },
+  /* T-07 手动全向旋转探针：axis = 'z' 纵轴转向 / 'x' 横轴侧倒 / 'y' 横轴翻倒 */
+  manualRotate: function (axis) { rotateCurrentAxis(axis); },
+  manualPose: function () {
+    if (!manual.cur) return null;
+    var b = manual.cur;
+    return { name: b.cat.name, base: { l: b.base.l, w: b.base.w, h: b.base.h },
+             box: { l: b.box.l, w: b.box.w, h: b.box.h },
+             pose: { x: b.pose.x, y: b.pose.y, z: b.pose.z },
+             euler: poseEulerDeg(b.pose), steps: manual.poseSteps };
+  },
+  manualResetPose: resetPose,
   catalog: function () {
     var out = [];
     for (var i = 0; i < CATALOG.length; i++) {
-      out.push({ name: CATALOG[i].name, mesh: CATALOG[i].mesh || null,
+      out.push({ name: CATALOG[i].name, id: CATALOG[i].id, mesh: CATALOG[i].mesh || null,
                  l: CATALOG[i].l, w: CATALOG[i].w, h: CATALOG[i].h,
-                 soft: !!CATALOG[i].soft, upright: !!CATALOG[i].upright });
+                 soft: !!CATALOG[i].soft, upright: !!CATALOG[i].upright,
+                 box: !!CATALOG[i].box, std: CATALOG[i].std || null });
     }
     return out;
   },
+  /* P1 搬家箱体系：6 规格 + 材质 + 插口箱，测试与 P3 小账都从这里读 */
+  boxes: function () {
+    var out = [];
+    for (var i = 0; i < BOX_LIST.length; i++) {
+      var b = BOX_LIST[i], o = boxOptOf(b), d = boxDims(b, o);
+      out.push({ id: b.id, name: b.name, l: b.l, w: b.w, h: b.h,
+                 vol: b.vol, std: b.std, mat: o.mat, matLabel: BOX_MATS[o.mat].label,
+                 tapered: o.tapered, side: !!o.side,
+                 eff: { l: d.l, w: d.w, h: d.h }, effVolL: Math.round(boxVolL(b, o) * 10) / 10 });
+    }
+    return out;
+  },
+  setBoxMat: function (id, mat) {
+    for (var i = 0; i < BOX_LIST.length; i++) if (BOX_LIST[i].id === id) { setBoxMat(BOX_LIST[i], mat); return true; }
+    return false;
+  },
+  setTapered: function (id, val) {
+    for (var i = 0; i < BOX_LIST.length; i++) if (BOX_LIST[i].id === id) { setTapered(BOX_LIST[i], val); return true; }
+    return false;
+  },
+  addBox: function (id, qty) {
+    for (var i = 0; i < BOX_LIST.length; i++) {
+      if (BOX_LIST[i].id === id) {
+        for (var k = 0; k < (qty || 1); k++) addToCart(BOX_LIST[i]);
+        return true;
+      }
+    }
+    return false;
+  },
+  boxStd: function () { return boxesStdTotal(); },
   meshKeys: function () { return Object.keys(MESH_DATA || {}); },
   isGreybox: function () { return NoModelData; },
-  greyboxView: function () { return greyboxView; },
-  toggleGreybox: function () { greyboxView = !greyboxView; applyGreyboxUI(); },
   probe: function (name) {
     var cat = null;
     for (var i = 0; i < CATALOG.length; i++) if (CATALOG[i].name === name) cat = CATALOG[i];
@@ -3356,7 +4238,9 @@ window.__API__ = {
     return manual.ghostOK;
   },
   manualDrop: dropCurrent,
-  manualRotate: rotateCurrent,
+  /* 旧键 manualRotate: rotateCurrent 已删（第6轮 T-07）—— 对象字面量里后写的会覆盖前面的三轴版本，
+     导致 manualRotate('x') 实际在绕竖直轴转、pose.x 永远为 0，22 品类像被硬锁住 */
+  manualRotateZ: rotateCurrent,
   curLevel: function () { return curLevel; },
   /* P0-D：关卡退出（也供自动化测试驱动） */
   exitLevel: exitLevel,
@@ -3389,6 +4273,194 @@ window.__API__ = {
       if (o.isMesh && o.material && !o.material.transparent) { o.material.side = sd; o.material.needsUpdate = true; }
     });
     return mode;
+  },
+  /* P0.5 验收用：物件遮罩渲染 —— placed 物件纯白、其余场景与背景纯黑，
+     截图后按白色像素精确圈出「深色物件区域」，避免用整幅亮度瞎猜。
+     仅诊断用，不进任何玩法逻辑；调用后本页面即处于遮罩态（一次性）。 */
+  maskView: function () {
+    if (scene.background && scene.background.isColor) scene.background = new T.Color(0x000000);
+    scene.fog = null;
+    renderer.setClearColor(0x000000, 1);
+    /* 非物件一律「纯黑且保留遮挡」：
+       不透明件（仓底板/侧板/柜体/地面）染黑继续挡光，透明件（玻璃挡板/落位光圈）整体隐藏。
+       不能整组隐藏 binGroup —— 那会把被仓壁挡住的物件背面也当作可见物件算进统计，
+       导致遮罩区一大半落在实拍画面里其实是仓壁的暗像素上，把均值拉假低（P0.5 首版踩过）。 */
+    var blackMat = new T.MeshBasicMaterial({ color: 0x000000 });
+    var whiteMat = new T.MeshBasicMaterial({ color: 0xffffff });
+    scene.traverse(function (o) {
+      if (!o.isMesh) return;
+      var m = o.material;
+      var tr = Array.isArray(m) ? m.some(function (x) { return x && x.transparent; }) : !!(m && m.transparent);
+      if (tr) { o.visible = false; } else { o.material = blackMat; o.visible = true; }
+    });
+    placedGroup.traverse(function (o) {
+      if (o.isSprite) { o.visible = false; return; }
+      if (o.isMesh) { o.material = whiteMat; }
+    });
+    return { placed: placedGroup.children.length };
+  },
+  /* P0.5 验收：同帧像素统计 —— 先把当前画面读回缓冲，再切遮罩读一帧，
+     两帧同进程同布局，天然对齐（跨进程截图会因面板/画布高度变化而错位，不能用）。
+     返回物件区域的亮度分布与背景亮度，调用后页面进入遮罩态（一次性）。 */
+  lightStats: function () {
+    var gl = renderer.getContext();
+    var w = canvas.width, h = canvas.height;
+    function grab() {
+      renderer.render(scene, camera);
+      var buf = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      return buf;
+    }
+    function lum(buf, i) { return 0.2126 * buf[i * 4] + 0.7152 * buf[i * 4 + 1] + 0.0722 * buf[i * 4 + 2]; }
+    var A = grab();
+    this.maskView();
+    var B = grab();
+    var sum = 0, n = 0, dark = 0, vals = [], bsum = 0, bn = 0;
+    var bx0 = 1e9, bx1 = -1, by0 = 1e9, by1 = -1;
+    for (var i = 0; i < w * h; i++) {
+      if (lum(B, i) > 140) {
+        var la = lum(A, i);
+        sum += la; n++; vals.push(la); if (la < 30) dark++;
+        /* readPixels 原点在左下，换成顶左坐标给截图裁剪用 */
+        var px = i % w, py = h - 1 - Math.floor(i / w);
+        if (px < bx0) bx0 = px; if (px > bx1) bx1 = px;
+        if (py < by0) by0 = py; if (py > by1) by1 = py;
+      } else { bsum += lum(A, i); bn++; }
+    }
+    vals.sort(function (x, y) { return x - y; });
+    function q(f) { return vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * f))] : 0; }
+    var bgc = getComputedStyle(document.body).backgroundColor || 'rgb(0,0,0)';
+    var mt = /(\d+)\D+(\d+)\D+(\d+)/.exec(bgc) || [0, 0, 0, 0];
+    return {
+      canvas: [w, h], n: n,
+      bbox: n ? [bx0, by0, bx1, by1] : null,
+      objMean: n ? sum / n : 0, darkRatio: n ? dark / n : 0,
+      p1: q(0.01), p5: q(0.05), p10: q(0.10), p50: q(0.5), p90: q(0.90), p95: q(0.95),
+      bgMean: bn ? bsum / bn : 0,
+      bgUI: 0.2126 * (+mt[1]) + 0.7152 * (+mt[2]) + 0.0722 * (+mt[3]),
+      css: bgc
+    };
+  },
+  /* T-03（第6轮）验收用：A–E 五判据一次性自测。只读，跑完自动还原相机与可见性。
+     A 最暗 10% 均值 / B 单件最暗面与最亮面亮度比 / C 连续暗块 / D 深浅件分档 / E 三视角分测
+     口径：物件像素 = 「全显帧」与「全隐帧」差分 >6 的像素，含物件投在仓底的接触阴影（如实统计，不挑像素） */
+  lightAudit: function () {
+    var gl = renderer.getContext();
+    var w = canvas.width, h = canvas.height, N = w * h;
+    function grab() {
+      renderer.render(scene, camera);
+      var buf = new Uint8Array(N * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      var o = new Float64Array(N);
+      for (var i = 0; i < N; i++) o[i] = 0.2126 * buf[i * 4] + 0.7152 * buf[i * 4 + 1] + 0.0722 * buf[i * 4 + 2];
+      return o;
+    }
+    var kids = placedGroup.children.slice();
+    var vis0 = kids.map(function (o) { return o.visible; });
+    function setAll(v) { kids.forEach(function (o) { o.visible = v; }); }
+    function darkBlobs(mask, F, thr) {
+      var g = 8, gw = Math.ceil(w / g), gh = Math.ceil(h / g);
+      var cnt = new Int32Array(gw * gh), dk = new Int32Array(gw * gh);
+      for (var i = 0; i < N; i++) {
+        if (!mask[i]) continue;
+        var px = i % w, py = h - 1 - Math.floor(i / w);
+        var ci = Math.floor(py / g) * gw + Math.floor(px / g);
+        cnt[ci]++; if (F[i] < thr) dk[ci]++;
+      }
+      var dark = new Uint8Array(gw * gh), c;
+      for (c = 0; c < cnt.length; c++) if (cnt[c] >= 12 && dk[c] / cnt[c] >= 0.7) dark[c] = 1;
+      var par = new Int32Array(gw * gh);
+      for (c = 0; c < par.length; c++) par[c] = c;
+      function find(x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; }
+      function uni(a, b) { a = find(a); b = find(b); if (a !== b) par[b] = a; }
+      for (var yy = 0; yy < gh; yy++) for (var xx = 0; xx < gw; xx++) {
+        var id = yy * gw + xx; if (!dark[id]) continue;
+        if (xx + 1 < gw && dark[id + 1]) uni(id, id + 1);
+        if (yy + 1 < gh && dark[id + gw]) uni(id, id + gw);
+      }
+      var area = {}, spots = 0, biggest = 0;
+      for (c = 0; c < dark.length; c++) if (dark[c]) { var r = find(c); area[r] = (area[r] || 0) + cnt[c]; }
+      for (var k in area) { if (area[k] >= 400) spots++; if (area[k] > biggest) biggest = area[k]; }
+      return { spots: spots, biggest: Math.round(biggest) };
+    }
+    function stats(sorted, mask, F) {
+      if (!sorted.length) return { n: 0, dark10: 0, p8: 0, p92: 0, p15: 0, p85: 0, mean: 0, ratio: 0, ratioFace: 0, blobs: { spots: 0, biggest: 0 } };
+      var k = Math.max(1, Math.floor(sorted.length * 0.10)), sm = 0;
+      for (var i = 0; i < k; i++) sm += sorted[i];
+      var p8 = sorted[Math.floor(sorted.length * 0.08)];
+      var p92 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.92))];
+      /* 面级口径：P15/P85 —— 去掉边缘抗锯齿过渡与镜面高光两端各 15%，
+         更贴近「可见暗面 vs 可见亮面」的人工判读；P8/P92 保留作严格参考 */
+      var p15 = sorted[Math.floor(sorted.length * 0.15)];
+      var p85 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.85))];
+      var tot = 0;
+      for (var j = 0; j < sorted.length; j++) tot += sorted[j];
+      return {
+        n: sorted.length, dark10: +(sm / k).toFixed(1),
+        p8: +p8.toFixed(1), p92: +p92.toFixed(1), mean: +(tot / sorted.length).toFixed(1),
+        ratio: p92 > 0 ? +(p8 / p92).toFixed(3) : 0,
+        p15: +p15.toFixed(1), p85: +p85.toFixed(1),
+        ratioFace: p85 > 0 ? +(p15 / p85).toFixed(3) : 0,
+        blobs: mask ? darkBlobs(mask, F, 35) : { spots: 0, biggest: 0 }
+      };
+    }
+    function diffSort(F, B) {
+      var arr = [], mask = new Uint8Array(N);
+      for (var i = 0; i < N; i++) if (Math.abs(F[i] - B[i]) > 6) { mask[i] = 1; arr.push(F[i]); }
+      arr.sort(function (x, y) { return x - y; });
+      return { sorted: arr, mask: mask };
+    }
+    function measureAt() {
+      setAll(false); var B = grab();
+      setAll(true); var F = grab();
+      var d = diffSort(F, B);
+      return { s: stats(d.sorted, d.mask, F), B: B };
+    }
+    var whole = measureAt();
+    var B0 = whole.B;
+    var items = (lastPack || {}).items || (lastPack || {}).placed || [];
+    var per = [];
+    kids.forEach(function (obj, idx) {
+      kids.forEach(function (o, j) { o.visible = (j === idx); });
+      var F2 = grab();
+      var d = diffSort(F2, B0);
+      var st = stats(d.sorted, null, null);
+      var nm = (items[idx] && items[idx].name) || ('条目' + idx);
+      /* 基色亮度：按品类名去 CATALOG 查出厂色，用于「深色件/浅色件」分档。
+         不能用渲染后均值分档 —— 补光提亮后深色件也会变亮，那样 D 判据就失效了（本轮踩过） */
+      var baseL = null;
+      for (var ci2 = 0; ci2 < CATALOG.length; ci2++) {
+        if (nm.indexOf(CATALOG[ci2].name) === 0) {
+          var hex = CATALOG[ci2].color;
+          baseL = +(((hex >> 16 & 255) * 0.2126 + (hex >> 8 & 255) * 0.7152 + (hex & 255) * 0.0722) / 255).toFixed(3);
+          break;
+        }
+      }
+      per.push({ i: idx, name: nm, n: st.n, mean: st.mean, p8: st.p8, p92: st.p92, ratio: st.ratio,
+        p15: st.p15, p85: st.p85, ratioFace: st.ratioFace, baseL: baseL });
+    });
+    setAll(true); kids.forEach(function (o, j) { o.visible = vis0[j]; });
+    var t0 = camTheta, p0 = camPhi, c0 = camDist, views = {};
+    [['front', 0.0, Math.PI * 0.42], ['side', Math.PI * 0.5, Math.PI * 0.42], ['top', Math.PI * 0.26, Math.PI * 0.20]]
+      .forEach(function (v) { camTheta = v[1]; camPhi = v[2]; updateCam(); views[v[0]] = measureAt().s; });
+    camTheta = t0; camPhi = p0; camDist = c0; updateCam();
+    setAll(true); kids.forEach(function (o, j) { o.visible = vis0[j]; });
+    return {
+      canvas: [w, h], count: kids.length,
+      whole: whole.s, per: per, views: views,
+      shading: { hemi: hemi.intensity, amb: amb.intensity, d1: d1.intensity, d2: d2.intensity,
+        front: fillFront.intensity, back: fillBack.intensity, darkBoost: (typeof darkBoost !== 'undefined' ? darkBoost : null) }
+    };
+  },
+  /* P0.5 验收用只读钩子：六盏灯的强度与补光实时位置 */
+  lightInfo: function () {
+    function r3(v) { return v.toArray().map(function (x) { return Math.round(x); }); }
+    return {
+      hemi: hemi.intensity, ambient: amb.intensity, d1: d1.intensity, d2: d2.intensity,
+      front: fillFront.intensity, back: fillBack.intensity,
+      frontPos: r3(fillFront.position), backPos: r3(fillBack.position),
+      children: scene.children.length, firstIsHemi: !!(scene.children[0] && scene.children[0].isHemisphereLight)
+    };
   },
   setLight: function (hs, d1s, d2s, floorColor) {
     if (hs != null && scene.children[0] && scene.children[0].isHemisphereLight) scene.children[0].intensity = hs;
@@ -3454,6 +4526,23 @@ window.__API__ = {
              bad: rows.filter(function (r) { return r.ratio != null && r.ratio < SUP_MIN - 1e-9; }).length };
   },
   lastPackCached: function () { return lastPack; },
+  /* P0-R5 浏览器可运行性证明用：真实 WebGL 上下文 / 场景对象数 / 相机角度
+     （只读钩子，不参与任何玩法逻辑） */
+  sceneInfo: function () {
+    var gl = renderer.getContext ? renderer.getContext() : null;
+    return {
+      ready: !!window.__READY__,
+      gl: !!gl,
+      glLost: gl ? !!gl.isContextLost() : true,
+      drawCalls: (renderer.info && renderer.info.render) ? renderer.info.render.calls : -1,
+      triangles: (renderer.info && renderer.info.render) ? renderer.info.render.triangles : -1,
+      children: scene.children.length,
+      placed: placedGroup.children.length,
+      canvas: [canvas.width, canvas.height],
+      err: window.__ERR__ || null
+    };
+  },
+  camInfo: function () { return { theta: camTheta, phi: camPhi, dist: camDist }; },
   levelBest: function () { return levelBest; },
   setBin: function (l, w, h, name) {
     bin.l = l; bin.w = w; bin.h = h;
@@ -3487,6 +4576,19 @@ window.__API__ = {
                 corners: els.pCorners, doors: els.pDoors };
     for (var k in map) {
       if (o[k] != null && map[k]) map[k].value = o[k];
+    }
+    /* T3-02：多拐角。第 1 拐写回扁平字段（面板固定那组），其余进动态行；
+       无 DOM 时写 els.pCornerData 影子数组，保证判定链路与真实界面完全同源 */
+    if (o.cornerList && o.cornerList.length) {
+      var cl0 = o.cornerList;
+      if (els.pCorners) els.pCorners.value = cl0.length;
+      if (els.pCrnA) els.pCrnA.value = cl0[0].a;
+      if (els.pCrnB) els.pCrnB.value = cl0[0].b;
+      if (els.pCrnH) els.pCrnH.value = cl0[0].h;
+      if (els.pCorLen) els.pCorLen.value = numOr(cl0[0].gapBefore, 0) || '';
+      if (els.pCornerData !== undefined) els.pCornerData = cl0.slice(1);
+      if (els.pCornerList) renderCornerRows({ cornerList: cl0, cornerA: cl0[0].a,
+        cornerB: cl0[0].b, cornerH: cl0[0].h, corners: cl0.length, corridorLen: 0 });
     }
     ptRefresh();
     var applied = ptApply(true);
@@ -3541,6 +4643,17 @@ window.__API__ = {
     return el ? el.textContent : '';
   },
   cornerMaxLen: function (a, b, w) { return Math.round(cornerMaxLen(a, b, w)); },
+  /* v35.0 T3-02/T3-04/T3-05：纯函数出口（测试与回报对账直接用，不另写一份实现） */
+  numOf: function (v) { return numOf(v); },
+  numOr: function (v, d) { return numOr(v, d); },
+  normCorners: function (p) { return normCorners(p); },
+  pathSegmentsOf: function (p) { return pathSegments(p); },
+  segJudge: function (it, s) { return segJudge(it, s); },
+  cornerPassOf: function (it, a, b, h) { return cornerPass(it, a, b, h); },
+  blockEnum: function () { return BLOCK_ORDER.slice(); },
+  blockText: function () { return BLOCK_TEXT; },
+  clearCache: function () { _cmCache = {}; _cpCache = {}; _segCache = {}; _verCache = {};
+                            _cacheStat = { cm: 0, cp: 0, seg: 0, ver: 0, hit: 0 }; },
   /* 诊断：场景里每个 mesh 的材质/顶点色状态 */
   matInfo: function () {
     var out = [];
@@ -3589,20 +4702,30 @@ window.__API__ = {
 /* v34.0 T4 预留：外部统一出口（本轮只给到验收 12 需要的最小字段，
    完整 report 结构留待第 3 轮；字段取值全部来自 UI 同一份数据，不另算） */
 window.SZXM = {
-  version: 'v34.0',
+  version: 'v35.0',
   report: function () {
     var p = MY_PATH.params || defaultPath();
     var vd = {};
     for (var i = 0; i < SCENES.length; i++) {
       var sc = SCENES[i];
       var v = routeVerdict(pathForScene(sc), cart);
-      vd[sc.id] = { level: v.level, label: v.label, text: verdictText(v), minGap: v.minGap, worst: v.worst };
+      vd[sc.id] = { level: v.level, label: v.label, text: verdictText(v), minGap: v.minGap,
+                    worst: v.worst, blockedBy: v.blockedBy, blockedLabel: v.blockedLabel };
     }
     var rt = checkRoute(cart);
     return {
-      version: 'v34.0',
+      version: 'v35.0',
       bin: { name: bin.name, l: bin.l, w: bin.w, h: bin.h, doorW: bin.doorW, doorH: bin.doorH },
-      path: { params: p, segments: MY_PATH.segments.length, summary: pathSummary() },
+      path: { params: p, segments: MY_PATH.segments.length, summary: pathSummary(),
+              /* v35.0 新增（只增不改）：每拐独立参数 / 归因枚举 / 缓存命中 */
+              cornerList: normCorners(p),
+              segList: MY_PATH.segments.map(function (x) {
+                return { kind: x.kind, label: x.label, len: x.len || 0, between: !!x.between };
+              }),
+              blockedByEnum: BLOCK_ORDER.slice(),
+              blockedByText: BLOCK_TEXT,
+              cache: { hit: _cacheStat.hit, cm: _cacheStat.cm, cp: _cacheStat.cp,
+                       seg: _cacheStat.seg, ver: _cacheStat.ver } },
       cart: cart.map(function (c) { return { name: c.name, l: c.l, w: c.w, h: c.h, qty: c.qty }; }),
       verdicts: vd,
       route: { pathBlocked: rt.pathBlocked, blocked: rt.blocked,
