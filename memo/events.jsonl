@@ -22,6 +22,23 @@
 {"t": "2026-11-12 03:20", "author": "开发", "kind": "待裁", "title": "移动端 .lvbtn 遮挡+37px 触控本轮修否", "artifact": "", "note": "", "state": "open"}
 {"t": "2026-11-12 03:26", "author": "文创", "kind": "机制", "title": "备忘录改为事件流+渲染总览，GitHub raw 作固定读入口", "artifact": "", "note": "memo/events.jsonl", "state": "done"}
 {"t": "2026-11-12 04:14", "author": "文创", "kind": "机制", "title": "全量汇编工具上线：58份原文/2.56MB 单册，替代摘要式总览", "artifact": "备忘录_全量汇编_202611120412.md", "note": "卷二备忘录全文+卷三任务书+卷四交付回报+卷一事件流", "state": "done"}
-{"t": "2026-11-12 05:55", "author": "开发", "kind": "交付", "title": "第9轮交付：P0-1 三档达标 + P0-3 数据外置（4G DCL 2911ms）+ 六关零回归", "artifact": "szxm_cdn_v45_202611120540.html", "note": "249,082B / md5 9c90e88c / 数据 szxm_mesh_v45_202611120540.js 907,873B / 六关 1300-0-1800-1400-1300-5900", "state": "done"}
-{"t": "2026-11-12 05:55", "author": "开发", "kind": "待裁", "title": "CDN 档交付形态由单文件变双文件（html+数据js），是否固化进构建流程", "artifact": "", "note": "回退即回 v44 内联形态；若要单文件则需红线例外", "state": "open"}
-{"t": "2026-11-12 05:55", "author": "开发", "kind": "欠账", "title": "P2-2 补账：2,997B 中 601B 口径损耗未能逐块归因；P2-1 侧向支撑仅出方案", "artifact": "塞得下吗_第9轮修复说明_v45_202611120550.md", "note": "可归因 2,396B（79.9%）：B-2 1328 / Q4 835 / RULE_TXT 226", "state": "open"}
+{"t": "2026-11-12 04:56", "author": "文创", "kind": "裁决", "title": "第8轮收口五条裁决+第9轮任务书（体积改看移动端实测）", "artifact": "第8轮收口裁决与第9轮任务书_202611120455.md", "note": "v44通过;缩进压缩一次性;P0-1全尺寸遮挡", "state": "done"}
+{"t": "2026-11-10 15:10", "author": "文创", "kind": "任务书", "title": "第3轮任务书_构建源回写与多拐角", "artifact": "第3轮任务书_构建源回写与多拐角_202611101510.pdf", "note": "同批上传 2 份", "state": "done", "auto": true}
+{"t": "2026-11-10 15:28", "author": "文创", "kind": "任务书", "title": "第3轮T3-01_构建源与核对工具_源码包", "artifact": "第3轮T3-01_构建源与核对工具_源码包_202611101528.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-10 19:05", "author": "文创", "kind": "任务书", "title": "第4轮_验收工具与源码包", "artifact": "第4轮_验收工具与源码包_202611101905.pdf", "note": "同批上传 2 份", "state": "done", "auto": true}
+{"t": "2026-11-10 19:30", "author": "开发", "kind": "交付", "title": "szxm_cdn_v35", "artifact": "szxm_cdn_v35_202611101930.html", "note": "同批上传 3 份", "state": "done", "auto": true}
+{"t": "2026-11-10 20:35", "author": "文创", "kind": "任务书", "title": "第5轮_任务书", "artifact": "第5轮_任务书_202611102035.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-10 20:46", "author": "文创", "kind": "任务书", "title": "第5轮_任务书_增补1", "artifact": "第5轮_任务书_增补1_202611102046.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-10 20:55", "author": "文创", "kind": "任务书", "title": "第5轮_任务书_增补2", "artifact": "第5轮_任务书_增补2_202611102055.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-10 21:50", "author": "开发", "kind": "交付", "title": "塞得下吗_最新真模型版_v35", "artifact": "塞得下吗_最新真模型版_v35_202611102150.html", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-10 23:35", "author": "文创", "kind": "任务书", "title": "第5轮_增补3_砍灰盒与单一地址", "artifact": "第5轮_增补3_砍灰盒与单一地址_202611102335.pdf", "note": "同批上传 2 份", "state": "done", "auto": true}
+{"t": "2026-11-11 12:22", "author": "开发", "kind": "交付", "title": "szxm_cdn_v36", "artifact": "szxm_cdn_v36_202611111222.html", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-11 13:40", "author": "开发", "kind": "交付", "title": "塞得下吗_第6轮交付回报_T01-T07", "artifact": "塞得下吗_第6轮交付回报_T01-T07_202611111340.pdf", "note": "同批上传 6 份", "state": "done", "auto": true}
+{"t": "2026-11-11 18:33", "author": "开发", "kind": "交付", "title": "szxm_cdn_v36", "artifact": "szxm_cdn_v36_202611111833.html", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-11 18:55", "author": "开发", "kind": "交付", "title": "塞得下吗_第7轮修复回报", "artifact": "塞得下吗_第7轮修复回报_202611111855.pdf", "note": "同批上传 6 份", "state": "done", "auto": true}
+{"t": "2026-11-12 02:45", "author": "文创", "kind": "备忘录", "title": "备忘录_文创", "artifact": "备忘录_文创_202611120245.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-12 03:05", "author": "开发", "kind": "交付", "title": "第8轮交付回报", "artifact": "第8轮交付回报_202611120305.pdf", "note": "同批上传 21 份", "state": "done", "auto": true}
+{"t": "2026-11-12 03:20", "author": "开发", "kind": "备忘录", "title": "备忘录_开发", "artifact": "备忘录_开发_202611120320.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-12 03:22", "author": "文创", "kind": "机制", "title": "备忘录_总览", "artifact": "备忘录_总览_202611120322.md", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-12 05:50", "author": "开发", "kind": "交付", "title": "塞得下吗_第9轮交付回报_v45", "artifact": "塞得下吗_第9轮交付回报_v45_202611120550.pdf", "note": "同批上传 6 份", "state": "done", "auto": true}
+{"t": "2026-11-12 08:10", "author": "文创", "kind": "裁决", "title": "第9轮验收退回：v45产物未交付，可核部分全过，裁双文件形态", "artifact": "第9轮验收裁决与第10轮任务书_202611120810.md", "note": "红线算术错2866vs1962；红线作废未吸收；登记行机制失败→memo_autolog自动派生", "state": "done"}
