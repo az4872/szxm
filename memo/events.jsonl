@@ -42,3 +42,11 @@
 {"t": "2026-11-12 03:22", "author": "文创", "kind": "机制", "title": "备忘录_总览", "artifact": "备忘录_总览_202611120322.md", "note": "", "state": "done", "auto": true}
 {"t": "2026-11-12 05:50", "author": "开发", "kind": "交付", "title": "塞得下吗_第9轮交付回报_v45", "artifact": "塞得下吗_第9轮交付回报_v45_202611120550.pdf", "note": "同批上传 6 份", "state": "done", "auto": true}
 {"t": "2026-11-12 08:10", "author": "文创", "kind": "裁决", "title": "第9轮验收退回：v45产物未交付，可核部分全过，裁双文件形态", "artifact": "第9轮验收裁决与第10轮任务书_202611120810.md", "note": "红线算术错2866vs1962；红线作废未吸收；登记行机制失败→memo_autolog自动派生", "state": "done"}
+{"t": "2026-11-10 19:30", "author": "开发", "kind": "交付", "title": "szxm_greybox_v35.1_P0R4修复", "artifact": "szxm_greybox_v35.1_P0R4修复_202611101930.html", "note": "同批上传 2 份", "state": "done", "auto": true}
+{"t": "2026-11-11 13:40", "author": "开发", "kind": "交付", "title": "塞得下吗_第6轮截图_t03_darkside", "artifact": "塞得下吗_第6轮截图_t03_darkside_202611111340.png", "note": "同批上传 4 份", "state": "done", "auto": true}
+{"t": "2026-11-11 18:55", "author": "开发", "kind": "交付", "title": "塞得下吗_第7轮截图_p04满载14件_front", "artifact": "塞得下吗_第7轮截图_p04满载14件_front_202611111855.png", "note": "同批上传 4 份", "state": "done", "auto": true}
+{"t": "2026-11-12 03:05", "author": "开发", "kind": "交付", "title": "szxm_v44_L03关卡头_改前", "artifact": "szxm_v44_L03关卡头_改前_202611120305.png", "note": "同批上传 19 份", "state": "done", "auto": true}
+{"t": "2026-11-12 05:40", "author": "开发", "kind": "交付", "title": "szxm_cdn_v45", "artifact": "szxm_cdn_v45_202611120540.html", "note": "", "state": "done", "auto": true}
+{"t": "2026-11-12 05:50", "author": "开发", "kind": "交付", "title": "塞得下吗_第9轮修复说明_v45", "artifact": "塞得下吗_第9轮修复说明_v45_202611120550.pdf", "note": "同批上传 4 份", "state": "done", "auto": true}
+{"t": "2026-11-12 09:25", "author": "开发", "kind": "交付", "title": "塞得下吗_第10轮交付回报", "artifact": "塞得下吗_第10轮交付回报_202611120925.pdf", "note": "同批上传 2 份", "state": "done", "auto": true}
+{"t": "2026-11-12 15:10", "author": "文创", "kind": "任务书", "title": "第10轮验收裁决：通过（零处对不上）", "artifact": "第10轮验收裁决与第11轮任务书_202611121510.pdf", "note": "主档249082/9c90e88c三方一致；数据js907873/4d274f45（jsDelivr）一致；P0-1三档overlap=0、间隙8px、遮挡15/15命中自身；红线算术2866/883.2KB/3885(+0.34%)/656B双算法全部复现。新发现：tests未进仓库→清单不可执行；FPS达标线软光栅不可达已撤销改纵向回退线；172B结构开销未说明", "state": "done", "auto": true}
