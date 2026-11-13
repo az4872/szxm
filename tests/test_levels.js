@@ -7,7 +7,7 @@
 'use strict';
 var L = require('./lib.js');
 var fs = require('fs');
-var htmlPath = process.argv[2] || require('path').join(__dirname, '..', 'output', 'szxm_cdn.html');
+var htmlPath = process.argv[2] || require('path').join(__dirname, '..', '..', 'output', 'index.html');
 var A = L.loadArtifact(htmlPath);
 var EXP_PATH = require('path').join(__dirname, 'expected_levels.json');
 var EXPECTED = JSON.parse(fs.readFileSync(EXP_PATH, 'utf8'));
