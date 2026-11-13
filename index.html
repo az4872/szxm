@@ -95,16 +95,19 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .pstd{font-size:9px;color:#7cc0ff;font-variant-numeric:tabular-nums;white-space:nowrap}
 .pitem.hasqty .pbox{padding-right:0}
 .smark{font-style:normal;font-size:10px;color:#ffcf8a;font-weight:600}
-.paddrow{display:flex;gap:6px;margin-top:8px}
-.paddrow .padd{margin-top:0;width:auto;flex:1 1 auto}
-/* [v46] 减号原来是 position:absolute + bottom:7px 的 23px 小按钮，
-   而「＋ 加入清单」是 z-index:1 的整行按钮，两者在卡片底部完全重叠，
-   减号被压在下面 —— 用户点减号位置命中 add，表现就是「只能加、永远减不掉」。
-   现在改成与「再加一件」并排的两个 32px 按钮，任何一档屏幕都点得到。 */
-.pminus{display:block;flex:0 0 72px;height:32px;line-height:30px;padding:0;text-align:center;
- border-radius:8px;border:1px solid rgba(255,110,110,.55);background:rgba(255,70,70,.16);
- color:#ffb3b3;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer}
+/* [v49] 合入开发 v46 方案：减号 / 件数 / 加号 独立一行，全部 44×44，
+   与「＋ 加入清单」垂直分行，两个矩形几何上不可能重叠。
+   v46 实测（CDP 真实鼠标，三档视口 390/500/1440）：重叠 0.00 px²、121 点 hit-test 全命中 .pminus、点减号 qty 2→1。 */
+.pqrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.pminus{display:block;flex:0 0 44px;width:44px;height:44px;line-height:42px;padding:0;text-align:center;
+ border-radius:9px;border:1px solid rgba(255,110,110,.55);background:rgba(255,70,70,.16);
+ color:#ffb3b3;font-size:20px;font-weight:600;font-family:inherit;cursor:pointer;touch-action:manipulation}
 .pminus:active{background:rgba(255,70,70,.34)}
+.pplus{display:block;flex:0 0 44px;width:44px;height:44px;line-height:42px;padding:0;text-align:center;
+ border-radius:9px;border:1px solid rgba(77,163,255,.55);background:rgba(77,163,255,.18);
+ color:#cfe3ff;font-size:20px;font-weight:600;font-family:inherit;cursor:pointer;touch-action:manipulation}
+.pplus:active{background:rgba(77,163,255,.34)}
+.pqnum{flex:1 1 auto;text-align:center;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:#e8f1ff}
 .ptotal{display:inline-block;font-size:11px;font-weight:700;color:#7cc0ff;
  background:rgba(77,163,255,.14);border-radius:8px;padding:2px 8px;margin-bottom:7px;
  font-variant-numeric:tabular-nums}
@@ -263,6 +266,8 @@ body.manual footer{display:none}
 .mb-btn:disabled{opacity:.35}
 body.manual #c{height:calc(100% - 182px)}
 /* v36 T-02：版本号 + 构建时间移到右下角小字（footer 之上），肉眼一眼看出线上是不是最新 */
+.dbgms{display:none;font:11px/16px ui-monospace,monospace;color:#7a8595;margin-top:6px}
+body.dbg .dbgms{display:block}
 #verTag{position:fixed;right:10px;bottom:150px;z-index:13;font-size:10px;line-height:14px;
  color:#8b9db5;font-variant-numeric:tabular-nums;letter-spacing:.2px;pointer-events:none;
  background:rgba(12,16,22,.55);padding:2px 6px;border-radius:6px}
@@ -352,7 +357,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v47</b> · 202611122335</div>
+<div id="verTag"><b>v49</b> · 202611130105</div>
 
 <div id="tripBadge"></div>
 
@@ -982,15 +987,161 @@ function packCore(bin, items, topPenalty) {
       util: vol / cap, vol: vol / 1e6, cap: cap / 1e6 };
 }
 
+/* 失败兜底：小规模精确搜索（极点候选 + 体素碰撞 + 支撑率）
+   贪心 packCore 在「大而薄 + 高」组合上必然漏解。典型案例：
+   床垫 190×150×25 铺满整块底面 → 小冰箱只能叠在床垫上且无法直立（25+170 > 175），
+   被迫躺成 65×170×60 占满整仓深度 → 180 长的书架在全仓找不到任何一个位置，
+   于是 3 件只装 2 件、利用率 23% 却判「装不下」。
+   件数 ≤ 4 时用 DFS 全排列 + 极点候选搜索，实测 0~3ms 可给出可行解或证明无解。 */
+function exactPack(bin, items, deadline) {
+ const cell = VOX_CELL;
+ const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
+ const meta = items.map(function (it) {
+  const d = { l: it.l, w: it.w, h: it.h };
+  return { it: it, ors: orientations(d), vox: voxelizeBox(d, cell) };
+ });
+ const order = meta.map(function (m, i) { return i; }).sort(function (a, b) {
+  const va = meta[a].it.l * meta[a].it.w * meta[a].it.h;
+  const vb = meta[b].it.l * meta[b].it.w * meta[b].it.h;
+  return vb - va;
+ });
+ const placed = [];
+
+ function supportOK(box) {
+  if (box.z < 0.001) return true;
+  let cover = 0;
+  for (let i = 0; i < placed.length; i++) {
+   const p = placed[i];
+   if (Math.abs((p.z + p.h) - box.z) > 0.6) continue;
+   const ox = Math.min(box.x + box.l, p.x + p.l) - Math.max(box.x, p.x);
+   const oy = Math.min(box.y + box.w, p.y + p.w) - Math.max(box.y, p.y);
+   if (ox > 0 && oy > 0) cover += ox * oy;
+  }
+  return cover / (box.l * box.w) >= SUP_MIN;
+ }
+ function collide(box, vox, oi) {
+  for (let i = 0; i < placed.length; i++) {
+   const p = placed[i];
+   if (box.x >= p.x + p.l - 1e-6 || p.x >= box.x + box.l - 1e-6) continue;
+   if (box.y >= p.y + p.w - 1e-6 || p.y >= box.y + box.w - 1e-6) continue;
+   if (box.z >= p.z + p.h - 1e-6 || p.z >= box.z + box.h - 1e-6) continue;
+   if (voxHit(vox[oi], box.x, box.y, box.z, p._voxPose, p.x, p.y, p.z, cell)) return true;
+  }
+  return false;
+ }
+ let _tk = 0;
+ function dfs(k) {
+  if (k === meta.length) return true;
+  if (deadline && (++_tk & 63) === 0 && _nowMs() > deadline) return null;
+  const m = meta[order[k]];
+  const xs = [0], ys = [0], zs = [0];
+  for (let i = 0; i < placed.length; i++) {
+   const p = placed[i];
+   xs.push(p.x + p.l); ys.push(p.y + p.w); zs.push(p.z + p.h);
+  }
+  const seen = {}, pts = [];
+  for (let xi = 0; xi < xs.length; xi++) for (let yi = 0; yi < ys.length; yi++) for (let zi = 0; zi < zs.length; zi++) {
+   const key = xs[xi] + '_' + ys[yi] + '_' + zs[zi];
+   if (seen[key]) continue;
+   seen[key] = 1;
+   pts.push([xs[xi], ys[yi], zs[zi]]);
+  }
+  pts.sort(function (a, b) { return a[2] - b[2] || a[0] - b[0] || a[1] - b[1]; });
+  for (let oi = 0; oi < m.ors.length; oi++) {
+   const o = m.ors[oi], l = o[0], w = o[1], h = o[2];
+   for (let pi = 0; pi < pts.length; pi++) {
+    const x = pts[pi][0], y = pts[pi][1], z = pts[pi][2];
+    if (x + l > W + 1e-6 || y + w > D + 1e-6 || z + h > H + 1e-6) continue;
+    const box = { x: x, y: y, z: z, l: l, w: w, h: h, name: m.it.name, _oi: oi, _src: m.it, _voxPose: m.vox[oi] };
+    if (!supportOK(box)) continue;
+    if (collide(box, m.vox, oi)) continue;
+    placed.push(box);
+    const _r = dfs(k + 1);
+    if (_r === true) return true;
+    placed.pop();
+    if (_r === null) return null;
+   }
+  }
+  return false;
+ }
+
+ if (dfs(0) !== true) return null;
+ const vol = placed.reduce(function (s, b) { return s + b.l * b.w * b.h; }, 0);
+ const cap = W * D * H;
+ const done = {};
+ for (let i = 0; i < placed.length; i++) done[placed[i]._src] = 1;
+ return {
+  placed: placed.map(function (p) {
+   return { x: p.x, y: p.y, z: p.z, l: p.l, w: p.w, h: p.h, name: p.name, _oi: p._oi, _src: p._src };
+  }),
+  failed: items.filter(function (it) { return !done[it]; }).map(function (it) { return it.name; }),
+  count: placed.length, total: items.length,
+  util: vol / cap, vol: vol / 1e6, cap: cap / 1e6
+ };
+}
+
+/* [P0-1-c] 总耗时守卫：pack() 含兜底超过 200ms 即放弃精确搜索、回退贪心 */
+const PACK_MS_CAP = 200;
+function _nowMs() {
+ return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
+/* [P0-1-b] 件数 >4：对 failed 件做局部回溯——插到已落位序列的每个位置、再与前一邻件相邻换位，
+   每轮只重放失败件，最多 20 轮，超 deadline 立即停，返回件数更多的解。 */
+function repair(bin, items, base, deadline) {
+ let best = base;
+ for (let iter = 0; iter < 20; iter++) {
+  if (_nowMs() > deadline) break;
+  const seq = best.placed.map(function (p) { return p._src; });
+  const left = items.filter(function (it) { return seq.indexOf(it) < 0; });
+  if (!left.length) break;
+  let gain = false;
+  for (let fi = 0; fi < left.length && !gain; fi++) {
+   const f = left[fi];
+   for (let pos = seq.length; pos >= 0 && !gain; pos--) {
+    if (_nowMs() > deadline) break;
+    const s = seq.slice(0, pos).concat([f], seq.slice(pos));
+    const r = packCore(bin, s, 60);
+    if (r.count > best.count) { best = r; gain = true; }
+   }
+   for (let idx = seq.length - 1; idx > 0 && !gain; idx--) {
+    if (_nowMs() > deadline) break;
+    if (seq.indexOf(f) === idx - 1) continue;
+    const s2 = seq.slice();
+    const fp = s2.indexOf(f);
+    if (fp >= 0) s2.splice(fp, 1);
+    s2.splice(idx - 1, 0, f);
+    const r2 = packCore(bin, s2, 60);
+    if (r2.count > best.count) { best = r2; gain = true; }
+   }
+  }
+  if (!gain) break;
+ }
+ return best;
+}
+
 function pack(bin, items) {
+ const t0 = _nowMs();
+ const fin = function (o) { o._ms = Math.round((_nowMs() - t0) * 100) / 100; return o; };
  const a = packCore(bin, items, 60);
- if (a.failed.length === 0) return a;
+ if (a.failed.length === 0) return fin(a);
  const b = packCore(bin, items, 0);
- return (b.count > a.count) ? b : a;
+ let best = (b.count > a.count) ? b : a;
+ if (best.count === items.length) return fin(best);
+ const dl = t0 + PACK_MS_CAP;
+ if (items.length <= 4) {
+  const e = exactPack(bin, items, dl);
+  if (e && e.count > best.count) best = e;
+ } else if (_nowMs() < dl) {
+  const r = repair(bin, items, best, dl);
+  if (r && r.count > best.count) best = r;
+ }
+ if (_nowMs() - t0 > PACK_MS_CAP) best._guard = 'timeout';
+ return fin(best);
 }
 
 if (typeof module !== 'undefined') module.exports = {
- pack, packCore, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN,
+ pack, packCore, repair, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN, PACK_MS_CAP,
  voxelize, voxelizeBox, voxHit, supportRatio, GAP_HARD, GAP_SOFT
 };
 //</script>
@@ -2069,9 +2220,11 @@ function renderPicker() {
    })() + '</div>' +
    poseLine + sideBtn + boxLine +
    (q ?
-    '<div class="paddrow"><button class="pminus" data-act="minus">− 减一件</button>' +
-    '<button class="padd" data-act="add">＋ 再加一件</button></div>' +
-    '<span class="pqty">×' + q + '</span>'
+    '<div class="pqrow"><button class="pminus" data-act="minus" aria-label="减一件">−</button>' +
+    '<span class="pqnum">' + q + '</span>' +
+    '<button class="pplus" data-act="add" aria-label="加一件">＋</button></div>' +
+    '<span class="pqty">×' + q + '</span>' +
+    '<button class="padd" data-act="add">＋ 加入清单</button>'
     : '<button class="padd" data-act="add">＋ 加入清单</button>') +
    '</div>';
  }
@@ -3897,6 +4050,10 @@ function showResult(r, inst) {
     '<button class="ract" data-r="back">返回改清单</button>' +
     '<button class="ract" data-r="repack">重新装填</button>' +
     '</div>';
+ if (r && r._ms !== undefined) {
+  if (location.hash.indexOf('dbg') >= 0) document.body.classList.add('dbg');
+  h += '<div class="dbgms">pack ' + r._ms + ' ms' + (r._guard ? ' · 超时回退贪心' : '') + '</div>';
+ }
  els.result.innerHTML = h;
  els.result.classList.add('show');
  document.body.classList.add('ropen');
@@ -4606,7 +4763,7 @@ window.__API__ = {
   }
   return out;
  },
- posesOf: posesOf, POSE_SPEC: POSE_SPEC,
+ posesOf: posesOf, POSE_SPEC: POSE_SPEC, PACK_MS_CAP: PACK_MS_CAP,
  loadLevel: loadLevel, levels: function () { return LEVELS; },
  manualStart: manualStart,
  /* 探针：某品类的真实体素空腔统计（T-05 桌子腿间、T-04 自行车轮内空腔是否有空列） */
@@ -4641,8 +4798,9 @@ window.__API__ = {
    items.push(it);
   }
   var r = pack(binDims, items);
+  /* [P0-1-c 观测] 透传耗时与守卫标记，供 tests/guard200.js 与结果面板 .dbgms 读取 */
   return { count: r.count, total: r.total, failed: r.failed, util: r.util,
-       vol: r.vol, cap: r.cap,
+       vol: r.vol, cap: r.cap, _ms: r._ms, _guard: r._guard,
        boxes: r.placed.map(function (b) { return { name: b.name, x: b.x, y: b.y, z: b.z, l: b.l, w: b.w, h: b.h }; }) };
  },
  /* T-07 手动全向旋转探针：axis = 'z' 纵轴转向 / 'x' 横轴侧倒 / 'y' 横轴翻倒 */
