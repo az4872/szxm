@@ -357,7 +357,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v49</b> · 202611130105</div>
+<div id="verTag"><b>v50</b> · 202611132230</div>
 
 <div id="tripBadge"></div>
 
@@ -3873,8 +3873,11 @@ function showResult(r, inst) {
    binPts = Math.round(300 * Math.max(0, 1 - Math.min(1, slack / 0.5)));
   }
 
+  /* 第13轮 D-2（任务书 v7_202611132030）裁决：边界由 secs > 0 放宽为 secs >= 0。
+     原写法把「恰好 0 秒」判成未计时而不给速度分，与 R-5「0 秒边界 = 5900」冲突。
+     计时有效性由上层 levelRunning 决定，此处只负责衰减计算：30 秒内满分 200，之后每超 1 秒扣 4。 */
   var speedPts = 0;
-  if (LV.limit > 0 && secs > 0) {
+  if (LV.limit > 0 && secs >= 0) {
    speedPts = Math.max(0, Math.round(200 - Math.max(0, secs - 30) * 4));
   }
 
