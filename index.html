@@ -357,7 +357,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v50</b> · 202611132230</div>
+<div id="verTag"><b>v51</b> · 202611132338</div>
 
 <div id="tripBadge"></div>
 
@@ -615,7 +615,8 @@ function voxelizeBox(dims, cell) {
 function voxOf(it, oi) {
  const v = it._vox;
  if (v && v[oi]) return v[oi];
- if (!it._voxBox) it._voxBox = voxelizeBox(it._d, VOX_CELL);
+ const d = it._d || { l: it.l, w: it.w, h: it.h };
+ if (!it._voxBox) it._voxBox = voxelizeBox(d, VOX_CELL);
  return it._voxBox[oi];
 }
 
@@ -728,6 +729,18 @@ function partsHit(parts, org, placed, cell) {
  return false;
 }
 
+/* 第13轮第2条兜底（v8_202611132312）：稳定身份键。
+   repair 判「未放」不再用引用相等 —— 即使将来又有人复制物品对象，也不会静默失效。
+   WeakMap 按对象身份分配，同一实例恒定同号；不写入物品对象本身，不污染展开拷贝。 */
+const _ITEM_UID = new WeakMap();
+let _itemUidSeq = 0;
+function itemUid(it) {
+ if (it === null || typeof it !== 'object') return 0;
+ let u = _ITEM_UID.get(it);
+ if (u === undefined) { u = ++_itemUidSeq; _ITEM_UID.set(it, u); }
+ return u;
+}
+
 function packCore(bin, items, topPenalty) {
  const cell = VOX_CELL;
  /* P0-C2：仓壁安全量改为仓内尺寸内缩；物品之间零间隙 */
@@ -764,8 +777,11 @@ function packCore(bin, items, topPenalty) {
   return bestP >= SUP_MIN ? bestP : sr;
  }
 
+ /* 第13轮第2条（v8_202611132312）：浅拷贝必须回指原始件（_ref），落位时 _src 取回原始件。
+    原写法 _src 指向拷贝，repair 用原始对象做引用比较时 indexOf 恒为 -1，
+    left 恒等于投入的全部件，于是已装件被当未装件重灌 —— 件数虚高、结果随超时漂移。 */
  const sorted = items.map(it => ({
-  ...it, _d: effDims(it), _v: it.l * it.w * it.h
+  ...it, _ref: it, _d: effDims(it), _v: it.l * it.w * it.h
  })).sort((a, b) => b._v - a._v);
 
  function stamp(b, vox) {
@@ -923,7 +939,7 @@ function packCore(bin, items, topPenalty) {
   if (best) {
    const b = best.box;
    b._oi = best.oi;
-   b._src = it;
+   b._src = it._ref || it;   /* 第13轮第2条：回指原始件，不再暴露浅拷贝 */
    if (best.parts) {
     /* parts 件：只有触底块写高度场（腿间列保持 0，后面的东西才塞得进去）；
       所有块的顶面都登记为平台（桌面顶面要能放东西）。 */
@@ -1068,13 +1084,13 @@ function exactPack(bin, items, deadline) {
  if (dfs(0) !== true) return null;
  const vol = placed.reduce(function (s, b) { return s + b.l * b.w * b.h; }, 0);
  const cap = W * D * H;
- const done = {};
- for (let i = 0; i < placed.length; i++) done[placed[i]._src] = 1;
+ const done = new Set();
+ for (let i = 0; i < placed.length; i++) done.add(itemUid(placed[i]._src));
  return {
   placed: placed.map(function (p) {
    return { x: p.x, y: p.y, z: p.z, l: p.l, w: p.w, h: p.h, name: p.name, _oi: p._oi, _src: p._src };
   }),
-  failed: items.filter(function (it) { return !done[it]; }).map(function (it) { return it.name; }),
+  failed: items.filter(function (it) { return !done.has(itemUid(it)); }).map(function (it) { return it.name; }),
   count: placed.length, total: items.length,
   util: vol / cap, vol: vol / 1e6, cap: cap / 1e6
  };
@@ -1093,7 +1109,9 @@ function repair(bin, items, base, deadline) {
  for (let iter = 0; iter < 20; iter++) {
   if (_nowMs() > deadline) break;
   const seq = best.placed.map(function (p) { return p._src; });
-  const left = items.filter(function (it) { return seq.indexOf(it) < 0; });
+  /* 第13轮第2条兜底：改用稳定身份键判「未放」，不再用 seq.indexOf 引用相等 */
+  const seqIds = new Set(seq.map(function (it) { return itemUid(it); }));
+  const left = items.filter(function (it) { return !seqIds.has(itemUid(it)); });
   if (!left.length) break;
   let gain = false;
   for (let fi = 0; fi < left.length && !gain; fi++) {
@@ -1142,6 +1160,7 @@ function pack(bin, items) {
 
 if (typeof module !== 'undefined') module.exports = {
  pack, packCore, repair, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN, PACK_MS_CAP,
+ itemUid,
  voxelize, voxelizeBox, voxHit, supportRatio, GAP_HARD, GAP_SOFT
 };
 //</script>
@@ -3873,11 +3892,12 @@ function showResult(r, inst) {
    binPts = Math.round(300 * Math.max(0, 1 - Math.min(1, slack / 0.5)));
   }
 
-  /* 第13轮 D-2（任务书 v7_202611132030）裁决：边界由 secs > 0 放宽为 secs >= 0。
-     原写法把「恰好 0 秒」判成未计时而不给速度分，与 R-5「0 秒边界 = 5900」冲突。
-     计时有效性由上层 levelRunning 决定，此处只负责衰减计算：30 秒内满分 200，之后每超 1 秒扣 4。 */
+  /* 第13轮第1条（v8_202611132312 终版）：未计时不给速度分；计时有效性由 levelRunning 决定；
+     30 秒内满分 200，之后每超 1 秒扣 4。
+     注：v7 的「放宽为 secs >= 0」已由 v8 作废 —— secs 永不为负，>= 0 恒成立等于拆掉守卫，
+     未计时会白拿 200 分。不用 levelStartMs > 0 守卫：测试桩假时钟从 0 起，进关瞬间被判未计时。 */
   var speedPts = 0;
-  if (LV.limit > 0 && secs >= 0) {
+  if (LV.limit > 0 && secs > 0) {
    speedPts = Math.max(0, Math.round(200 - Math.max(0, secs - 30) * 4));
   }
 
@@ -5456,6 +5476,14 @@ window.SZXM = {
    verdicts: vd,
    route: { pathBlocked: rt.pathBlocked, blocked: rt.blocked,
         cornerFail: rt.corridor.filter(function (x) { return !x.ok; }).length }
+  };
+ }
+};
+})();
+</script>
+</body>
+</html>
+Fail: rt.corridor.filter(function (x) { return !x.ok; }).length }
   };
  }
 };
