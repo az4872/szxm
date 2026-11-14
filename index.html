@@ -459,7 +459,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v67</b> · 202611150439</div>
+<div id="verTag"><b>v70</b> · 202611150545</div>
 
 <div id="tripBadge"></div>
 
@@ -2365,9 +2365,16 @@ function makePartsBody(cat, parts, pl, ph, pw) {
   e.position.copy(m.position);
   g.add(e);
  }
- /* [FIX-GAP-01] Y 不缩（堆叠贴合），X/Z 按绝对量扣 0.5cm；
-    整组同比缩放，段与段的相对位置同步缩，段间不会出现内部缝隙 */
- g.scale.set((szXZ(pl) + OVL_XZ * 2) / pl, 1, (szXZ(pw) + OVL_XZ * 2) / pw);
+ /* [FIX-GAP-01] X/Z 按绝对量扣 0.5cm；整组同比缩放，段与段的相对位置同步缩，
+    段间不会出现内部缝隙。
+    [FIX-CAP-06 20261115] Y 也留与真实模型分支相同的防共面余量：段件顶面若正好落在
+    占位盒顶面，与上层件底面严格共面会闪深度冲突斑纹（审查 R3 指出的分支遗漏）。
+    缩放以 g 原点（占位盒中心）为基准，上下会各收 CAP_EPS/2，故整体下移 CAP_EPS/2
+    把底面重新对齐占位盒底面。 */
+ var CAP_EPS_P = Math.min(0.15, Math.max(0.02, ph * 0.02));
+ var kY = Math.max(0.02, ph - CAP_EPS_P) / (ph || 1);
+ g.scale.set((szXZ(pl) + OVL_XZ * 2) / pl, kY, (szXZ(pw) + OVL_XZ * 2) / pw);
+ g.position.y -= CAP_EPS_P / 2;
  /* [FIX-CAP-02 20261115] 删掉分段件的封顶盖板：段本身全是 Box，顶面天然平整，
     那块 0.35~1.0cm 的纯色盖板纯属多余，只会在每件顶部切出一条硬边「盖板」。 */
  return g;
@@ -2502,10 +2509,17 @@ function makeObjSized(cat, pl, ph, pw, placed) {
    /* [FIX-CAP-01 20261115] 取消「压扁模型 + 厚盖板」。原实现把模型 Y 方向压掉
       capT=0.35~1.0cm，再补一块同色纯色厚板封顶，结果每件顶部都多出一层无贴图的
       硬边「盖板」，大件和近景上非常显眼（用户实测反馈「几乎所有模型上都有一个盖板」）。
-      现在模型按占位高度铺满全高，顶面就是模型自己的真实顶面，不再有任何补板。 */
+      现在模型按占位盒铺满长宽、高度只留 ≤0.15cm 的防共面余量，顶面就是模型自己的真实顶面，不再有任何补板。 */
+   /* [FIX-CAP-05 20261115] 顶面余量：模型顶面比占位盒顶低 CAP_EPS。这是有意留的
+      「防深度冲突」余量，不是「铺满全高」——叠放时上层件底面与下层模型顶面之间留
+      ≤CAP_EPS 的微小间隙，肉眼不可见，但足以让 GPU 不把它们判成共面（共面会闪斑纹）。
+      余量按高度自适应：大件封顶 0.15cm，小件按 2% 计且不低于 0.02cm，
+      避免 3cm 的抽屉盒被压扁 5%。底面始终与占位盒底面齐平：不下沉穿地、也不悬空。
+      （旧版用「整体下移」实现同样效果，会让底部比占位底面低 0.15cm 嵌进地板，已弃用。） */
+   var CAP_EPS = Math.min(0.15, Math.max(0.02, ph * 0.02));
    wrap.scale.set(
     (szXZ(pl) + OVL_XZ * 2) / (size.x || 1),
-    ph / (size.y || 1),
+    Math.max(0.01, ph - CAP_EPS) / (size.y || 1),
     (szXZ(pw) + OVL_XZ * 2) / (size.z || 1)
    );
    var b2 = new T.Box3().setFromObject(wrap);
@@ -2513,29 +2527,34 @@ function makeObjSized(cat, pl, ph, pw, placed) {
    /* X/Z 居中，Y 底部坐实到占位盒底面（防止模型悬浮在盒中间） */
    wrap.position.x -= c2.x;
    wrap.position.z -= c2.z;
-   /* 底部坐实后再整体下压 0.15cm：模型顶面比占位盒顶低 0.15cm，
-      上层件压上来时不与它严格共面，避免贴合面出现深度冲突斑纹（<1px，看不出缝） */
-   wrap.position.y += (-ph / 2 - b2.min.y - 0.15);
+   wrap.position.y += (-ph / 2 - b2.min.y);
    body = new T.Group();
    body.add(wrap);
    /* [FIX-CAP-03 20261115] 彻底去掉模型分支的封顶盖板。
       用户实测指出「几乎所有模型头上都多一块盖板」：旧做法是把模型 Y 轴压掉 0.35~1.0cm，
       再补一块无贴图的纯色板封顶，那块板只有单一颜色、边缘笔直，和模型本体的贴图质感
-      对不上，看起来就是扣了个饭盒盖。现在①模型不再压扁、按占位高度铺满（wrap.scale.y = ph）；
+      对不上，看起来就是扣了个饭盒盖。现在①模型不再压扁（旧版压掉 0.35~1.0cm），高度按 ph 减去 ≤0.15cm 防共面余量；
       ②封板整块删除，模型顶面就是它自己的真实顶面，上层件压上来按真实造型接触。
       段件分支的同类盖板已一并删除（见 FIX-CAP-02）。 */
   }
  }
  if (!body) {
-  /* [FIX-GAP-01] 盒体与模型同一口径：X/Z = 占位 - 0.5cm，Y = 占位（上下贴合） */
-  var geo = new T.BoxGeometry(szXZ(pl) + OVL_XZ * 2, ph, szXZ(pw) + OVL_XZ * 2);
+  /* [FIX-GAP-01] 盒体与模型同一口径：X/Z = 占位 - 0.5cm
+     [FIX-CAP-06 20261115] Y 也留与真实模型分支相同的防共面余量（原为整 ph，
+     与上层件底面严格共面会闪斑纹），并整体下移 CAP_EPS/2 保持底面对齐。 */
+  var CAP_EPS_B = Math.min(0.15, Math.max(0.02, ph * 0.02));
+  var geo = new T.BoxGeometry(szXZ(pl) + OVL_XZ * 2, Math.max(0.5, ph - CAP_EPS_B), szXZ(pw) + OVL_XZ * 2);
   body = new T.Group();
-  body.add(new T.Mesh(geo, itemMat(cat)));
+  var capBoxMesh = new T.Mesh(geo, itemMat(cat));
+  capBoxMesh.position.y = -CAP_EPS_B / 2;
+  body.add(capBoxMesh);
   /* [FIX-GAP-05] 兜底盒体的顶面本就是完整平面，无需顶盖也无需垫板 */
-  body.add(new T.LineSegments(
+  var capBoxEdge = new T.LineSegments(
    new T.EdgesGeometry(geo),
    new T.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34 })
-  ));
+  );
+  capBoxEdge.position.y = -CAP_EPS_B / 2;
+  body.add(capBoxEdge);
  }
  g.add(body);
  g.add(makeShadowPatch(pl, ph, pw));
