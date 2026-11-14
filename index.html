@@ -459,7 +459,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v66</b> · 202611150429</div>
+<div id="verTag"><b>v67</b> · 202611150439</div>
 
 <div id="tripBadge"></div>
 
@@ -2513,7 +2513,9 @@ function makeObjSized(cat, pl, ph, pw, placed) {
    /* X/Z 居中，Y 底部坐实到占位盒底面（防止模型悬浮在盒中间） */
    wrap.position.x -= c2.x;
    wrap.position.z -= c2.z;
-   wrap.position.y += (-ph / 2 - b2.min.y);
+   /* 底部坐实后再整体下压 0.15cm：模型顶面比占位盒顶低 0.15cm，
+      上层件压上来时不与它严格共面，避免贴合面出现深度冲突斑纹（<1px，看不出缝） */
+   wrap.position.y += (-ph / 2 - b2.min.y - 0.15);
    body = new T.Group();
    body.add(wrap);
    /* [FIX-CAP-03 20261115] 彻底去掉模型分支的封顶盖板。
