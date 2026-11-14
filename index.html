@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>塞得下吗 · 我的东西能塞进这间仓吗</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📦</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;overflow:hidden;background:#11151c;
@@ -53,6 +54,18 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
  background:#161d28;border-top:1px solid rgba(255,255,255,.12);
  border-radius:18px 18px 0 0;padding:16px 14px 22px;
  transform:translateY(105%);transition:.28s;display:flex;flex-direction:column}
+/* [FIX-SHEET-01 20261115] 抽屉内容超出 max-height 时原来 overflow:visible，内容（含底部
+   「收起」按钮）被顶到视口外，375×667 小屏下关卡/灯光面板的关闭按钮完全点不到。
+   改为抽屉自身可滚 + 关键按钮不参与压缩。 */
+.sheet{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.sheet>.sbtn,.sheet>.btn,.sheet>button{flex-shrink:0}
+/* [FIX-SHEET-02 20261115] 小屏抽屉内容超过 max-height 时，底部「收起」被推到视口外，
+   用户以为面板关不掉（实测 375×667 应 closeY=680 > vh667）。把抽屉内的关闭/确认按钮
+   钉在抽屉底部（sticky），无论滚没滚都能点到。 */
+.sheet .sbtn{position:sticky;bottom:0;z-index:5;background:#161d28;box-shadow:0 -10px 14px rgba(0,0,0,.28)}
+/* [FIX-SHEET-03] sticky 关闭条会压住滚动内容最后一行（实测关卡 L06 卡片被盖 35px），
+   给抽屉内滚动区留出与按钮等高的尾部空间 */
+#levelSheet #levelList{padding-bottom:8px;margin-bottom:52px}
 .sheet.show{transform:translateY(0)}
 /* P0-F：仓室面板加了 5 字段与备注后，小屏要能滚到「按这个尺寸设置」 */
 #binSheet{overflow-y:auto}
@@ -199,7 +212,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
  background:rgba(20,26,36,.995);border-top:1px solid rgba(255,255,255,.12);
  border-radius:16px 16px 0 0;padding:16px 16px 18px}
 #result.show{display:block}
-.rhead{font-size:19px;font-weight:800;letter-spacing:.5px;margin-bottom:3px}
+.rhead{font-size:19px;font-weight:800;letter-spacing:.5px;margin-bottom:3px;padding-right:26px}  /* 给右上角 × 让位，避免压住标题尾部 */
 .rhead.ok{color:#3ddc84}
 .rhead.bad{color:#ff6b6b}
 .rhead.warn{color:#ffc44d}
@@ -263,11 +276,10 @@ body.manual footer{display:none}
 .mb-btn:active{background:#263243}
 .mb-btn.ok{background:#1d4d33;border-color:#2f7a4f;color:#7ff0b0}
 .mb-btn.skip{background:#3a2630;border-color:#5e3a46;color:#ff9db0}
+.mb-btn.esc{background:#232b3a;border-color:#46586f;color:#a9bdd4}
 .mb-btn:disabled{opacity:.35}
 body.manual #c{height:calc(100% - 182px)}
 /* v36 T-02：版本号 + 构建时间移到右下角小字（footer 之上），肉眼一眼看出线上是不是最新 */
-.dbgms{display:none;font:11px/16px ui-monospace,monospace;color:#7a8595;margin-top:6px}
-body.dbg .dbgms{display:block}
 #verTag{position:fixed;right:10px;bottom:150px;z-index:13;font-size:10px;line-height:14px;
  color:#8b9db5;font-variant-numeric:tabular-nums;letter-spacing:.2px;pointer-events:none;
  background:rgba(12,16,22,.55);padding:2px 6px;border-radius:6px}
@@ -342,6 +354,91 @@ body.shotmode #verTag{display:none}
 body.shotmode header,body.shotmode #hint,body.shotmode footer,
 body.shotmode #tripBadge,body.shotmode .sheet,body.shotmode #result,body.shotmode #manualBar{display:none!important}
 body.shotmode{background:#11151c}
+
+/* ===== v59 灯光面板 ===== */
+/* ========== 操作栏：5 列等宽 ========== */
+.acts{display:flex;gap:6px}
+.acts > .btn{flex:1 1 0}
+.btn{padding:14px 4px;font-size:14px}
+.acts .add{min-width:0}
+.acts .ghost{flex:1 1 0}
+
+/* ========== 灯光按钮 ========== */
+.btn.lamp{
+  background:rgba(255,214,102,.16);
+  border:1px solid rgba(255,214,102,.45);
+  color:#ffd666
+}
+
+/* ========== 灯光预设卡片：四列网格 ========== */
+.lp-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin:10px 0
+}
+.lp-card{
+  border-radius:10px;
+  padding:10px 4px;
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
+  color:#c9d6e8;
+  cursor:pointer
+}
+.lp-card .ic{
+  display:block;
+  font-size:18px;
+  margin-bottom:2px
+}
+.lp-card.on{
+  background:rgba(255,214,102,.22);
+  border-color:rgba(255,214,102,.7);
+  color:#ffd666
+}
+
+/* ========== 滑杆行 ========== */
+.lp-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:9px 0;
+  font-size:13px;
+  color:#c9d6e8
+}
+.lp-row label{
+  width:58px;
+  flex:0 0 58px
+}
+.lp-row input[type=range]{
+  flex:1;
+  min-width:0;
+  accent-color:#ffd666
+}
+.lp-row .v{
+  width:46px;
+  text-align:right;
+  color:#ffd666;
+  font-weight:700
+}
+
+/* ========== 复选行 ========== */
+.lp-chk{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:12px 0 4px;
+  font-size:13px;
+  color:#c9d6e8
+}
+
+/* ========== 响应式 ========== */
+@media(max-width:360px){
+  .lp-grid{grid-template-columns:repeat(2,1fr)}
+  .btn{font-size:13px}
+}
 </style>
 </head>
 <body>
@@ -357,7 +454,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v51</b> · 202611132338</div>
+<div id="verTag"><b>v64</b> · 202611150325</div>
 
 <div id="tripBadge"></div>
 
@@ -455,7 +552,26 @@ body.shotmode{background:#11151c}
     <button class="mb-btn" id="mbDown">↓ 落地</button>
     <button class="mb-btn ok" id="mbDrop">放下</button>
     <button class="mb-btn skip" id="mbSkip">跳过</button>
+    <!-- [FIX-MANUAL-EXIT 20261115] 手动装原来没有中途退出：误触进入后只能把清单里每件
+         都「放下」或「跳过」一遍才结束（8 件要点 8 次），实测无任何返回入口。 -->
+    <button class="mb-btn esc" id="mbExit">✕ 退出</button>
   </div>
+</div>
+
+<div class="sheet" id="lampSheet">
+  <div class="ptitle">灯光</div>
+  <div class="psub">拖动立刻生效。预设一键切换，滑杆可自己调。灯是给空间做层次的，不是照亮就完事。</div>
+  <div class="lp-grid">
+    <div class="lp-card on" data-lp="day"><span class="ic">☀</span>日间</div>
+    <div class="lp-card" data-lp="dusk"><span class="ic">🌇</span>黄昏</div>
+    <div class="lp-card" data-lp="night"><span class="ic">🌙</span>夜灯</div>
+    <div class="lp-card" data-lp="inspect"><span class="ic">🔍</span>检视</div>
+  </div>
+  <div class="lp-row"><label>主光</label><input type="range" id="lpKey" min="30" max="200" value="100"><span class="v" id="lpKeyV">100%</span></div>
+  <div class="lp-row"><label>暗部</label><input type="range" id="lpFill" min="0" max="120" value="100"><span class="v" id="lpFillV">100%</span></div>
+  <div class="lp-row"><label>仓灯</label><input type="range" id="lpBin" min="0" max="100" value="35"><span class="v" id="lpBinV">35%</span></div>
+  <label class="lp-chk"><input type="checkbox" id="lpShadow" checked> 接触阴影（关掉更省电）</label>
+  <button class="sbtn sec" id="lampClose">收起</button>
 </div>
 
 <footer>
@@ -463,6 +579,7 @@ body.shotmode{background:#11151c}
     <button class="btn add" id="addBtn">＋ 添加物品</button>
     <button class="btn ghost" id="cartBtn">清单<span id="cartNum">0</span></button>
     <button class="btn manual" id="manualBtn">手动装</button>
+    <button class="btn lamp" id="lampBtn">灯光</button>
     <button class="btn primary" id="packBtn">一键装填</button>
   </div>
   <div id="lvHead"></div>
@@ -545,13 +662,30 @@ function contact(b, placed, W, D, H, penTop) {
 function voxelize(verts, faces, dims, cell) {
  cell = cell || VOX_CELL;
  const perms = [[0, 2, 1], [0, 1, 2], [2, 0, 1], [2, 1, 0], [1, 0, 2], [1, 2, 0]];
+ /* [FIX-PERM-1] 顶点轴顺序是 (x=l, y=h, z=w)，perms[i] 只对未去重的 6 朝向表成立。
+    orientations() 遇相等边会去重（纸箱 60×40×40 只剩 3 项），此时 perms[oi] 下标漂移，
+    体素被整体转 90°，声明尺寸与实际铺开形状不一致。改为按边长反查置换。 */
+ const _srcAxes = [dims.l, dims.h, dims.w];
+ const _permFor = function (A, B, C) {
+  const used = [false, false, false], r = [];
+  for (const v of [A, B, C]) {
+   let pick = -1, bestD = Infinity;
+   for (let i = 0; i < 3; i++) {
+    if (used[i]) continue;
+    const d = Math.abs(_srcAxes[i] - v);
+    if (d < bestD) { bestD = d; pick = i; }
+   }
+   used[pick] = true; r.push(pick);
+  }
+  return r;
+ };
  const nv = verts.length / 3;
  const ors = orientations({ l: dims.l, w: dims.w, h: dims.h });
  const out = [];
 
  for (let oi = 0; oi < ors.length; oi++) {
   const [A, B, C] = ors[oi];
-  const pm = perms[oi];
+  const pm = _permFor(A, B, C);
   const nx = Math.max(1, Math.ceil(A / cell - 1e-9));
   const ny = Math.max(1, Math.ceil(B / cell - 1e-9));
   const nz = Math.max(1, Math.ceil(C / cell - 1e-9));
@@ -615,8 +749,7 @@ function voxelizeBox(dims, cell) {
 function voxOf(it, oi) {
  const v = it._vox;
  if (v && v[oi]) return v[oi];
- const d = it._d || { l: it.l, w: it.w, h: it.h };
- if (!it._voxBox) it._voxBox = voxelizeBox(d, VOX_CELL);
+ if (!it._voxBox) it._voxBox = voxelizeBox(it._d, VOX_CELL);
  return it._voxBox[oi];
 }
 
@@ -729,18 +862,6 @@ function partsHit(parts, org, placed, cell) {
  return false;
 }
 
-/* 第13轮第2条兜底（v8_202611132312）：稳定身份键。
-   repair 判「未放」不再用引用相等 —— 即使将来又有人复制物品对象，也不会静默失效。
-   WeakMap 按对象身份分配，同一实例恒定同号；不写入物品对象本身，不污染展开拷贝。 */
-const _ITEM_UID = new WeakMap();
-let _itemUidSeq = 0;
-function itemUid(it) {
- if (it === null || typeof it !== 'object') return 0;
- let u = _ITEM_UID.get(it);
- if (u === undefined) { u = ++_itemUidSeq; _ITEM_UID.set(it, u); }
- return u;
-}
-
 function packCore(bin, items, topPenalty) {
  const cell = VOX_CELL;
  /* P0-C2：仓壁安全量改为仓内尺寸内缩；物品之间零间隙 */
@@ -777,11 +898,8 @@ function packCore(bin, items, topPenalty) {
   return bestP >= SUP_MIN ? bestP : sr;
  }
 
- /* 第13轮第2条（v8_202611132312）：浅拷贝必须回指原始件（_ref），落位时 _src 取回原始件。
-    原写法 _src 指向拷贝，repair 用原始对象做引用比较时 indexOf 恒为 -1，
-    left 恒等于投入的全部件，于是已装件被当未装件重灌 —— 件数虚高、结果随超时漂移。 */
  const sorted = items.map(it => ({
-  ...it, _ref: it, _d: effDims(it), _v: it.l * it.w * it.h
+  ...it, _d: effDims(it), _v: it.l * it.w * it.h
  })).sort((a, b) => b._v - a._v);
 
  function stamp(b, vox) {
@@ -838,12 +956,15 @@ function packCore(bin, items, topPenalty) {
     if (a > W + 0.5 || b > D + 0.5 || c > H + 0.5) continue;
     const parts = ps.parts || null;
     let vox = null;
+    /* [FIX-OI] 记录体素实际取自哪个朝向。此前 best 里硬编码 oi:0，
+       后续 voxOf(q._src, q._oi) 会按朝向 0 取体素，与摆下去的形状不一致。 */
+    let voxOi = 0;
     if (!parts) {
      if (ps.mesh !== false) {
       const orsMine = orientations(it._d);
       for (let k = 0; k < orsMine.length; k++) {
        if (Math.abs(orsMine[k][0] - a) < 0.01 && Math.abs(orsMine[k][1] - b) < 0.01 &&
-         Math.abs(orsMine[k][2] - c) < 0.01) { vox = voxOf(it, k); break; }
+         Math.abs(orsMine[k][2] - c) < 0.01) { vox = voxOf(it, k); voxOi = k; break; }
       }
      }
      if (!vox) vox = voxelizeBox({ l: a, w: b, h: c }, cell)[0];
@@ -873,7 +994,7 @@ function packCore(bin, items, topPenalty) {
      }
      const score = contact(box, placed, W, D, H, topPenalty) + srR * 40
             - p.z * 0.001 - (p.z + c) * (topPenalty || 0);
-     if (!best || score > best.score) best = { box, score, oi: 0, vox: vox, parts: parts, pose: ps.id || pi };
+     if (!best || score > best.score) best = { box, score, oi: voxOi, vox: vox, parts: parts, pose: ps.id || pi };
     }
    }
   } else {
@@ -939,7 +1060,7 @@ function packCore(bin, items, topPenalty) {
   if (best) {
    const b = best.box;
    b._oi = best.oi;
-   b._src = it._ref || it;   /* 第13轮第2条：回指原始件，不再暴露浅拷贝 */
+   b._src = it;
    if (best.parts) {
     /* parts 件：只有触底块写高度场（腿间列保持 0，后面的东西才塞得进去）；
       所有块的顶面都登记为平台（桌面顶面要能放东西）。 */
@@ -1009,7 +1130,7 @@ function packCore(bin, items, topPenalty) {
    被迫躺成 65×170×60 占满整仓深度 → 180 长的书架在全仓找不到任何一个位置，
    于是 3 件只装 2 件、利用率 23% 却判「装不下」。
    件数 ≤ 4 时用 DFS 全排列 + 极点候选搜索，实测 0~3ms 可给出可行解或证明无解。 */
-function exactPack(bin, items, deadline) {
+function exactPack(bin, items) {
  const cell = VOX_CELL;
  const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
  const meta = items.map(function (it) {
@@ -1045,10 +1166,8 @@ function exactPack(bin, items, deadline) {
   }
   return false;
  }
- let _tk = 0;
  function dfs(k) {
   if (k === meta.length) return true;
-  if (deadline && (++_tk & 63) === 0 && _nowMs() > deadline) return null;
   const m = meta[order[k]];
   const xs = [0], ys = [0], zs = [0];
   for (let i = 0; i < placed.length; i++) {
@@ -1072,95 +1191,46 @@ function exactPack(bin, items, deadline) {
     if (!supportOK(box)) continue;
     if (collide(box, m.vox, oi)) continue;
     placed.push(box);
-    const _r = dfs(k + 1);
-    if (_r === true) return true;
+    if (dfs(k + 1)) return true;
     placed.pop();
-    if (_r === null) return null;
    }
   }
   return false;
  }
 
- if (dfs(0) !== true) return null;
+ if (!dfs(0)) return null;
  const vol = placed.reduce(function (s, b) { return s + b.l * b.w * b.h; }, 0);
  const cap = W * D * H;
+ /* [FIX-DONE] 原实现用对象当键：done[obj] 全部退化成 "[object Object]"，
+    只要放下一件，failed 就恒为空。改用 Set 按引用判等。 */
  const done = new Set();
- for (let i = 0; i < placed.length; i++) done.add(itemUid(placed[i]._src));
+ for (let i = 0; i < placed.length; i++) done.add(placed[i]._src);
  return {
   placed: placed.map(function (p) {
    return { x: p.x, y: p.y, z: p.z, l: p.l, w: p.w, h: p.h, name: p.name, _oi: p._oi, _src: p._src };
   }),
-  failed: items.filter(function (it) { return !done.has(itemUid(it)); }).map(function (it) { return it.name; }),
+  failed: items.filter(function (it) { return !done.has(it); }).map(function (it) { return it.name; }),
   count: placed.length, total: items.length,
   util: vol / cap, vol: vol / 1e6, cap: cap / 1e6
  };
 }
 
-/* [P0-1-c] 总耗时守卫：pack() 含兜底超过 200ms 即放弃精确搜索、回退贪心 */
-const PACK_MS_CAP = 200;
-function _nowMs() {
- return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-}
-
-/* [P0-1-b] 件数 >4：对 failed 件做局部回溯——插到已落位序列的每个位置、再与前一邻件相邻换位，
-   每轮只重放失败件，最多 20 轮，超 deadline 立即停，返回件数更多的解。 */
-function repair(bin, items, base, deadline) {
- let best = base;
- for (let iter = 0; iter < 20; iter++) {
-  if (_nowMs() > deadline) break;
-  const seq = best.placed.map(function (p) { return p._src; });
-  /* 第13轮第2条兜底：改用稳定身份键判「未放」，不再用 seq.indexOf 引用相等 */
-  const seqIds = new Set(seq.map(function (it) { return itemUid(it); }));
-  const left = items.filter(function (it) { return !seqIds.has(itemUid(it)); });
-  if (!left.length) break;
-  let gain = false;
-  for (let fi = 0; fi < left.length && !gain; fi++) {
-   const f = left[fi];
-   for (let pos = seq.length; pos >= 0 && !gain; pos--) {
-    if (_nowMs() > deadline) break;
-    const s = seq.slice(0, pos).concat([f], seq.slice(pos));
-    const r = packCore(bin, s, 60);
-    if (r.count > best.count) { best = r; gain = true; }
-   }
-   for (let idx = seq.length - 1; idx > 0 && !gain; idx--) {
-    if (_nowMs() > deadline) break;
-    if (seq.indexOf(f) === idx - 1) continue;
-    const s2 = seq.slice();
-    const fp = s2.indexOf(f);
-    if (fp >= 0) s2.splice(fp, 1);
-    s2.splice(idx - 1, 0, f);
-    const r2 = packCore(bin, s2, 60);
-    if (r2.count > best.count) { best = r2; gain = true; }
-   }
-  }
-  if (!gain) break;
+function pack(bin, items) {
+ const a = packCore(bin, items, 60);
+ if (a.failed.length === 0) return a;
+ const b = packCore(bin, items, 0);
+ const best = (b.count > a.count) ? b : a;
+ if (best.count === items.length) return best;
+ /* 贪心失败 → 件数够少时上精确搜索兜底（实测 0~3ms，对首屏无感） */
+ if (items.length <= 4) {
+  const e = exactPack(bin, items);
+  if (e && e.count > best.count) return e;
  }
  return best;
 }
 
-function pack(bin, items) {
- const t0 = _nowMs();
- const fin = function (o) { o._ms = Math.round((_nowMs() - t0) * 100) / 100; return o; };
- const a = packCore(bin, items, 60);
- if (a.failed.length === 0) return fin(a);
- const b = packCore(bin, items, 0);
- let best = (b.count > a.count) ? b : a;
- if (best.count === items.length) return fin(best);
- const dl = t0 + PACK_MS_CAP;
- if (items.length <= 4) {
-  const e = exactPack(bin, items, dl);
-  if (e && e.count > best.count) best = e;
- } else if (_nowMs() < dl) {
-  const r = repair(bin, items, best, dl);
-  if (r && r.count > best.count) best = r;
- }
- if (_nowMs() - t0 > PACK_MS_CAP) best._guard = 'timeout';
- return fin(best);
-}
-
 if (typeof module !== 'undefined') module.exports = {
- pack, packCore, repair, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN, PACK_MS_CAP,
- itemUid,
+ pack, packCore, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN,
  voxelize, voxelizeBox, voxHit, supportRatio, GAP_HARD, GAP_SOFT
 };
 //</script>
@@ -1461,36 +1531,428 @@ var canvas = document.getElementById('c');
 var renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setClearColor(0x11151c, 1);
+/* v59 灯光互动：接触阴影是「光」能被感知的第一来源，没有影子就只有亮度没有立体 */
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = T.PCFSoftShadowMap;
+/* v59：ACES 把 >1 的光压回可显示区间（高光滚降而非削顶）。实测默认档亮度 +5.9%%、
+   对比度 164 vs 改造前 167、细节梯度 4.33 vs 4.24，三项均不劣于改造前。*/
+renderer.toneMapping = T.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.45;
 
 var scene = new T.Scene();
 var camera = new T.PerspectiveCamera(45, 1, 1, 20000);
 
-/* P0-E：把半球光的地面色从 0x2a3240 提到 0x36404f —— 朝下的面（凹陷、箱底、部件背面）
-  原来只吃这颗极暗的地面反射，在画面里会显出成片近黑的“污染”；抬高后暗部有层次不死黑 */
-var hemi = new T.HemisphereLight(0xffffff, 0x36404f, 1.05); scene.add(hemi);
-/* P0.5 环境光：给所有面一个与朝向无关的基础照度，深色件的背光面不再掉到近黑。
-  注意顺序 —— hemi 必须是 scene.children[0]（setLight 依赖它调强度/地面色）。 */
+/* ===== v59 灯光系统重写：四通道归一 + 四预设 + 接触阴影 + 互动联动 =====
+   旧版是逐轮「修发黑/剪影」的补光补丁（六向同时补 → 亮度趋同 → 观感上"没有光"）。
+   新版把 10 颗灯归到 KEY/RIM/FILL/BIN 四个通道，靠通道间比例做明暗层次，
+   并以预设 + 滑杆对外暴露，互动事件再对通道做动态变化。 */
+var hemi = new T.HemisphereLight(0xffffff, 0x36404f, 1.05);
+scene.add(hemi); // 依赖 scene.children[0] 的代码需要先找到半球光。
 var amb = new T.AmbientLight(0xcfe0ff, 0.72); scene.add(amb);
 var d1 = new T.DirectionalLight(0xffffff, 1.03); d1.position.set(300, 600, 400); scene.add(d1);
 var d2 = new T.DirectionalLight(0xbfd4ff, 0.62); d2.position.set(-400, 300, -300); scene.add(d2);
-/* P0.5 前后两盏补光：位置每帧跟随相机（见 loop），始终从观察者前方 / 背后各补一盏，
-  解决「自行车这类深色模型转到背光角度就糊成剪影」的问题 */
 var fillFront = new T.DirectionalLight(0xfff4e2, 0.82); scene.add(fillFront);
 var fillBack = new T.DirectionalLight(0xc8d8ff, 0.74); scene.add(fillBack);
-/* T-03（第6轮）B 判据：底部上射柔光 —— 深色件的底面/背光面只吃 ambient，
-  实测自行车最暗面仅最亮面的 40%（轮胎与车架背光侧糊成剪影），加一盏自下而上的补光把暗面拉起来 */
 var fillBottom = new T.DirectionalLight(0xffffff, 0.55); fillBottom.position.set(20, -400, 160); scene.add(fillBottom);
-/* T-03（第6轮）B 判据续：左右两盏水平侧光 —— 折叠桌/衣柜这类「正面受光、侧腿与背面背光」的件，
-  单靠前后补光最暗面仍只有最亮面的 44%，侧光直接照进侧腔；同时把主平行光压低一点压对比，避免死白 */
 var fillLeft = new T.DirectionalLight(0xffffff, 0.46); fillLeft.position.set(-700, 120, 60); scene.add(fillLeft);
 var fillRight = new T.DirectionalLight(0xffffff, 0.46); fillRight.position.set(700, 120, 60); scene.add(fillRight);
-/* P0-4③（第7轮）：「箱子发黑」的真因不在物品材质（22 类物品暗面均值 76~179，单件没有发黑的），
-  而在仓内一片黑 —— 实测仓内区域亮度中位只有 55、70% 像素 < 60。仓壁/底板只吃到 ambient 与半球光，
-  直射光从外面进不来。这里加一盏从仓口方向射入的低强度白光（0.30，不投影），专门照箱堆内部。
-  位置随仓位尺寸在 drawBin() 里更新（不写死，换仓型也跟着走）。 */
 var binFill = new T.DirectionalLight(0xffffff, 0.30);
-binFill.castShadow = false;               /* 不投影：省一遍 shadow map，也不产生双影 */
+binFill.castShadow = false;
 scene.add(binFill);
+
+d1.castShadow = true;
+d1.shadow.mapSize.width = d1.shadow.mapSize.height = 2048;
+d1.shadow.bias = -0.0002;
+d1.shadow.normalBias = 0.12;
+d1.shadow.camera.near = 1;
+d1.shadow.camera.far = 4000;
+
+var LIGHTS = {
+  key:  { base:1.35, weights:{ d1:1.0 } },
+  rim:  { base:1.00, weights:{ d2:0.4026, fillLeft:0.2987, fillRight:0.2987 } },
+  fill: { base:0.45, weights:{ hemi:0.2706, amb:0.1856, fillFront:0.2113, fillBack:0.1907, fillBottom:0.1418 } },
+  bin:  { base:0.55, weights:{ binFill:1.0 } }
+};
+var LIGHT_NODES = {
+  hemi:hemi, amb:amb, d1:d1, d2:d2, fillFront:fillFront,
+  fillBack:fillBack, fillBottom:fillBottom, fillLeft:fillLeft,
+  fillRight:fillRight, binFill:binFill
+};
+var LGT = {
+  preset:'day',
+  coef:{ key:1.63, fill:1.67, rim:1.36, bin:0.54 },
+  keyHex:0xfff2e0, groundHex:0x36404f, shadow:true
+};
+var PRESETS = {
+  day:     { key:1.63, fill:1.67, rim:1.36, bin:0.54, keyHex:0xfff2e0, groundHex:0x36404f },
+  dusk:    { key:0.85, fill:0.55, rim:1.20, bin:0.55, keyHex:0xffb877, groundHex:0x2a2233 },
+  night:   { key:0.45, fill:0.25, rim:0.55, bin:1.00, keyHex:0x9fc4ff, groundHex:0x121a26 },
+  inspect: { key:1.60, fill:0.30, rim:0.50, bin:0.15, keyHex:0xffffff, groundHex:0x1a1a1a }
+};
+var FX = { name:null, t0:0, dur:0, base:null, raf:0 };
+
+function setLightCoef(coef) {
+  for (var channel in LIGHTS) {
+    if (!Object.prototype.hasOwnProperty.call(LIGHTS, channel)) continue;
+    var group = LIGHTS[channel];
+    var sum = 0;
+    var lamp;
+    for (lamp in group.weights) {
+      if (Object.prototype.hasOwnProperty.call(group.weights, lamp)) sum += group.weights[lamp];
+    }
+    for (lamp in group.weights) {
+      if (Object.prototype.hasOwnProperty.call(group.weights, lamp)) {
+        // 零系数仍留极弱光，避免任何灯的强度归零。
+        LIGHT_NODES[lamp].intensity = Math.max(0.02, group.base * coef[channel] * (group.weights[lamp] / (sum || 1)));
+      }
+    }
+  }
+  d1.color.setHex(LGT.keyHex);
+  hemi.groundColor.setHex(LGT.groundHex);
+}
+
+function setShadow(on) {
+  renderer.shadowMap.enabled = !!on;
+  /* v59：贴片接触影跟开关 —— 这是用户真正看得见的那一层 */
+  scene.traverse(function (object) {
+    if (object.userData && object.userData.isShadowPatch) object.visible = !!on;
+  });
+  scene.traverse(function (object) {
+    if (!object.material) return;
+    // 阴影开关会改变材质程序，数组材质的每一项也必须重新编译。
+    if (Array.isArray(object.material)) {
+      for (var i = 0; i < object.material.length; i++) {
+        if (object.material[i]) object.material[i].needsUpdate = true;
+      }
+    } else {
+      object.material.needsUpdate = true;
+    }
+  });
+}
+
+function applyLighting(spec) {
+  spec = spec || {};
+  // 手动调光必须抢占动画，否则下一帧会覆盖刚设置的灯光。
+  if (FX.raf) cancelAnimationFrame(FX.raf);
+  FX.raf = 0;
+  FX.name = null;
+  FX.base = null;
+  LGT.anim = null;
+
+  var preset = typeof spec.preset === 'string' && PRESETS[spec.preset] ? PRESETS[spec.preset] : null;
+  var fields = ['key', 'fill', 'rim', 'bin'];
+  if (preset) LGT.preset = spec.preset;
+  for (var i = 0; i < fields.length; i++) {
+    var field = fields[i];
+    if (preset) LGT.coef[field] = preset[field];
+    if (Object.prototype.hasOwnProperty.call(spec, field)) LGT.coef[field] = spec[field];
+  }
+  if (preset) {
+    LGT.keyHex = preset.keyHex;
+    LGT.groundHex = preset.groundHex;
+  }
+  if (Object.prototype.hasOwnProperty.call(spec, 'keyHex')) LGT.keyHex = spec.keyHex;
+  if (Object.prototype.hasOwnProperty.call(spec, 'groundHex')) LGT.groundHex = spec.groundHex;
+  setLightCoef(LGT.coef);
+  if (Object.prototype.hasOwnProperty.call(spec, 'shadow')) {
+    LGT.shadow = !!spec.shadow;
+    setShadow(LGT.shadow);
+  }
+  return lightInfo();
+}
+
+function fxLight(name) {
+  if (name === 'grab') name = 'packing';
+  if (name === 'release') {
+    var restore = FX.base;
+    if (FX.raf) cancelAnimationFrame(FX.raf);
+    FX.raf = 0;
+    FX.name = null;
+    FX.base = null;
+    LGT.anim = null;
+    // 用常规入口恢复，确保颜色、系数和阴影回到效果开始前的基态。
+    return applyLighting(restore || {});
+  }
+  if (name !== 'packing' && name !== 'success' && name !== 'fail') return lightInfo();
+
+  if (FX.raf) cancelAnimationFrame(FX.raf);
+  var base = {
+    preset:LGT.preset,
+    key:LGT.coef.key, fill:LGT.coef.fill, rim:LGT.coef.rim, bin:LGT.coef.bin,
+    keyHex:LGT.keyHex, groundHex:LGT.groundHex, shadow:LGT.shadow
+  };
+  FX.name = name;
+  FX.base = base;
+  FX.t0 = performance.now();
+  FX.dur = name === 'packing' ? 500 : name === 'success' ? 600 : 1200;
+  FX.raf = 0;
+  LGT.anim = FX;
+
+  var keyColor = new T.Color(base.keyHex);
+  var failColor = new T.Color(0xff6b4a);
+
+  function step(time) {
+    if (FX.name !== name || FX.base !== base) return;
+    var t = Math.max(0, Math.min(1, (time - FX.t0) / FX.dur));
+    var coef = { key:base.key, fill:base.fill, rim:base.rim, bin:base.bin };
+
+    if (name === 'packing') {
+      coef.key = base.key * (1 + 0.25 * t);
+      coef.fill = base.fill * (1 - 0.5 * t);
+      setLightCoef(coef);
+    } else if (name === 'success') {
+      // 前段点亮箱内，后段回落；其余通道始终保持基态。
+      coef.bin = t <= 0.25 / 0.6
+        ? base.bin + (1 - base.bin) * (t * 0.6 / 0.25)
+        : 1 + (base.bin - 1) * ((t * 0.6 - 0.25) / 0.35);
+      setLightCoef(coef);
+    } else {
+      // 只改变主灯颜色，避免失败提示扰动装箱时的明暗判断。
+      d1.color.copy(keyColor).lerp(failColor, (1 - Math.cos(4 * Math.PI * t)) / 2);
+    }
+
+    if (t < 1) {
+      FX.raf = requestAnimationFrame(step);
+    } else {
+      FX.raf = 0;
+      if (name === 'packing') {
+        setLightCoef({ key:base.key * 1.25, fill:base.fill * 0.5, rim:base.rim, bin:base.bin });
+      } else {
+        setLightCoef({ key:base.key, fill:base.fill, rim:base.rim, bin:base.bin });
+        FX.name = null;
+        FX.base = null;
+        LGT.anim = null;
+      }
+    }
+  }
+
+  FX.raf = requestAnimationFrame(step);
+  return lightInfo();
+}
+
+function lightInfo() {
+  return {
+    preset:LGT.preset, key:LGT.coef.key, fill:LGT.coef.fill, rim:LGT.coef.rim, bin:LGT.coef.bin,
+    keyColor:'#' + ('000000' + LGT.keyHex.toString(16)).slice(-6),
+    shadow:!!renderer.shadowMap.enabled,
+    lights:{
+      d1:d1.intensity, d2:d2.intensity, fillFront:fillFront.intensity, fillBack:fillBack.intensity,
+      fillBottom:fillBottom.intensity, fillLeft:fillLeft.intensity, fillRight:fillRight.intensity,
+      binFill:binFill.intensity, hemi:hemi.intensity, amb:amb.intensity
+    }
+  };
+}
+
+function setLighting(nameOrSpec) {
+  if (typeof nameOrSpec === 'string') return applyLighting({ preset:nameOrSpec });
+  return applyLighting(nameOrSpec || {});
+}
+
+applyLighting({ preset:'day' });
+setShadow(true);   /* v59：默认开接触阴影 */
+
+/* ===== v59 灯光面板交互（C01 L3） ===== */
+(function () {
+  var ids = [
+    'lampBtn', 'lampSheet', 'lampClose',
+    'lpKey', 'lpFill', 'lpBin',
+    'lpKeyV', 'lpFillV', 'lpBinV', 'lpShadow',
+    'mask', 'picker', 'cartSheet', 'binSheet',
+    'pathSheet', 'levelSheet', 'result', 'mbUp', 'mbDown'
+  ];
+  var LE = {};
+  var i;
+
+  for (i = 0; i < ids.length; i++) {
+    LE[ids[i]] = document.getElementById(ids[i]);
+  }
+
+  if (LE.lampBtn) {
+    var cards = document.querySelectorAll('.lp-card[data-lp]');
+    var saveTimer = null;
+    var activePreset = 'day';
+
+    function setShown(element, shown) {
+      if (element) {
+        element.classList.toggle('show', shown);
+      }
+    }
+
+    function highlight(name) {
+      var j;
+      for (j = 0; j < cards.length; j++) {
+        cards[j].classList.toggle('on', cards[j].getAttribute('data-lp') === name);
+      }
+    }
+
+    function syncSlider(slider, label, value) {
+      var percent = Math.round(Number(value) * 100);
+      if (slider) {
+        slider.value = percent;
+      }
+      if (label) {
+        label.textContent = percent + '%';
+      }
+    }
+
+    function syncControls() {
+      syncSlider(LE.lpKey, LE.lpKeyV, LGT.coef.key);
+      syncSlider(LE.lpFill, LE.lpFillV, LGT.coef.fill);
+      syncSlider(LE.lpBin, LE.lpBinV, LGT.coef.bin);
+      if (LE.lpShadow) {
+        LE.lpShadow.checked = !!LGT.shadow;
+      }
+    }
+
+    function saveLighting() {
+      // 存储可能被浏览器禁用，不能让它影响灯光交互。
+      try {
+        localStorage.setItem('szxm_light', JSON.stringify({
+          preset: activePreset,
+          key: LGT.coef.key,
+          fill: LGT.coef.fill,
+          rim: LGT.coef.rim,
+          bin: LGT.coef.bin,
+          shadow: LE.lpShadow ? LE.lpShadow.checked : !!LGT.shadow
+        }));
+      } catch (error) {}
+    }
+
+    function saveNow() {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      saveLighting();
+    }
+
+    function saveDebounced() {
+      // 拖动会连续触发 input，等停止 200ms 后再写入。
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () {
+        saveTimer = null;
+        saveLighting();
+      }, 200);
+    }
+
+    function closeLamp() {
+      /* v61：关面板瞬间立刻落盘，不等 200ms 防抖 —— 用户拖完滑杆马上关面板/切页时不丢设置
+         （实测防抖写入发生在约 415ms 后，此时若切走会丢） */
+      try { saveNow(); } catch (error) {}
+      setShown(LE.mask, false);
+      setShown(LE.lampSheet, false);
+    }
+
+    function bindSlider(slider, label, property) {
+      if (!slider) {
+        return;
+      }
+      slider.addEventListener('input', function () {
+        var value = Number(slider.value);
+        var update = {};
+        update[property] = value / 100;
+        applyLighting(update);
+        if (label) {
+          label.textContent = value + '%';
+        }
+        activePreset = 'custom';
+        highlight(activePreset);
+        /* v63：leading + trailing 双写。原实现只有 200ms 防抖，无头环境调度抖动下实测可达
+         415/520ms 才落盘，用户拖完立刻切页会丢设置；这里先行同步落盘，再保留一次收尾写。 */
+      saveNow();
+      saveDebounced();
+      });
+    }
+
+    LE.lampBtn.addEventListener('click', function () {
+      var others = ['picker', 'cartSheet', 'binSheet', 'pathSheet', 'levelSheet', 'result'];
+      var j;
+      for (j = 0; j < others.length; j++) {
+        setShown(LE[others[j]], false);
+      }
+      setShown(LE.mask, true);
+      setShown(LE.lampSheet, true);
+    });
+
+    if (LE.lampClose) {
+      LE.lampClose.addEventListener('click', closeLamp);
+    }
+    if (LE.mask) {
+      LE.mask.addEventListener('click', closeLamp);
+    }
+    if (LE.lampSheet) {
+      LE.lampSheet.addEventListener('click', function (event) {
+        // 阻止弹层内的点击冒泡到可能负责关闭弹层的外层。
+        event.stopPropagation();
+      });
+    }
+
+    for (i = 0; i < cards.length; i++) {
+      cards[i].addEventListener('click', function () {
+        activePreset = this.getAttribute('data-lp');
+        applyLighting({ preset: activePreset });
+        highlight(activePreset);
+        syncControls();
+        saveNow();
+      });
+    }
+
+    bindSlider(LE.lpKey, LE.lpKeyV, 'key');
+    bindSlider(LE.lpFill, LE.lpFillV, 'fill');
+    bindSlider(LE.lpBin, LE.lpBinV, 'bin');
+
+    if (LE.lpShadow) {
+      LE.lpShadow.addEventListener('change', function () {
+        applyLighting({ shadow: LE.lpShadow.checked });
+        saveNow();
+      });
+    }
+
+    function bindManualLight(button) {
+      if (!button) {
+        return;
+      }
+      // 追加监听，不覆盖手动摆放按钮已有的处理器。
+      button.addEventListener('click', function () {
+        fxLight('grab');
+        setTimeout(function () {
+          fxLight('release');
+        }, 600);
+      });
+    }
+
+    bindManualLight(LE.mbUp);
+    bindManualLight(LE.mbDown);
+
+    var stored = null;
+    try {
+      stored = JSON.parse(localStorage.getItem('szxm_light'));
+    } catch (error) {}
+
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      activePreset = stored.preset;
+      applyLighting({
+        key: stored.key,
+        fill: stored.fill,
+        rim: stored.rim,
+        bin: stored.bin,
+        shadow: stored.shadow
+      });
+      highlight(activePreset);
+      syncControls();
+      if (LE.lpShadow) {
+        LE.lpShadow.checked = !!stored.shadow;
+      }
+    } else {
+      activePreset = 'day';
+      applyLighting({ preset: 'day' });
+      highlight(activePreset);
+      syncControls();
+    }
+  }
+
+  console.log('[lamp] ready', lightInfo());
+})();
+
+
 
 /* ---------- 真实模型 ---------- */
 /* NoModelData：构建时就没有模型（纯灰盒包）
@@ -1539,6 +2001,40 @@ function voxFor(cat) {
  return voxCache[k];
 }
 
+var SAT_BOOST = 1.45;   /* v59：ACES 失色补偿系数 */
+/* v59 贴片接触阴影：径向渐变黑面，贴在物品底面外扩 18%，开关直接控制 visible */
+var _csTex = null;
+function csTex() {
+ if (_csTex) return _csTex;
+ var cv = document.createElement('canvas');
+ cv.width = 128; cv.height = 128;
+ var g2 = cv.getContext('2d');
+ var rg = g2.createRadialGradient(64, 64, 6, 64, 64, 63);
+ rg.addColorStop(0, 'rgba(0,0,0,0.58)');
+ rg.addColorStop(0.50, 'rgba(0,0,0,0.34)');
+ rg.addColorStop(0.78, 'rgba(0,0,0,0.13)');
+ rg.addColorStop(1, 'rgba(0,0,0,0)');
+ g2.fillStyle = rg;
+ g2.fillRect(0, 0, 128, 128);
+ _csTex = new T.CanvasTexture(cv);
+ return _csTex;
+}
+function makeShadowPatch(l, ph, w) {
+ var m = new T.Mesh(
+  new T.PlaneGeometry(l * 1.55, w * 1.55),
+  new T.MeshBasicMaterial({ map: csTex(), transparent: true, depthWrite: false, opacity: 0.96 })
+ );
+ m.rotation.x = -Math.PI / 2;
+ /* 主光从 (+x,+z) 上方来（d1 在仓位右上前），影自然落向左下，贴片跟着偏 */
+ /* 抬高 0.45cm：0.08cm 与仓底 0cm 之间的深度差在 near=1/far=5000 下不够稳，会被 z-fighting 吃掉 */
+ m.position.set(-l * 0.14, -ph / 2 + 0.45, -w * 0.10);
+ m.renderOrder = 1;
+ m.userData.isShadowPatch = true;
+ m.visible = !!(typeof LGT !== 'undefined' && LGT.shadow);
+ /* 掩膜天然干净：maskView 会把 transparent 的 mesh 一并隐藏，不会污染缝隙判定 */
+ return m;
+}
+
 function buildRealMesh(key, fallbackColor) {
  if (meshCache[key]) return meshCache[key].clone(true);
  var d = MESH_DATA[key];
@@ -1560,6 +2056,19 @@ function buildRealMesh(key, fallbackColor) {
  /* 顶点色：打包时随模型一起写入 uint8 RGB（归一化），单材质一模型，不引贴图 */
  var useVC = !!d.col;
  if (useVC) geo.setAttribute('color', new T.BufferAttribute(b64bytes(d.col), 3, true));
+ /* v59：ACES 对彩色的饱和度平均打掉约 17%（实测 0.293→0.242），沿等亮度方向回补，
+   抵掉观感上的褪色，不动明暗关系。顶点色属性是 uint8(0~255) 归一化，clamp 必须用 255。*/
+ if (useVC) {
+  var _ca = geo.getAttribute('color').array;
+  for (var _ci = 0; _ci < _ca.length; _ci += 3) {
+   var _r = _ca[_ci], _g = _ca[_ci + 1], _b = _ca[_ci + 2];
+   var _l = 0.2126 * _r + 0.7152 * _g + 0.0722 * _b;
+   _ca[_ci]     = Math.min(255, Math.max(0, _l + (_r - _l) * SAT_BOOST));
+   _ca[_ci + 1] = Math.min(255, Math.max(0, _l + (_g - _l) * SAT_BOOST));
+   _ca[_ci + 2] = Math.min(255, Math.max(0, _l + (_b - _l) * SAT_BOOST));
+  }
+  geo.getAttribute('color').needsUpdate = true;
+ }
  /* P0.5：深色物件最低亮度下限 —— 顶点色平均亮度 < 0.30 的模型（自行车/跑步机黑色件等），
    材质乘数抬到 1.35：等比提亮、不改色相、不压明暗关系，避免在暗环境里糊成剪影 */
  var darkBoost = 1.0;
@@ -1600,6 +2109,9 @@ function buildRealMesh(key, fallbackColor) {
  }
  if (darkBoost > 1) mat.color.setScalar(darkBoost);   /* P0.5 深色件提亮 */
  var m = new T.Mesh(geo, mat);
+ /* v59：真实模型件以前从没设过 castShadow —— 满仓 6 件全走这条路径，
+   所以 shadowMap 开着也一个影子都没有。clone() 会继承这两个标记。*/
+ m.castShadow = true; m.receiveShadow = true;
  meshCache[key] = m;
  return m;
 }
@@ -1669,6 +2181,18 @@ function drawBin() {
  );
  floor.rotation.x = -Math.PI / 2;
  floor.position.set(bin.l / 2, 0, bin.w / 2);
+ /* v59：主平行光的 shadow 相机默认左右上下各 5 个单位，对 200~300cm 的仓位等于只覆盖一个点，
+   阴影全落在视锥外 —— 这就是"加了 shadowMap 却看不见影子"的真因。按仓位对角线开窗。 */
+ if (d1.target.parent !== scene) scene.add(d1.target);
+ d1.target.position.set(bin.l * 0.5, bin.h * 0.35, bin.w * 0.5);
+ d1.position.set(bin.l * 0.5 + bin.l * 0.85, bin.h * 1.7 + 300, bin.w * 0.5 + bin.w * 1.0);
+ var _sc = d1.shadow.camera;
+ var _span = 0.62 * Math.max(bin.l, bin.w, bin.h) + 30;
+ _sc.left = -_span; _sc.right = _span; _sc.top = _span; _sc.bottom = -_span;
+ _sc.near = 1; _sc.far = Math.max(4000, _span * 6);
+ _sc.updateProjectionMatrix();
+ d1.shadow.needsUpdate = true;
+ floor.receiveShadow = true;          /* v59：底板接住物品与箱堆的接触影 */
  binGroup.add(floor);
  /* P0-4③：仓口补光跟着仓位尺寸走（从 +z 仓口方向射入，瞄准箱堆中心偏下） */
  binFill.position.set(bin.l * 0.5, bin.h * 0.78, bin.w + 420);
@@ -1812,15 +2336,23 @@ function itemMat(cat) {
 }
 /* P0-3：把 parts 逐段建成盒子（three 坐标 x=长 / y=高 / z=深），组装成一个 Group。
   段位置先减去 AABB 中心（返回的 Group 以 AABB 中心为原点，与盒体/模型分支一致），
-  再整组 scale 0.98 —— 于是组的世界包围盒严格等于「占位尺寸 ×0.98」，
-  与真实模型件同一口径，也满足 P0-2「包围盒 = 占位尺寸 ×0.98」的判据。 */
+  整组按 FIX-GAP-01 口径缩放（X/Z 扣 0.5cm、Y 不缩），与真实模型件同一口径。 */
+/* [FIX-GAP-01 20261114] 堆叠间隙口径（取代原等比 0.98）：
+   上下堆叠（Y 轴）不留缝 —— 两件的堆叠面完全贴合，避免"箱子浮在半空"；
+   左右/前后（X/Z 轴）每件合计留 0.5cm（每侧 0.25cm），看得出是两件。
+   极小件保护：扣减后不小于占位尺寸的 40%，避免薄件（镜子 5cm）被削成纸片。 */
+var GAP_XZ = 0.5;
+/* [FIX-GAP-02] 渲染层视觉贴合量（不改算法占位）：X/Z 每侧外扩 / Y 底面下延 */
+var OVL_XZ = 0.10;   /* [FIX-GAP-05] 顶面封闭：上下不再叠加（原 FIX-GAP-04 左右每侧 0.10cm 净缝 0.3cm 保留） */
+function szXZ(v) { var s = v - GAP_XZ; return s < v * 0.4 ? v * 0.4 : s; }
 function makePartsBody(cat, parts, pl, ph, pw) {
  var g = new T.Group();
  var edgeMat = new T.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34 });
  for (var i = 0; i < parts.length; i++) {
   var q = parts[i];
-  var geo = new T.BoxGeometry(q.l, q.h, q.w);
+  var geo = new T.BoxGeometry(q.l + OVL_XZ * 2, q.h, q.w + OVL_XZ * 2);
   var m = new T.Mesh(geo, itemMat(cat));
+  /* [FIX-GAP-04] 回退 GAP-02 的 Y 向拉伸：段尺寸与段位置都不再加长，改由组级垫板垫实 */
   m.position.set(q.x + q.l / 2 - pl / 2, q.z + q.h / 2 - ph / 2, q.y + q.w / 2 - pw / 2);
   m.castShadow = true; m.receiveShadow = true;
   g.add(m);
@@ -1828,7 +2360,21 @@ function makePartsBody(cat, parts, pl, ph, pw) {
   e.position.copy(m.position);
   g.add(e);
  }
- g.scale.set(0.98, 0.98, 0.98);
+ /* [FIX-GAP-01] Y 不缩（堆叠贴合），X/Z 按绝对量扣 0.5cm；
+    整组同比缩放，段与段的相对位置同步缩，段间不会出现内部缝隙 */
+ g.scale.set((szXZ(pl) + OVL_XZ * 2) / pl, 1, (szXZ(pw) + OVL_XZ * 2) / pw);
+ /* [FIX-GAP-05] 分段件顶面封闭：组缩放不为 1，盖板按未缩放的 pl/pw 建模 */
+ var ct = Math.min(1.0, Math.max(0.35, ph * 0.10));
+ ct = Math.min(ct, ph * 0.45);
+ g.add((function () {
+  var cg = new T.BoxGeometry(pl, ct, pw);
+  var cm = new T.Mesh(cg, new T.MeshStandardMaterial({
+   color: objColorOf(cat), roughness: 0.72, metalness: 0.05
+  }));
+  cm.position.y = ph / 2 - ct / 2;
+  cm.castShadow = true; cm.receiveShadow = true;
+  return cm;
+ })());
  return g;
 }
 
@@ -1837,9 +2383,11 @@ function makePartsBody(cat, parts, pl, ph, pw) {
   必须在画面上显式标出来，不能静默摆到仓外还画成正常体积 */
 function oversizeOf(cat) {
  var inL = bin.l - 2 * BIN_PAD, inW = bin.w - 2 * BIN_PAD, inH = bin.h - 2 * BIN_PAD;
- if (cat.l > inL + 0.001) return { k: '长', v: cat.l, cap: bin.l };
- if (cat.w > inW + 0.001) return { k: '深', v: cat.w, cap: bin.w };
- if (cat.h > inH + 0.001) return { k: '高', v: cat.h, cap: bin.h };
+ /* [FIX-OVCAP] 判定用的是扣掉壁厚的内空，展示就必须给内空。
+    原来 cap 给 bin.l 标称值，会打出「装不下：长 118 > 仓 120」这种自相矛盾的角标。 */
+ if (cat.l > inL + 0.001) return { k: '长', v: cat.l, cap: inL };
+ if (cat.w > inW + 0.001) return { k: '深', v: cat.w, cap: inW };
+ if (cat.h > inH + 0.001) return { k: '高', v: cat.h, cap: inH };
  return null;
 }
 function fmt1(v) { return String(Math.round(v * 10) / 10); }
@@ -1872,7 +2420,7 @@ function makeTagSprite(text) {
 }
 /* 红色描边盒 + 半透明红罩 + 角标「装不下：高 120 > 仓 120」 */
 function markOversize(o, cat, ov) {
- var geo = new T.BoxGeometry(cat.l * 0.98, cat.h * 0.98, cat.w * 0.98);
+ var geo = new T.BoxGeometry(szXZ(cat.l), cat.h, szXZ(cat.w));
  var line = new T.LineSegments(new T.EdgesGeometry(geo),
   new T.LineBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.95, depthTest: false }));
  line.renderOrder = 999;
@@ -1882,8 +2430,8 @@ function markOversize(o, cat, ov) {
  }));
  shell.renderOrder = 998;
  o.add(shell);
- var sp = makeTagSprite('装不下：' + ov.k + ' ' + fmt1(ov.v) + ' > 仓 ' + fmt1(ov.cap));
- sp.position.set(0, cat.h * 0.98 / 2 + 10, 0);
+ var sp = makeTagSprite('装不下：' + ov.k + ' ' + fmt1(ov.v) + ' > 仓内 ' + fmt1(ov.cap));
+ sp.position.set(0, cat.h / 2 + 10, 0);
  o.add(sp);
  o.userData.oversize = true;
  return o;
@@ -1923,6 +2471,7 @@ function makeObjSized(cat, pl, ph, pw, placed) {
   g.userData.isBox = !!cat.box;
   g.userData.segs = _parts.length;
   g.userData.partsDims = _parts.map(function (q) { return [+q.l.toFixed(1), +q.h.toFixed(1), +q.w.toFixed(1)]; });
+  g.add(makeShadowPatch(pl, ph, pw));
   return g;
  }
  var body = null;
@@ -1952,10 +2501,15 @@ function makeObjSized(cat, pl, ph, pw, placed) {
    real.position.sub(ctr);
    var wrap = new T.Group();
    wrap.add(real);
+   /* [FIX-GAP-01] X/Z 扣 0.5cm 绝对量，Y 铺满不留缝 */
+   /* [FIX-GAP-02] 视觉贴合：X/Z 两侧各外扩 0.15cm（缝 0.5→0.2，肉眼不可见又不共面），
+      Y 底面下延 0.3cm（顶面不动）——两件贴合面不再严格共面，消除深度冲突斑纹 */
+   var capT = Math.min(1.0, Math.max(0.35, ph * 0.10));
+   capT = Math.min(capT, ph * 0.45);
    wrap.scale.set(
-    (pl / (size.x || 1)) * 0.98,
-    (ph / (size.y || 1)) * 0.98,
-    (pw / (size.z || 1)) * 0.98
+    (szXZ(pl) + OVL_XZ * 2) / (size.x || 1),
+    Math.max(0.05, ph - capT) / (size.y || 1),
+    (szXZ(pw) + OVL_XZ * 2) / (size.z || 1)
    );
    var b2 = new T.Box3().setFromObject(wrap);
    var c2 = new T.Vector3(); b2.getCenter(c2);
@@ -1965,20 +2519,29 @@ function makeObjSized(cat, pl, ph, pw, placed) {
    wrap.position.y += (-ph / 2 - b2.min.y);
    body = new T.Group();
    body.add(wrap);
+   /* [FIX-GAP-05] 顶面封闭：把模型凹陷的顶面封成平面，上层件压上来不透光 */
+   var capGeo = new T.BoxGeometry(szXZ(pl) + OVL_XZ * 2, capT, szXZ(pw) + OVL_XZ * 2);
+   var capMesh = new T.Mesh(capGeo, new T.MeshStandardMaterial({
+    color: objColorOf(cat), roughness: 0.72, metalness: 0.05
+   }));
+   capMesh.position.y = ph / 2 - capT / 2;
+   capMesh.castShadow = true; capMesh.receiveShadow = true;
+   body.add(capMesh);
   }
  }
  if (!body) {
-  /* P0-2：盒体同样乘 0.98 —— 与真实模型分支同一口径，
-    这样「世界包围盒 = 占位尺寸 ×0.98」对盒体件与模型件同时成立 */
-  var geo = new T.BoxGeometry(pl * 0.98, ph * 0.98, pw * 0.98);
+  /* [FIX-GAP-01] 盒体与模型同一口径：X/Z = 占位 - 0.5cm，Y = 占位（上下贴合） */
+  var geo = new T.BoxGeometry(szXZ(pl) + OVL_XZ * 2, ph, szXZ(pw) + OVL_XZ * 2);
   body = new T.Group();
   body.add(new T.Mesh(geo, itemMat(cat)));
+  /* [FIX-GAP-05] 兜底盒体的顶面本就是完整平面，无需顶盖也无需垫板 */
   body.add(new T.LineSegments(
    new T.EdgesGeometry(geo),
    new T.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34 })
   ));
  }
  g.add(body);
+ g.add(makeShadowPatch(pl, ph, pw));
  g.userData.catId = cat.id;
  g.userData.isBox = !!cat.box;
  return g;
@@ -2007,6 +2570,7 @@ var els = {
  mbDown: document.getElementById('mbDown'),
  mbDrop: document.getElementById('mbDrop'),
  mbSkip: document.getElementById('mbSkip'),
+ mbExit: document.getElementById('mbExit'),
  manualBtn: document.getElementById('manualBtn'),
  levelSheet: document.getElementById('levelSheet'),
  levelList: document.getElementById('levelList'),
@@ -2769,9 +3333,20 @@ function judgeCorridorSeg(it, s) {
  /* 失败：宽度不够 vs 高度不够要分开归因（UI 文案不同） */
  var thin = Math.min(a, b, c);
  var code = anyW ? 'height' : 'corridor';
+ /* [FIX-CORRIDOR-GAP] 失败分支 gap 表示「还差多少」，必须 ≥0。
+    旧写法 Math.round(thin - s.w) 在高度不足时（width 挤得进、净高不够）会把
+    最小维去减走廊宽，可能得负数：UI 显示「差 -3cm」，pathJudge 里
+    「取 gap 最大者当 worst」的排序也会被负数带偏。改为按归因分别取正差。 */
+ var fGapW = Infinity, fGapH = Infinity;
+ for (var fi = 0; fi < cand.length; fi++) {
+  fGapW = Math.min(fGapW, Math.max(0, cand[fi][1] - s.w));
+  if (cand[fi][1] <= s.w) fGapH = Math.min(fGapH, Math.max(0, cand[fi][2] - s.h));
+ }
+ var fGap = code === 'height' ? (isFinite(fGapH) ? fGapH : fGapW) : fGapW;
+ if (!isFinite(fGap) || fGap < 0) fGap = 0;
  return { kind: 'corridor', code: code, ok: false, thin: true,
       need: Math.round(thin), limit: s.w, needH: Math.round(thin),
-      limitH: s.h, gap: Math.round(thin - s.w), label: s.label };
+      limitH: s.h, gap: Math.round(fGap), label: s.label };
 }
 /* 已知「前进方向长 len、横向宽 w」，反推第三维（竖向高）—— 用于把净高余量也算进 gap */
 function restDim(it, len, w) {
@@ -2820,10 +3395,14 @@ function judgeCornerSeg(it, s) {
   所以同一件物料的前 7 段判定只算一次，后面 5 个仓型全部命中缓存。
   缓存只存纯函数结果，不引用 item 对象，返回值不写回，结论与不缓存时逐字段相同。 */
 function segKey(s) {
- if (s.kind === 'door') return 'D' + _k100(s.w) + 'x' + _k100(s.h);
- if (s.kind === 'corridor') return 'C' + _k100(s.w) + 'x' + _k100(s.h) + 'l' + _k100(s.len) +
+ var _base;
+ if (s.kind === 'door') _base = 'D' + _k100(s.w) + 'x' + _k100(s.h);
+ else if (s.kind === 'corridor') _base = 'C' + _k100(s.w) + 'x' + _k100(s.h) + 'l' + _k100(s.len) +
                   'd' + _k100(s.doorW) + (s.between ? 'b' : '') + (s.turn === 0 ? 'n' : '');
- return 'K' + _k100(s.a) + 'x' + _k100(s.b) + 'h' + _k100(s.h);
+ else _base = 'K' + _k100(s.a) + 'x' + _k100(s.b) + 'h' + _k100(s.h);
+ /* [FIX-SEGKEY] 判定结果里带 label（blockedLabel 直接显示给用户）。
+    key 不含 label 时，「中间门 1/2/3」参数相同会共用缓存，全部返回第一道门的名字。 */
+ return _base + '|' + (s.label || '');
 }
 function segJudge(item, s) {
  var key = _k100(item.l) + ',' + _k100(item.w) + ',' + _k100(item.h) + ',' +
@@ -2895,7 +3474,16 @@ function routeVerdict(path, items) {
   _cacheStat.ver++;
   var t1h = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   var cpy = {};
-  for (var ck in hit) cpy[ck] = hit[ck];     /* 浅拷贝：调用方改字段不影响缓存本体 */
+  for (var ck in hit) cpy[ck] = hit[ck];
+  /* [FIX-VERCACHE-02] rows / worst 是引用类型，只做一层浅拷贝时调用方 push 或改字段
+     会回写缓存本体，下一次命中的「结论」就是被污染过的。这里补一层结构拷贝。 */
+  cpy.rows = [];
+  for (var ri = 0; ri < hit.rows.length; ri++) {
+   var hr = hit.rows[ri];
+   cpy.rows.push({ name: hr.name, ok: hr.ok, blockedBy: hr.blockedBy, gap: hr.gap,
+        notes: (hr.notes || []).slice() });
+  }
+  cpy.worst = hit.worst ? Object.assign({}, hit.worst) : hit.worst;
   cpy.ms = Math.round((t1h - t0) * 100) / 100;
   cpy.cached = true;
   return cpy;
@@ -3105,11 +3693,23 @@ function planTrips(inst, bin2) {
   try { r = pack({ l: bin2.l, w: bin2.w, h: bin2.h }, remain); }
   catch (e) { break; }
   if (!r.placed.length) break;
-  var doneNames = {};
-  for (var i = 0; i < r.placed.length; i++) doneNames[r.placed[i].name] = 1;
-  var next = [];
+  /* [FIX-TRIP] 原实现按 name 去重：装 3 个纸箱只放下 1 个时，doneNames['纸箱']=1
+     会把剩下 2 个一并剔除，导致 reports "1 趟够" 而实际差 2 件。
+     改为按 _src 引用精确剔除；引用缺失时回退到「同名按数量扣减」。 */
+  var doneRef = [], doneNames = {};
+  for (var i = 0; i < r.placed.length; i++) {
+   var _p = r.placed[i];
+   if (_p._src) doneRef.push(_p._src);
+   doneNames[_p.name] = (doneNames[_p.name] || 0) + 1;
+  }
+  var next = [], usedName = {};
   for (var j = 0; j < remain.length; j++) {
-   if (!doneNames[remain[j].name]) next.push(remain[j]);
+   var _it = remain[j];
+   if (doneRef.indexOf(_it) >= 0) continue;
+   if (!doneRef.length && doneNames[_it.name] > (usedName[_it.name] || 0)) {
+    usedName[_it.name] = (usedName[_it.name] || 0) + 1; continue;
+   }
+   next.push(_it);
   }
   trips.push({ count: r.count, util: r.util, names: r.placed.map(function (p) { return p.name; }) });
   if (next.length === remain.length) break;
@@ -3173,6 +3773,7 @@ function manualStart() {
  manual.placed = [];
  manual.layer = 0;
  manual.rotStep = 0;
+ manual.poseSteps = 0;   /* [FIX-MANUAL-POSESTEP] 与 rotStep 同属「本次会话」统计，漏重置会跨会话累加 */
  document.body.classList.add('manual');
  placedGroup.clear();
  curLevel = -1;
@@ -3430,7 +4031,7 @@ function finishManual() {
  }
  h += '<div class="radv"><button class="playbtn" data-r="repack">再试一次</button></div>';
 
- els.result.innerHTML = '<button id="resultClose">×</button>' + h;
+ els.result.innerHTML = resultHTML(h);
  els.result.classList.add('show');
  document.body.classList.add('ropen');
  els.status.textContent = '手动装完成 · ' + okN + '/' + totN;
@@ -3454,6 +4055,22 @@ els.mbUp.addEventListener('click', function (e) { if (e && e.preventDefault) e.p
 els.mbDown.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); liftCurrent(-1); });
 els.mbDrop.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); dropCurrent(); });
 els.mbSkip.addEventListener('click', function (e) { if (e && e.preventDefault) e.preventDefault(); skipCurrent(); });
+/* [FIX-MANUAL-EXIT 20261115] 中途退出手动装：不判分、不出结果面板，回到自由模式并重装算法结果 */
+els.mbExit.addEventListener('click', function (e) {
+ if (e && e.preventDefault) e.preventDefault();
+ manual.on = false;
+ document.body.classList.remove('manual');
+ if (manual.obj) { placedGroup.remove(manual.obj); manual.obj = null; }
+ if (typeof refreshCartUI === 'function') { try { refreshCartUI(); } catch (e1) {} }
+ if (cart.length) {
+  els.status.textContent = '已退出手动装 · 你放下的 ' + manual.placed.length + ' 件仍留在仓里，点「一键装填」重新用算法装';
+  /* 不在这里调 doPack：doPack 会直接打开结果面板（body.ropen 又把底栏藏起来），
+     等于把用户从「手动装无出口」换到「结果面板无出口」，实测过这个坑。
+     已落位的件保留不清场——清掉等于让用户白摆一遍。 */
+ } else {
+  els.status.textContent = '已退出手动装 · 先添加你要搬的物品 · 共 0 件';
+ }
+});
 
 /* ---------- 关卡（游戏化）---------- */
 /* minCap 是"能全装下的最小仓位容积"，用于算"仓位选得准不准"的奖励分。
@@ -3586,6 +4203,8 @@ function exitLevel() {
  document.body.classList.remove('manual');
  els.result.classList.remove('show');     /* 隐藏结果卡（含三星展示） */
  els.result.innerHTML = '';
+ var _lampEl = document.getElementById('lampSheet');
+ if (_lampEl) { _lampEl.classList.remove('show'); }   /* v60：遮罩收起时灯光面板一并收，否则留半透明残层 */
  els.tripBadge.classList.remove('show');  /* 隐藏分趟浮标 */
  els.tripBadge.textContent = '';
  document.body.classList.remove('ropen');
@@ -3749,7 +4368,7 @@ function doPassCheck() {
     '<button class="ract" data-r="back">返回改清单</button>' +
     '<button class="ract" data-r="repack">重新检查</button>' +
     '</div>';
- els.result.innerHTML = h;
+ els.result.innerHTML = resultHTML(h);
  els.result.classList.add('show');
  document.body.classList.add('ropen');
  els.status.textContent = bin.name + ' 判定完成';
@@ -3827,10 +4446,23 @@ function doPack() {
   obj.userData.appearAt = nowMs() + (b * 190);
   obj.visible = false;
   placedGroup.add(obj);
-  /* 立刻做世界包围盒越界校验 */
+  /* 立刻做世界包围盒越界校验
+   [FIX-OVF-01 20261115] 原实现用 Box3().setFromObject(obj)，会把 makeShadowPatch 的
+   阴影片（PlaneGeometry 1.55 倍大、还向 -x/-z 偏移）一并算进包围盒 → 连 43.8% 利用率
+   的「全部装下」也会报「几何越界 5 件超出仓体」，成功率与红字自相矛盾。
+   阴影片是渲染特效不是实体，必须排除；只统计本体 Mesh/Group 的几何包围盒。 */
   obj.position.copy(obj.userData.target);
   obj.updateMatrixWorld(true);
-  var bb = new T.Box3().setFromObject(obj);
+  var bb = new T.Box3(); bb.makeEmpty();
+  obj.traverse(function (n) {
+   if (!n.isMesh || !n.geometry) return;
+   if (n.userData && n.userData.isShadowPatch) return;
+   if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+   if (!n.geometry.boundingBox) return;
+   var gb = n.geometry.boundingBox.clone();
+   gb.applyMatrix4(n.matrixWorld);
+   bb.union(gb);
+  });
   var tol = 1.0;
   if (bb.min.x < -tol || bb.min.y < -tol || bb.min.z < -tol ||
     bb.max.x > bin.l + tol || bb.max.y > bin.h + tol || bb.max.z > bin.w + tol) {
@@ -3852,6 +4484,8 @@ function doPack() {
 
 function showResult(r, inst) {
  var ok = r.failed.length === 0;
+ try { fxLight(ok ? 'success' : 'fail'); } catch (err) {}
+ /* v59：成功箱内灯亮一下，失败主光转暖红呼吸两次 */
  var partial = (!ok && r.count > 0);
  var agg = {}, order = [];
  for (var i = 0; i < r.failed.length; i++) {
@@ -3866,7 +4500,9 @@ function showResult(r, inst) {
 
  var headTxt, headCls;
  if (routeBlocked) {
-  headTxt = '✕ 有 ' + routeBlocked + ' 件搬不进去';
+  /* [FIX-COPY-01] 原文案「有 N 件搬不进去」与下方「N/N 件已装入」并列读起来互相打脸：
+     这里说的是路径（门/电梯/走廊）挡住，不是装不进仓。改为「装得下，但 N 件运不进去」 */
+  headTxt = '✕ 装得下，但 ' + routeBlocked + ' 件运不进去';
   headCls = 'bad';
  } else if (ok) { headTxt = '✓ 全部装下，可直接搬运'; headCls = 'ok'; }
  else if (partial) { headTxt = '⚠ 装下 ' + r.count + ' 件，还差 ' + r.failed.length + ' 件'; headCls = 'warn'; }
@@ -3892,10 +4528,6 @@ function showResult(r, inst) {
    binPts = Math.round(300 * Math.max(0, 1 - Math.min(1, slack / 0.5)));
   }
 
-  /* 第13轮第1条（v8_202611132312 终版）：未计时不给速度分；计时有效性由 levelRunning 决定；
-     30 秒内满分 200，之后每超 1 秒扣 4。
-     注：v7 的「放宽为 secs >= 0」已由 v8 作废 —— secs 永不为负，>= 0 恒成立等于拆掉守卫，
-     未计时会白拿 200 分。不用 levelStartMs > 0 守卫：测试桩假时钟从 0 起，进关瞬间被判未计时。 */
   var speedPts = 0;
   if (LV.limit > 0 && secs > 0) {
    speedPts = Math.max(0, Math.round(200 - Math.max(0, secs - 30) * 4));
@@ -3904,9 +4536,11 @@ function showResult(r, inst) {
   var penPts = cornerN * 50;
   var pts = Math.max(0, basePts + perfectPts + binPts + speedPts - penPts);
 
+  /* [FIX-STARS] 三星/二星原来只看走廊拐角（cornerN），rt.blocked（过不了入户门或电梯）
+     完全没进评分 —— 物品搬不进屋也给三星。这里把 blocked 一并作为硬门槛。 */
   var stars = 0;
-  if (isPerfect && cornerN === 0 && binPts >= 240) stars = 3;
-  else if (isPerfect && cornerN === 0) stars = 2;
+  if (isPerfect && cornerN === 0 && routeBlocked === 0 && binPts >= 240) stars = 3;
+  else if (isPerfect && cornerN === 0 && routeBlocked === 0) stars = 2;
   else if (r.count * 2 >= Math.max(1, r.total)) stars = 1;
 
   if (!levelBest[LV.id] || stars > levelBest[LV.id]) {
@@ -3925,6 +4559,9 @@ function showResult(r, inst) {
   var tip = '';
   if (isPerfect && cornerN > 0) {
    tip = '⚠ 装得下但搬不进去：' + cornerN + ' 件过不了走廊拐角，这单实际上发不了货';
+  } else if (isPerfect && routeBlocked > 0) {
+   /* [FIX-STARS] 过不了入户门/电梯同样属于「搬不进去」，必须给提示 */
+   tip = '⚠ 装得下但搬不进去：' + routeBlocked + ' 件过不了入户门或电梯，这单实际上发不了货';
   } else if (isPerfect && binPts < 240 && LV.minCap > 0) {
    tip = '↓ 还有更小的仓位能装下，换小一号分数更高';
   } else if (!isPerfect && LV.minCap > 0) {
@@ -3958,8 +4595,9 @@ function showResult(r, inst) {
   }
  }
  if (tightN > 0) {
-  h += '<div class="rrow" style="color:#ffc44d"><span>贴边无余量</span><b style="color:#ffc44d">' +
-     tightN + ' 件（实际搬运建议留 2cm）</b></div>';
+  /* [FIX-COPY-01] 原 label「贴边无余量」与值「（实际搬运建议留 2cm）」各说一套 */
+  h += '<div class="rrow" style="color:#ffc44d"><span>贴仓壁太紧</span><b style="color:#ffc44d">' +
+     tightN + ' 件（四周建议留 2cm 好伸手）</b></div>';
  }
  if (r._overflow) {
   h += '<div class="rrow" style="color:#ff6b6b"><span>几何越界</span><b style="color:#ff6b6b">' +
@@ -4000,6 +4638,10 @@ function showResult(r, inst) {
       ' 件此仓位无论如何装不下，需换更大仓</div>';
   }
   h += '<div class="radv">或加大仓位</div>';
+ } else if (routeBlocked > 0) {
+  /* [FIX-TRIPMSG] 装箱全装下、但过不了门或走廊拐角时，不能报「这一趟能走完」。 */
+  h += '<div class="radv" style="color:#ff6b6b">装箱全部装下，但有 ' + routeBlocked +
+     ' 件过不了门或走廊，实际上发不了货。</div>';
  } else {
   h += '<div class="radv good">全部装下，这一趟能走完。</div>';
  }
@@ -4073,11 +4715,7 @@ function showResult(r, inst) {
     '<button class="ract" data-r="back">返回改清单</button>' +
     '<button class="ract" data-r="repack">重新装填</button>' +
     '</div>';
- if (r && r._ms !== undefined) {
-  if (location.hash.indexOf('dbg') >= 0) document.body.classList.add('dbg');
-  h += '<div class="dbgms">pack ' + r._ms + ' ms' + (r._guard ? ' · 超时回退贪心' : '') + '</div>';
- }
- els.result.innerHTML = h;
+ els.result.innerHTML = resultHTML(h);
  els.result.classList.add('show');
  document.body.classList.add('ropen');
  els.status.textContent = '计算完成 · ' + r.count + '/' + r.total + ' 件';
@@ -4104,11 +4742,19 @@ els.cartBtn.addEventListener('click', function (e) {
 els.cartClose.addEventListener('click', hideSheets);
 els.packBtn.addEventListener('click', function (e) {
  e.preventDefault();
+ try { fxLight('packing'); } catch (err) {}   /* v59：装填时光收暗、主光收紧，画面进入工作状态 */
  doPack();
 });
+/* [FIX-RESULT-CLOSE 20261115] 结果面板开面板时 body.ropen 会把底部按钮栏 opacity 置 0，
+   而主路径 showResult 用 innerHTML=h 整体覆盖，把 #resultClose 一起冲掉（实测 getElementById 返回
+   null，× 根本不渲染），再加上原监听绑在已被销毁的旧节点上 → 用户看到结果后没有任何关闭入口。
+   统一由 resultHTML() 注入关闭按钮，点击交给 #result 上的事件委托处理。 */
+function resultHTML(h) { return '<button id="resultClose" aria-label="关闭结果面板">×</button>' + h; }
+
 els.result.addEventListener('click', function (ev) {
  var t = ev.target;
  while (t && t !== els.result) {
+  if (t.id === 'resultClose') { closeResult(); return; }
   var act = t.getAttribute ? t.getAttribute('data-r') : null;
   if (act === 'back') { closeResult(); return; }
   if (act === 'repack') { doPack(); return; }
@@ -4122,8 +4768,16 @@ function closeResult() {
  document.body.classList.remove('ropen');
  setTimeout(function () { resize(); fitCamera(true); }, 320);
 }
-els.resultClose.addEventListener('click', closeResult);
+/* 旧绑定指向已被 innerHTML 销毁的节点，保留会造成「看起来绑了其实没绑」，已由上方委托替代 */
 function showSheet(el) {
+ /* v60：同层浮层互斥。原实现只加自己，v59 新增的灯光面板会与清单/仓室面板叠成多层
+    （实测三层同时 show）。这里先收掉其它面板，再开自己。 */
+ var _ssList = [els.picker, els.cartSheet, els.binSheet, els.pathSheet, els.levelSheet,
+                els.result, document.getElementById('lampSheet')];
+ for (var _ssI = 0; _ssI < _ssList.length; _ssI++) {
+  var _ssEl = _ssList[_ssI];
+  if (_ssEl && _ssEl !== el) { _ssEl.classList.remove('show'); }
+ }
  els.mask.classList.add('show');
  el.classList.add('show');
 }
@@ -4668,6 +5322,10 @@ if (_savedPath) {
  els.pCrnA.value = _savedPath.cornerA; els.pCrnB.value = _savedPath.cornerB;
  els.pCrnH.value = _savedPath.cornerH;
  els.pCorners.value = _savedPath.corners; els.pDoors.value = _savedPath.doors;
+ /* [FIX-CORNRESUME] 必须先按存档的 cornerList 生成第 2 拐起的动态行，再 apply。
+    否则 ptCornerList 读不到 .crow 行会回落成扁平值，把所有拐角写成第 1 拐参数，
+    紧接着 ptApply 里的 ptWrite 又把这份错值覆盖回存档 —— 刷新一次就永久丢失各拐独立尺寸。 */
+ renderCornerRows(_savedPath);
  ptApply(true);
 }
 refreshCartUI();
@@ -4679,13 +5337,13 @@ els.status.textContent = '先添加你要搬的物品 · 共 0 件';
 window.__READY__ = true;
 window.__API__ = {
  addToCart: addToCart, doPack: doPack, cart: function () { return cart; },
- /* P0-2/P0-3 验收（第7轮）：逐个算 placedGroup 子对象的世界包围盒。
-   用 Box3().setFromObject 走真实几何（含 parts 分段与 0.98 缩放），
-   与「占位尺寸 ×0.98」直接对账，不靠读参数推断画了多大 */
+ /* P0-2/P0-3 验收（第7轮）+ FIX-GAP-01（20261114）：逐个算 placedGroup 子对象的世界包围盒。
+   口径已改：X/Z = 占位 - 0.5cm，Y = 占位（上下堆叠零缝隙）。
+   用 Box3().setFromObject 走真实几何对账，不靠读参数推断画了多大 */
  objBoxes: function () {
   var out = [];
   /* 只统计实体网格（Mesh）：角标 Sprite 与红色描边线不算「形体」，
-    否则「世界包围盒 = 占位×0.98」会被浮在箱顶的角标撑大（本轮踩过） */
+    否则会比占位尺寸大、把对账结果撑坏（第7轮踩过） */
   function meshBox(root) {
    var bb = new T.Box3(), tmp = new T.Box3(), has = false;
    root.traverse(function (n) {
@@ -4786,7 +5444,7 @@ window.__API__ = {
   }
   return out;
  },
- posesOf: posesOf, POSE_SPEC: POSE_SPEC, PACK_MS_CAP: PACK_MS_CAP,
+ posesOf: posesOf, POSE_SPEC: POSE_SPEC,
  loadLevel: loadLevel, levels: function () { return LEVELS; },
  manualStart: manualStart,
  /* 探针：某品类的真实体素空腔统计（T-05 桌子腿间、T-04 自行车轮内空腔是否有空列） */
@@ -4821,9 +5479,8 @@ window.__API__ = {
    items.push(it);
   }
   var r = pack(binDims, items);
-  /* [P0-1-c 观测] 透传耗时与守卫标记，供 tests/guard200.js 与结果面板 .dbgms 读取 */
   return { count: r.count, total: r.total, failed: r.failed, util: r.util,
-       vol: r.vol, cap: r.cap, _ms: r._ms, _guard: r._guard,
+       vol: r.vol, cap: r.cap,
        boxes: r.placed.map(function (b) { return { name: b.name, x: b.x, y: b.y, z: b.z, l: b.l, w: b.w, h: b.h }; }) };
  },
  /* T-07 手动全向旋转探针：axis = 'z' 纵轴转向 / 'x' 横轴侧倒 / 'y' 横轴翻倒 */
@@ -5020,6 +5677,11 @@ window.__API__ = {
   var blackMat = new T.MeshBasicMaterial({ color: 0x000000 });
   var whiteMat = new T.MeshBasicMaterial({ color: 0xffffff });
   scene.traverse(function (o) {
+   /* [v58] 掩膜必须干净：Line/Points/Sprite 一律隐藏。
+      原来只处理 isMesh，LineSegments（仓壁描边 0x4da3ff、地面网格 0x2a4a6b、墙面刻度）
+      直接 return 保持原色渲染，蓝色像素被「非白」判成假黑段 —— 实测造出 S=80 假缝。
+      Line 不构成遮挡（1px 线宽），隐藏不影响遮挡关系。 */
+   if (o.isLine || o.isPoints || o.isSprite) { o.visible = false; return; }
    if (!o.isMesh) return;
    var m = o.material;
    var tr = Array.isArray(m) ? m.some(function (x) { return x && x.transparent; }) : !!(m && m.transparent);
@@ -5196,18 +5858,67 @@ window.__API__ = {
     front: fillFront.intensity, back: fillBack.intensity, darkBoost: (typeof darkBoost !== 'undefined' ? darkBoost : null) }
   };
  },
- /* P0.5 验收用只读钩子：六盏灯的强度与补光实时位置 */
+ /* 验收用只读钩子：v59 起返回四通道系数 + 用户可感知项（预设名/主光色/阴影开关），
+    同时保留 P0.5 的旧字段 hemi/ambient/d1/d2/front/back/binFill，旧脚本不必改 */
  lightInfo: function () {
   function r3(v) { return v.toArray().map(function (x) { return Math.round(x); }); }
+  var out = lightInfo();
+  out.hemi = out.lights.hemi; out.ambient = out.lights.amb;
+  out.d1 = out.lights.d1; out.d2 = out.lights.d2;
+  out.front = fillFront.intensity; out.back = fillBack.intensity;
+  out.binFill = binFill.intensity;
+  out.binFillPos = r3(binFill.position);
+  out.frontPos = r3(fillFront.position); out.backPos = r3(fillBack.position);
+  out.children = scene.children.length;
+  out.firstIsHemi = !!(scene.children[0] && scene.children[0].isHemisphereLight);
+  out.shadowMap = renderer.shadowMap.enabled;
+  out.keyHexNow = '#' + d1.color.getHexString();
+  return out;
+ },
+ /* v59 阴影诊断：一次拿全 shadowMap 运行时状态，避免盲改参数 */
+ shadowDebug: function () {
+  var meshes = 0, cast = 0, recv = 0, patches = 0;
+  scene.traverse(function (o) {
+   if (o.isMesh) meshes++;
+   if (o.castShadow) cast++;
+   if (o.receiveShadow) recv++;
+   if (o.userData && o.userData.isShadowPatch && o.visible) patches++;
+  });
+  var sc = d1.shadow.camera;
   return {
-   hemi: hemi.intensity, ambient: amb.intensity, d1: d1.intensity, d2: d2.intensity,
-   front: fillFront.intensity, back: fillBack.intensity,
-   binFill: (typeof binFill !== 'undefined' && binFill ? binFill.intensity : 0),
-   binFillPos: (typeof binFill !== 'undefined' && binFill ? r3(binFill.position) : null),
-   frontPos: r3(fillFront.position), backPos: r3(fillBack.position),
-   children: scene.children.length, firstIsHemi: !!(scene.children[0] && scene.children[0].isHemisphereLight)
+   smEnabled: renderer.shadowMap.enabled, smType: renderer.shadowMap.type,
+   autoUpdate: renderer.shadowMap.autoUpdate,
+   d1cast: d1.castShadow, mapW: d1.shadow.map ? d1.shadow.map.width : 0,
+   mapH: d1.shadow.map ? d1.shadow.map.height : 0,
+   cam: [sc.left, sc.right, sc.top, sc.bottom, sc.near, sc.far].map(function (x) { return Math.round(x); }),
+   d1pos: d1.position.toArray().map(function (x) { return Math.round(x); }),
+   tgtpos: d1.target.position.toArray().map(function (x) { return Math.round(x); }),
+   tgtInScene: d1.target.parent === scene,
+   calls: renderer.info.render.calls, tris: renderer.info.render.triangles,
+   meshes: meshes, cast: cast, recv: recv, patches: patches,
+   patchList: (function () {
+    var out = [], n = 0;
+    scene.traverse(function (o) {
+     if (!o.userData || !o.userData.isShadowPatch || n >= 8) return;
+     n++;
+     var v = new T.Vector3(); o.getWorldPosition(v);
+     var q = v.clone().project(camera);
+     out.push({ vis: o.visible, op: o.material.opacity, hasMap: !!o.material.map,
+      mat: o.material.type, transp: !!o.material.transparent, depthWrite: !!o.material.depthWrite,
+      lights: o.material.lights !== undefined ? !!o.material.lights : null,
+      ro: o.renderOrder, cast: !!o.castShadow, recv: !!o.receiveShadow,
+      world: [Math.round(v.x), Math.round(v.y), Math.round(v.z)],
+      sx: Math.round((q.x * 0.5 + 0.5) * canvas.clientWidth),
+      sy: Math.round((-q.y * 0.5 + 0.5) * canvas.clientHeight), infront: q.z < 1 });
+    });
+    return out;
+   })(),
+   tone: renderer.toneMapping, exposure: renderer.toneMappingExposure
   };
  },
+ /* v59 仪器入口：setLighting('inspect') 立即生效并掐断动画，保证截图口径可复现 */
+ setLighting: function (nameOrSpec) { return setLighting(nameOrSpec); },
+ fxLight: function (name) { return fxLight(name); },
  setLight: function (hs, d1s, d2s, floorColor) {
   if (hs != null && scene.children[0] && scene.children[0].isHemisphereLight) scene.children[0].intensity = hs;
   if (floorColor != null && scene.children[0] && scene.children[0].isHemisphereLight) scene.children[0].groundColor = new T.Color(floorColor);
@@ -5352,7 +6063,8 @@ window.__API__ = {
   if (!sc) return null;
   var v = routeVerdict(pathForScene(sc), cart);
   return { id: id, name: sc.name, level: v.level, label: v.label, text: verdictText(v),
-       blockedBy: v.blockedBy, blockedLabel: v.blockedLabel, worst: v.worst,
+       blockedBy: v.blockedBy, blockedLabel: v.blockedLabel,
+       worst: v.worst ? Object.assign({}, v.worst) : v.worst,   /* [FIX-VERCACHE-03] 同上，出口给副本 */
        minGap: v.minGap, blocked: v.blocked, ms: v.ms, rows: v.rows.length };
  },
  /* 全部仓型结论快照（供 30ms 性能验收与一致性比对） */
@@ -5361,8 +6073,10 @@ window.__API__ = {
   var out = {};
   for (var i = 0; i < SCENES.length; i++) {
    var v = routeVerdict(pathForScene(SCENES[i]), cart);
+   /* [FIX-VERCACHE-03] worst 是缓存体内对象的引用，从这里直接交出去，调用方一改字段
+      就把缓存里的结论改掉了（下一次命中拿到被污染的 worst）。出口统一给副本。 */
    out[SCENES[i].id] = { level: v.level, label: v.label, text: verdictText(v),
-              worst: v.worst, minGap: v.minGap, blocked: v.blocked };
+              worst: v.worst ? Object.assign({}, v.worst) : v.worst, minGap: v.minGap, blocked: v.blocked };
   }
   var t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   out._ms = Math.round((t1 - t0) * 100) / 100;
@@ -5476,14 +6190,6 @@ window.SZXM = {
    verdicts: vd,
    route: { pathBlocked: rt.pathBlocked, blocked: rt.blocked,
         cornerFail: rt.corridor.filter(function (x) { return !x.ok; }).length }
-  };
- }
-};
-})();
-</script>
-</body>
-</html>
-Fail: rt.corridor.filter(function (x) { return !x.ok; }).length }
   };
  }
 };
