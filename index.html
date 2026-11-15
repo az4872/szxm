@@ -208,7 +208,15 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 
 /* 结果卡 */
 #result{position:absolute;left:0;right:0;bottom:0;z-index:25;
- max-height:296px;overflow-y:auto;display:none;
+ /* [FIX-MOBILE-01 20261115] 原 max-height:296px 在 375x812 上只占 37% 屏高，
+    内容 624px 要滚 2.1 屏才能看到「最小够用仓型」与「搬运路径」——这两条恰恰是
+    最有说服力的结论。改为随视口计算：竖屏 633px（内容一次放得下），
+    同时给 78vh 上限，横屏 375 高时不至于整屏盖住 3D。dvh 优先、vh 兜底。
+    另加 overscroll-behavior 防面板内滚动带动整页，安全区补偿 iPhone 底部黑条。 */
+ max-height:min(calc(100vh - 76px),78vh);
+ max-height:min(calc(100dvh - 76px),78vh);
+ overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+ padding-bottom:calc(18px + env(safe-area-inset-bottom));display:none;
  background:rgba(20,26,36,.995);border-top:1px solid rgba(255,255,255,.12);
  border-radius:16px 16px 0 0;padding:16px 16px 18px}
 #result.show{display:block}
@@ -459,7 +467,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v70</b> · 202611150545</div>
+<div id="verTag"><b>v72</b> · 202611150805</div>
 
 <div id="tripBadge"></div>
 
@@ -2350,8 +2358,17 @@ var GAP_XZ = 0.5;
 /* [FIX-GAP-02] 渲染层视觉贴合量（不改算法占位）：X/Z 每侧外扩 / Y 底面下延 */
 var OVL_XZ = 0.10;   /* [FIX-GAP-05] 顶面封闭：上下不再叠加（原 FIX-GAP-04 左右每侧 0.10cm 净缝 0.3cm 保留） */
 function szXZ(v) { var s = v - GAP_XZ; return s < v * 0.4 ? v * 0.4 : s; }
+/* [FIX-CAP-06 20261115] 顶面防共面余量：三条渲染分支统一口径。
+   审查指出：v69 只给「真实模型」分支留了 CAP_EPS，分段件（makePartsBody，Y 恒为 1）
+   与兜底盒体（BoxGeometry 高度写 ph 全额）没有留，而分段件顶面又被登记成叠放平台，
+   叠放时接触面仍可能恰好共面 → 闪斑。现在三条分支统一调用 capEps(ph)。 */
+function capEps(ph) { return Math.min(0.15, Math.max(0.02, ph * 0.02)); }
+
 function makePartsBody(cat, parts, pl, ph, pw) {
  var g = new T.Group();
+ var EPS = capEps(ph);                    /* [FIX-CAP-06] 顶面余量 */
+ var inner = new T.Group();               /* 段全部装进 inner，Y 只缩 inner */
+ g.add(inner);
  var edgeMat = new T.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34 });
  for (var i = 0; i < parts.length; i++) {
   var q = parts[i];
@@ -2360,21 +2377,19 @@ function makePartsBody(cat, parts, pl, ph, pw) {
   /* [FIX-GAP-04] 回退 GAP-02 的 Y 向拉伸：段尺寸与段位置都不再加长，改由组级垫板垫实 */
   m.position.set(q.x + q.l / 2 - pl / 2, q.z + q.h / 2 - ph / 2, q.y + q.w / 2 - pw / 2);
   m.castShadow = true; m.receiveShadow = true;
-  g.add(m);
+  inner.add(m);
   var e = new T.LineSegments(new T.EdgesGeometry(geo), edgeMat);
   e.position.copy(m.position);
-  g.add(e);
+  inner.add(e);
  }
- /* [FIX-GAP-01] X/Z 按绝对量扣 0.5cm；整组同比缩放，段与段的相对位置同步缩，
-    段间不会出现内部缝隙。
-    [FIX-CAP-06 20261115] Y 也留与真实模型分支相同的防共面余量：段件顶面若正好落在
-    占位盒顶面，与上层件底面严格共面会闪深度冲突斑纹（审查 R3 指出的分支遗漏）。
-    缩放以 g 原点（占位盒中心）为基准，上下会各收 CAP_EPS/2，故整体下移 CAP_EPS/2
-    把底面重新对齐占位盒底面。 */
- var CAP_EPS_P = Math.min(0.15, Math.max(0.02, ph * 0.02));
- var kY = Math.max(0.02, ph - CAP_EPS_P) / (ph || 1);
- g.scale.set((szXZ(pl) + OVL_XZ * 2) / pl, kY, (szXZ(pw) + OVL_XZ * 2) / pw);
- g.position.y -= CAP_EPS_P / 2;
+ /* [FIX-GAP-01] Y 不缩（堆叠贴合），X/Z 按绝对量扣 0.5cm；
+    整组同比缩放，段与段的相对位置同步缩，段间不会出现内部缝隙 */
+ g.scale.set((szXZ(pl) + OVL_XZ * 2) / pl, 1, (szXZ(pw) + OVL_XZ * 2) / pw);
+ /* [FIX-CAP-06] 组级 Y 压缩：段顶下移 EPS 防共面，底面用 position.y 补偿回占位盒底面，
+    保证「不下沉穿地、不悬空」；段间相对位置在 inner 内同比缩，缝宽按 EPS/ph 比例同步收窄。 */
+ var _kY = Math.max(0.01, (ph - EPS) / ph);
+ inner.scale.y = _kY;
+ inner.position.y = -ph / 2 * (1 - _kY);
  /* [FIX-CAP-02 20261115] 删掉分段件的封顶盖板：段本身全是 Box，顶面天然平整，
     那块 0.35~1.0cm 的纯色盖板纯属多余，只会在每件顶部切出一条硬边「盖板」。 */
  return g;
@@ -2516,7 +2531,7 @@ function makeObjSized(cat, pl, ph, pw, placed) {
       余量按高度自适应：大件封顶 0.15cm，小件按 2% 计且不低于 0.02cm，
       避免 3cm 的抽屉盒被压扁 5%。底面始终与占位盒底面齐平：不下沉穿地、也不悬空。
       （旧版用「整体下移」实现同样效果，会让底部比占位底面低 0.15cm 嵌进地板，已弃用。） */
-   var CAP_EPS = Math.min(0.15, Math.max(0.02, ph * 0.02));
+   var CAP_EPS = capEps(ph);   /* [FIX-CAP-06] 统一口径 */
    wrap.scale.set(
     (szXZ(pl) + OVL_XZ * 2) / (size.x || 1),
     Math.max(0.01, ph - CAP_EPS) / (size.y || 1),
@@ -2539,22 +2554,17 @@ function makeObjSized(cat, pl, ph, pw, placed) {
   }
  }
  if (!body) {
-  /* [FIX-GAP-01] 盒体与模型同一口径：X/Z = 占位 - 0.5cm
-     [FIX-CAP-06 20261115] Y 也留与真实模型分支相同的防共面余量（原为整 ph，
-     与上层件底面严格共面会闪斑纹），并整体下移 CAP_EPS/2 保持底面对齐。 */
-  var CAP_EPS_B = Math.min(0.15, Math.max(0.02, ph * 0.02));
-  var geo = new T.BoxGeometry(szXZ(pl) + OVL_XZ * 2, Math.max(0.5, ph - CAP_EPS_B), szXZ(pw) + OVL_XZ * 2);
+  /* [FIX-GAP-01] 盒体与模型同一口径：X/Z = 占位 - 0.5cm，Y = 占位（上下贴合） */
+  var _bEps = capEps(ph);   /* [FIX-CAP-06] 兜底盒体与另两条分支同口径：顶面留余量 */
+  var geo = new T.BoxGeometry(szXZ(pl) + OVL_XZ * 2, Math.max(0.02, ph - _bEps), szXZ(pw) + OVL_XZ * 2);
+  geo.translate(0, -_bEps / 2, 0);   /* 底面坐实到占位盒底面 */
   body = new T.Group();
-  var capBoxMesh = new T.Mesh(geo, itemMat(cat));
-  capBoxMesh.position.y = -CAP_EPS_B / 2;
-  body.add(capBoxMesh);
+  body.add(new T.Mesh(geo, itemMat(cat)));
   /* [FIX-GAP-05] 兜底盒体的顶面本就是完整平面，无需顶盖也无需垫板 */
-  var capBoxEdge = new T.LineSegments(
+  body.add(new T.LineSegments(
    new T.EdgesGeometry(geo),
    new T.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34 })
-  );
-  capBoxEdge.position.y = -CAP_EPS_B / 2;
-  body.add(capBoxEdge);
+  ));
  }
  g.add(body);
  g.add(makeShadowPatch(pl, ph, pw));
@@ -4048,6 +4058,7 @@ function finishManual() {
  h += '<div class="radv"><button class="playbtn" data-r="repack">再试一次</button></div>';
 
  els.result.innerHTML = resultHTML(h);
+ reorderResult();
  els.result.classList.add('show');
  document.body.classList.add('ropen');
  els.status.textContent = '手动装完成 · ' + okN + '/' + totN;
@@ -4105,7 +4116,12 @@ var LEVELS = [
  { id:'L05', name:'那个拐角', hint:'全都装进去了，不等于搬得进去', bin:'XL',
   items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:12.32, limit:0, corner:true },
  { id:'L06', name:'限时装车', hint:'60 秒，看你能装多少', bin:'truck',
-  items:[['纸箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 }
+  items:[['纸箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 },
+ /* [FIX-L07 20261115] 第 7 关：薄板件（落地镜 160×40×5）。镜子平放要占 1.6×0.4 一片地面，
+    真实搬运平放还容易压碎玻璃 —— 立起来靠墙几乎不占地。M 仓内高 130cm 立不起来（镜高 160），
+    L 仓内高 175cm 才立得住，所以教育点是「薄板件要立」，不是「换更大的仓」。 */
+ { id:'L07', name:'镜子怎么进门', hint:'薄板件立起来靠墙，平躺占地还容易压碎', bin:'L',
+  items:[['落地镜',1],['纸箱',14],['收纳箱',7],['椅子',2]], minCap:5.95, limit:0, mirrorStand:true }
 ];
 
 var curLevel = -1;
@@ -4385,6 +4401,7 @@ function doPassCheck() {
     '<button class="ract" data-r="repack">重新检查</button>' +
     '</div>';
  els.result.innerHTML = resultHTML(h);
+ reorderResult();
  els.result.classList.add('show');
  document.body.classList.add('ropen');
  els.status.textContent = bin.name + ' 判定完成';
@@ -4555,7 +4572,20 @@ function showResult(r, inst) {
   /* [FIX-STARS] 三星/二星原来只看走廊拐角（cornerN），rt.blocked（过不了入户门或电梯）
      完全没进评分 —— 物品搬不进屋也给三星。这里把 blocked 一并作为硬门槛。 */
   var stars = 0;
-  if (isPerfect && cornerN === 0 && routeBlocked === 0 && binPts >= 240) stars = 3;
+  /* [FIX-L07 20261115] 薄板件关卡第三颗星要求「镜子立式」（渲染高度 > 100cm）：
+     平躺渲染高度只有 5cm，立起来 160cm，用世界包围盒高度判定，不依赖内部姿态枚举。 */
+  var _mirrorOk = true;
+  if (LV && LV.mirrorStand) {
+   _mirrorOk = false;
+   try {
+    placedGroup.children.forEach(function (o) {
+     if (!o.userData || String(o.userData.catId) !== 'mirror') return;
+     var _mb = new T.Box3().setFromObject(o);
+     if ((_mb.max.y - _mb.min.y) > 100) _mirrorOk = true;
+    });
+   } catch (e) { _mirrorOk = false; }
+  }
+  if (isPerfect && cornerN === 0 && routeBlocked === 0 && binPts >= 240 && _mirrorOk) stars = 3;
   else if (isPerfect && cornerN === 0 && routeBlocked === 0) stars = 2;
   else if (r.count * 2 >= Math.max(1, r.total)) stars = 1;
 
@@ -4580,6 +4610,8 @@ function showResult(r, inst) {
    tip = '⚠ 装得下但搬不进去：' + routeBlocked + ' 件过不了入户门或电梯，这单实际上发不了货';
   } else if (isPerfect && binPts < 240 && LV.minCap > 0) {
    tip = '↓ 还有更小的仓位能装下，换小一号分数更高';
+  } else if (!isPerfect && LV.minCap > 0 && Math.abs(LV.minCap - (bin.l * bin.w * bin.h / 1e6)) < 0.4) {
+   tip = '这批货在当前仓位里还差 ' + (r.total - r.count) + ' 件，换同尺寸的仓解决不了';
   } else if (!isPerfect && LV.minCap > 0) {
    tip = '换 ' + LV.minCap.toFixed(1) + ' m³ 左右的仓位能全装下';
   }
@@ -4594,7 +4626,7 @@ function showResult(r, inst) {
 
  var h = lvBlock + '<div class="rhead ' + headCls + '">' + headTxt + '</div>';
  h += '<div class="rbig">' + r.count + '<span>/' + r.total + '</span> 件已装入</div>';
- h += '<div class="rrow"><span>体积利用率</span><b>' + (r.util * 100).toFixed(1) + '%</b></div>';
+ h += '<div class="rrow"><span>体积利用率' + (isPerfect ? '' : '（只算已装入件）') + '</span><b>' + (r.util * 100).toFixed(1) + '%</b></div>';
  h += '<div class="rrow"><span>占用 / 容积</span><b>' + r.vol.toFixed(2) + ' / ' + r.cap.toFixed(2) + ' m³</b></div>';
  h += '<div class="rrow"><span>场景</span><b>' + (bin.name || '自定义') + '</b></div>';
  h += '<div class="rrow"><span>内部尺寸</span><b>' + bin.l + '×' + bin.w + '×' + bin.h + ' cm</b></div>';
@@ -4677,8 +4709,8 @@ function showResult(r, inst) {
        ' m³，还剩 ' + (100 - rec.util * 100).toFixed(0) + '% 余量</b></div>';
    }
   } else {
-   h += '<div class="rec hot">现有档位都装不下，至少需要约 ' + rec.suggest +
-      ' cm 见方，约 ' + rec.vol.toFixed(1) + ' m³</div>';
+   h += '<div class="rec hot">按当前摆放算法，现有档位都放不下；实测最小能装下约 ' + rec.suggest +
+      ' cm 见方（约 ' + rec.vol.toFixed(1) + ' m³）</div>';
   }
  }
 
@@ -4732,6 +4764,7 @@ function showResult(r, inst) {
     '<button class="ract" data-r="repack">重新装填</button>' +
     '</div>';
  els.result.innerHTML = resultHTML(h);
+ reorderResult();
  els.result.classList.add('show');
  document.body.classList.add('ropen');
  els.status.textContent = '计算完成 · ' + r.count + '/' + r.total + ' 件';
@@ -4766,6 +4799,16 @@ els.packBtn.addEventListener('click', function (e) {
    null，× 根本不渲染），再加上原监听绑在已被销毁的旧节点上 → 用户看到结果后没有任何关闭入口。
    统一由 resultHTML() 注入关闭按钮，点击交给 #result 上的事件委托处理。 */
 function resultHTML(h) { return '<button id="resultClose" aria-label="关闭结果面板">×</button>' + h; }
+/* [FIX-MOBILE-02 20261115] 结论前置：把「最小够用仓型」（.rec）从面板末尾搬到
+   主数字（.rbig）之后，保证第一屏不滚动就能看到「换小一号仓能装下 / 还差几厘米」。
+   原顺序里它排在第 9 位，手机用户基本看不到。 */
+function reorderResult() {
+ var r = els.result, rec = r.querySelector('.rec'), big = r.querySelector('.rbig');
+ if (!rec || !big || !big.parentNode) return;
+ if (big.nextElementSibling === rec) { rec.classList.add('pinned'); return; }
+ big.parentNode.insertBefore(rec, big.nextSibling);
+ rec.classList.add('pinned');
+}
 
 els.result.addEventListener('click', function (ev) {
  var t = ev.target;
@@ -6210,6 +6253,404 @@ window.SZXM = {
  }
 };
 })();
+</script>
+<script>
+/* [FIX-SHARE-01 20261115] 分享结论卡模块：window.SHARE_CARD */
+(() => {
+  "use strict";
+
+  // 所有颜色、字号与字体集中在此处，方便调整。
+  const S = {
+    font: '-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif',
+    color: {
+      bg: "#102A43",
+      panel: "#0B1D3D",
+      yellow: "#FFD93D",
+      cyan: "#00D4FF",
+      green: "#3AD29F",
+      red: "#FF6B6B",
+      white: "#FFFFFF",
+      muted: "#B8C9D9",
+      border: "rgba(255,255,255,.10)",
+      ink: "#102A43"
+    },
+    size: {
+      title: 96,
+      number: 120,
+      label: 34,
+      body: 30,
+      foot: 26,
+      qr: 20
+    }
+  };
+
+  const W = 1080;
+  const H = 1440;
+  const C = S.color;
+
+  function text(value, fallback = "") {
+    return value == null || value === "" ? fallback : String(value);
+  }
+
+  function number(value) {
+    if (value == null || value === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function fmt(value, fallback = "--") {
+    const n = number(value);
+    return n === null ? fallback : String(n);
+  }
+
+  function font(ctx, size, weight = 400) {
+    ctx.font = `${weight} ${size}px ${S.font}`;
+  }
+
+  function rounded(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function panel(ctx, x, y, w, h) {
+    rounded(ctx, x, y, w, h, 32);
+    ctx.fillStyle = C.panel;
+    ctx.fill();
+    ctx.strokeStyle = C.border;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // 按实际字宽逐字折行；最后一行放不下时添加省略号。
+  function lines(ctx, value, maxWidth, maxLines) {
+    const source = Array.from(text(value));
+    const out = [];
+    let current = "";
+    let i = 0;
+
+    while (i < source.length && out.length < maxLines) {
+      const ch = source[i];
+      if (ch === "\n") {
+        out.push(current);
+        current = "";
+        i++;
+        continue;
+      }
+      if (ctx.measureText(current + ch).width <= maxWidth || !current) {
+        current += ch;
+        i++;
+      } else {
+        out.push(current);
+        current = "";
+      }
+    }
+
+    if (out.length < maxLines) out.push(current);
+    if (i < source.length) {
+      let last = out.length - 1;
+      if (last < 0) {
+        out.push("");
+        last = 0;
+      }
+      while (out[last] && ctx.measureText(out[last] + "…").width > maxWidth) {
+        out[last] = Array.from(out[last]).slice(0, -1).join("");
+      }
+      out[last] += "…";
+    }
+    return out;
+  }
+
+  function wrapped(ctx, value, x, y, width, maxLines, lineHeight) {
+    const rows = lines(ctx, value, width, maxLines);
+    rows.forEach((row, i) => ctx.fillText(row, x, y + i * lineHeight));
+  }
+
+  function single(ctx, value, x, y, width) {
+    ctx.fillText(lines(ctx, value, width, 1)[0] || "", x, y);
+  }
+
+  function bigNumber(ctx, value, x, baseline, width, color) {
+    let size = S.size.number;
+    font(ctx, size, 800);
+    while (ctx.measureText(value).width > width && size > 54) {
+      size -= 2;
+      font(ctx, size, 800);
+    }
+    ctx.fillStyle = color;
+    single(ctx, value, x, baseline, width);
+  }
+
+  function status(raw) {
+    const value = text(raw, "--").trim();
+    if (/^[✗×]|失败|不能|不可|不通|卡住|不足/.test(value)) {
+      return { icon: "✗", color: C.red, value: value.replace(/^[✗×]\s*/, "") };
+    }
+    if (/^[⚠!]|差|窄|注意|受限/.test(value)) {
+      return { icon: "⚠", color: C.yellow, value: value.replace(/^[⚠!]\s*/, "") };
+    }
+    if (/^[✓✔]|可进|可过|直过|通过/.test(value)) {
+      return { icon: "✓", color: C.green, value: value.replace(/^[✓✔]\s*/, "") };
+    }
+    return { icon: "·", color: C.cyan, value };
+  }
+
+  function routeCell(ctx, label, raw, x, baseline) {
+    const s = status(raw);
+    font(ctx, S.size.foot, 400);
+    ctx.fillStyle = C.white;
+    ctx.fillText(label, x, baseline);
+    ctx.fillStyle = s.color;
+    ctx.fillText(s.icon, x + 96, baseline);
+    ctx.fillStyle = s.color === C.yellow ? C.cyan : s.color;
+    single(ctx, s.value || "--", x + 132, baseline, 270);
+  }
+
+  function qrPlaceholder(ctx, x, y) {
+    rounded(ctx, x, y, 160, 160, 18);
+    ctx.fillStyle = C.white;
+    ctx.fill();
+
+    // 只有三个定位角，没有可误认为真实二维码的数据格。
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 7;
+    ctx.lineCap = "square";
+    const corners = [
+      [x + 22, y + 22, 1, 1],
+      [x + 138, y + 22, -1, 1],
+      [x + 22, y + 138, 1, -1]
+    ];
+    corners.forEach(([cx, cy, dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 29 * dy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + 29 * dx, cy);
+      ctx.stroke();
+    });
+
+    font(ctx, S.size.qr, 600);
+    ctx.fillStyle = C.ink;
+    ctx.textAlign = "center";
+    ctx.fillText("扫码算你的", x + 80, y + 97);
+    ctx.textAlign = "left";
+  }
+
+  function cardContent(ctx, input) {
+    const d = input && typeof input === "object" ? input : {};
+    const mode = ["result", "achievement", "challenge"].includes(d.mode)
+      ? d.mode
+      : "result";
+    const failed = d.title === "装不下";
+    const mainColor = failed ? C.red : C.yellow;
+
+    let headline = text(d.title, "装填结果");
+    let verdict = text(d.verdict, "看看这一趟能装下多少。");
+    let leftValue = `${fmt(d.packed)}/${fmt(d.total)}`;
+    let rightValue = number(d.utilPct) > 0 ? `${fmt(d.utilPct)}%` : "--";
+    let leftLabel = "装入件数（件）";
+    let rightLabel = "体积利用率";
+
+    if (mode === "achievement") {
+      headline = text(d.title, "闯关成功");
+      leftValue = fmt(d.score);
+      rightValue = number(d.stars) === null ? "--" : `${fmt(d.stars)} ★`;
+      leftLabel = "闯关得分";
+      rightLabel = "获得星数";
+    } else if (mode === "challenge") {
+      headline = text(d.title, "你能装下吗？");
+      verdict = text(d.challenge, text(d.verdict, "换你来挑战这一仓。"));
+      leftValue = number(d.total) === null ? "--" : `${fmt(d.total)} 件`;
+      rightValue = number(d.capM3) === null ? "--" : `${fmt(d.capM3)} m³`;
+      leftLabel = "挑战物品";
+      rightLabel = "目标仓容";
+    }
+
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = "alphabetic";
+
+    // 1. 品牌行
+    font(ctx, S.size.label, 600);
+    ctx.fillStyle = C.white;
+    ctx.fillText("塞得下吗？", 72, 113);
+    ctx.textAlign = "right";
+    ctx.fillStyle = C.muted;
+    const scene = lines(ctx, text(d.sceneName, "装仓判定"), 665, 1)[0];
+    ctx.fillText(scene, 1008, 113);
+    ctx.textAlign = "left";
+
+    // 2. 主结论区：三种卡型共用绘制逻辑。
+    panel(ctx, 72, 146, 936, 314);
+    font(ctx, S.size.title, 800);
+    ctx.fillStyle = mainColor;
+    single(ctx, headline, 104, 277, 872);
+
+    font(ctx, S.size.body, 400);
+    ctx.fillStyle = C.white;
+    wrapped(ctx, verdict, 106, 331, 866, 3, 39);
+
+    // 3. 核心数字区
+    panel(ctx, 72, 480, 936, 236);
+    bigNumber(ctx, leftValue, 104, 625, 420, mainColor);
+    bigNumber(ctx, rightValue, 574, 625, 402, mainColor);
+    font(ctx, S.size.label, 600);
+    ctx.fillStyle = C.muted;
+    single(ctx, leftLabel, 106, 683, 416);
+    single(ctx, rightLabel, 576, 683, 400);
+
+    // 4. 结论句条；失败时始终保留两条建议。
+    panel(ctx, 72, 738, 936, 181);
+    font(ctx, S.size.label, 600);
+    ctx.fillStyle = mainColor;
+
+    if (failed) {
+      const gap = number(d.gapCm);
+      const gapLine = gap === null ? "差几厘米：待测量" : `差 ${fmt(gap)}cm`;
+      single(ctx, gapLine, 104, 796, 872);
+
+      font(ctx, S.size.body, 400);
+      ctx.fillStyle = C.white;
+      const minBin = text(d.minBin, "待确认");
+      const suggestion = /^最小够用/.test(minBin)
+        ? minBin
+        : `最小够用仓型：${minBin}`;
+      wrapped(ctx, suggestion, 104, 849, 872, 2, 38);
+    } else {
+      const minBin = text(d.minBin, "");
+      const headlineAdvice = minBin
+        ? /^最小够用/.test(minBin) ? minBin : `最小够用 ${minBin}`
+        : "这一趟的装仓结论";
+      single(ctx, headlineAdvice, 104, 796, 872);
+
+      font(ctx, S.size.body, 400);
+      ctx.fillStyle = C.muted;
+      const details = [
+        d.usedM3 != null && d.capM3 != null
+          ? `占用 ${fmt(d.usedM3)} / ${fmt(d.capM3)} m³`
+          : "",
+        d.trips != null ? `预计 ${fmt(d.trips)} 趟` : "",
+        text(d.binDims)
+      ].filter(Boolean).join("  ·  ");
+      wrapped(ctx, details || "实际装填请以现场测量为准", 104, 853, 872, 2, 38);
+    }
+
+    // 5. 通行状态四宫格
+    panel(ctx, 72, 937, 936, 228);
+    font(ctx, S.size.label, 600);
+    ctx.fillStyle = C.cyan;
+    ctx.fillText("通行状态", 104, 982);
+
+    const route = d.route && typeof d.route === "object" ? d.route : {};
+    routeCell(ctx, "门", route.door, 104, 1047);
+    routeCell(ctx, "电梯", route.elevator, 574, 1047);
+    routeCell(ctx, "走廊", route.corridor, 104, 1129);
+    routeCell(ctx, "拐角", route.corner, 574, 1129);
+
+    // 6. 底部
+    panel(ctx, 72, 1183, 936, 185);
+    qrPlaceholder(ctx, 88, 1195);
+    font(ctx, S.size.body, 400);
+    ctx.fillStyle = C.white;
+    single(ctx, "你也来试试，看看能装多少", 278, 1260, 704);
+    font(ctx, S.size.foot, 400);
+    ctx.fillStyle = C.muted;
+    single(ctx, "仅供参考，请以现场实测尺寸为准", 278, 1320, 704);
+  }
+
+  function drawTo(canvas, data) {
+    if (!canvas || typeof canvas.getContext !== "function") {
+      throw new TypeError("drawTo 需要 HTMLCanvasElement");
+    }
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("无法获取 2D 绘图上下文");
+    cardContent(ctx, data);
+  }
+
+  function build(data) {
+    const canvas = document.createElement("canvas");
+    drawTo(canvas, data);
+    return canvas;
+  }
+
+  function blobOrDataURL(canvas) {
+    return new Promise((resolve, reject) => {
+      const fallback = () => {
+        try {
+          resolve(canvas.toDataURL("image/png"));
+        } catch (error) {
+          reject(error);
+        }
+      };
+      if (typeof canvas.toBlob !== "function") {
+        fallback();
+        return;
+      }
+      try {
+        canvas.toBlob(blob => blob ? resolve(blob) : fallback(), "image/png");
+      } catch (_) {
+        fallback();
+      }
+    });
+  }
+
+  function toBlob(data) {
+    return blobOrDataURL(build(data));
+  }
+
+  async function share(data) {
+    try {
+      const image = await toBlob(data);
+      const nav = typeof navigator !== "undefined" ? navigator : null;
+
+      if (image instanceof Blob && nav && typeof nav.share === "function"
+          && typeof File !== "undefined") {
+        try {
+          const file = new File([image], "塞得下吗-装仓结论.png", {
+            type: "image/png"
+          });
+          const payload = { files: [file], title: "塞得下吗？" };
+          if (typeof nav.canShare !== "function" || nav.canShare(payload)) {
+            await nav.share(payload);
+            return { ok: true, mode: "native" };
+          }
+        } catch (_) {
+          // 原生分享不可用或被取消时，继续尝试下载。
+        }
+      }
+
+      const link = document.createElement("a");
+      let objectURL = null;
+      if (typeof image === "string") {
+        link.href = image;
+      } else if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        objectURL = URL.createObjectURL(image);
+        link.href = objectURL;
+      } else {
+        link.href = build(data).toDataURL("image/png");
+      }
+      link.download = "塞得下吗-装仓结论.png";
+      link.click();
+      if (objectURL) setTimeout(() => URL.revokeObjectURL(objectURL), 60000);
+      return { ok: true, mode: "download" };
+    } catch (_) {
+      return { ok: false, mode: "fail" };
+    }
+  }
+
+  window.SHARE_CARD = { build, toBlob, share, drawTo };
+})();
+
 </script>
 </body>
 </html>
