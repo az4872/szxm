@@ -95,6 +95,11 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .pstd{font-size:9px;color:#7cc0ff;font-variant-numeric:tabular-nums;white-space:nowrap}
 .pitem.hasqty .pbox{padding-right:0}
 .smark{font-style:normal;font-size:10px;color:#ffcf8a;font-weight:600}
+/* [v52] 202611160050：[LEVEL-FIX-04] L04 目标仓由 XL(高 202) 改为 L(高 177)，教学点「书架 180 需躺平」才成立，
+   并消除「仓位选得准 +300」与「最小够用 6 m³」两套口径打架；[FIX-COPY-03] 仓位分已满时不再说「分数更高」
+   而说「租金更省」，明细补「更小一档也装得下」；L02 结算补踩坑说明（0 分不再像系统坏了）。
+   [v51] 202611152245：>30 件分支由 3 路改 4 路 + 体积预判短路（异源审查 gpt-6-luna 提示后随机 26 组实测 4 路平均多装 2~5 件）、
+   [v50] 202611152250：minCap 统一按 capM3Of 实测容积、tip 只推荐真在售档位、装箱改按件数自适应多路候选 + 120ms anytime（全局 _stop）、smallerSceneForItems 实测换小提示、相机 target 按画布 aspect 反算并上移补偿。
 /* [v49] 合入开发 v46 方案：减号 / 件数 / 加号 独立一行，全部 44×44，
    与「＋ 加入清单」垂直分行，两个矩形几何上不可能重叠。
    v46 实测（CDP 真实鼠标，三档视口 390/500/1440）：重叠 0.00 px²、121 点 hit-test 全命中 .pminus、点减号 qty 2→1。 */
@@ -355,7 +360,7 @@ body.shotmode{background:#11151c}
   <button class="lvbtn" id="lvBtn">关卡</button>
   </div>
 </header>
-<div id="verTag"><b>v49</b> · 202611130105</div>
+<div id="verTag"><b>v52</b> · 202611160050</div>
 
 <div id="tripBadge"></div>
 
@@ -743,7 +748,7 @@ function partsHit(parts, org, placed, cell) {
  return false;
 }
 
-function packCore(bin, items, topPenalty) {
+function packCore(bin, items, topPenalty, _sortFn) {
  const cell = VOX_CELL;
  /* P0-C2：仓壁安全量改为仓内尺寸内缩；物品之间零间隙 */
  const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
@@ -781,7 +786,7 @@ function packCore(bin, items, topPenalty) {
 
  const sorted = items.map(it => ({
   ...it, _d: effDims(it), _v: it.l * it.w * it.h
- })).sort((a, b) => b._v - a._v);
+ })).sort(_sortFn || ((a, b) => b._v - a._v));
 
  function stamp(b, vox) {
   for (let gy = 0; gy < vox.ny; gy++) {
@@ -1011,7 +1016,8 @@ function packCore(bin, items, topPenalty) {
    被迫躺成 65×170×60 占满整仓深度 → 180 长的书架在全仓找不到任何一个位置，
    于是 3 件只装 2 件、利用率 23% 却判「装不下」。
    件数 ≤ 4 时用 DFS 全排列 + 极点候选搜索，实测 0~3ms 可给出可行解或证明无解。 */
-function exactPack(bin, items) {
+function exactPack(bin, items, _budgetMs) {
+ const _t0 = Date.now(); let _nodes = 0;
  const cell = VOX_CELL;
  const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
  const meta = items.map(function (it) {
@@ -1024,6 +1030,7 @@ function exactPack(bin, items) {
   return vb - va;
  });
  const placed = [];
+ let _stop = false;
 
  function supportOK(box) {
   if (box.z < 0.001) return true;
@@ -1048,6 +1055,13 @@ function exactPack(bin, items) {
   return false;
  }
  function dfs(k) {
+  /* [PACK-BUDGET] anytime 搜索：每 128 节点查一次时钟，超预算即放弃该分支，
+     保证「能救就救、救不动不卡界面」。不传预算时行为与旧版完全一致。
+     [PACK-BUDGET-2] 只 return false 是不够的：父层的 pts×orientations 双重循环
+     仍会把所有分支走一遍，实测 14 件无解场景 120ms 预算却跑了 1473ms。
+     故超时置全局 _stop，各层循环见 _stop 立即 break，递归栈立刻展开 */
+  if (_stop) return false;
+  if (_budgetMs && ((_nodes++) & 127) === 0 && Date.now() - _t0 > _budgetMs) { _stop = true; return false; }
   if (k === meta.length) return true;
   const m = meta[order[k]];
   const xs = [0], ys = [0], zs = [0];
@@ -1074,7 +1088,9 @@ function exactPack(bin, items) {
     placed.push(box);
     if (dfs(k + 1)) return true;
     placed.pop();
+    if (_stop) break;
    }
+   if (_stop) break;
   }
   return false;
  }
@@ -1097,14 +1113,40 @@ function exactPack(bin, items) {
 }
 
 function pack(bin, items) {
- const a = packCore(bin, items, 60);
- if (a.failed.length === 0) return a;
- const b = packCore(bin, items, 0);
- const best = (b.count > a.count) ? b : a;
- if (best.count === items.length) return best;
- /* 贪心失败 → 件数够少时上精确搜索兜底（实测 0~3ms，对首屏无感） */
- if (items.length <= 4) {
-  const e = exactPack(bin, items);
+ /* [PACK-MULTI] 贪心对「放件顺序」高度敏感：同一批货、同一个仓，仅换顺序
+    就可能从「差 4 件」变成「全装下」（L03 13 件进 3m³ 仓就是这种情形——
+    按体积降序时折叠桌先占住位置，后面 3 个收纳箱 + 1 个纸箱就塞不进去了）。
+    因此多跑几条候选路取装得最多的那条。
+    [PACK-PERF] 路线数必须随件数自适应：52 件的 L06 单路已要 ~150ms，
+    跑 4 路就 600ms、界面明显卡；而件数越多贪心顺序的影响越小。
+    件数 ≤10 → 4 路 + 精确搜索兜底；11~30 → 4 路；>30 → 4 路 + 体积预判短路。
+    [PACK-ROAD-4] 2026-11-15 实测（异源审查 gpt-6-luna 提示后复验）：>30 件分支原来只跑 3 路，
+    在 31~70 件、体积占仓 40~75% 的 26 组随机用例里，4 路比 3 路平均多装 2~5 件、最多多 7 件
+    （18/26 组更优、0 组更差），确认「件数多就不用多路」的假设是错的，故统一 4 路。
+    为不牺牲失败场景的速度，>30 件时先算体积和：超过净容积 95% 的必装不下场景只跑 1 路。 */
+ const n = items.length;
+ const byVol = (a, b) => b._v - a._v;
+ const byLong = (a, b) => Math.max(b._d.l, b._d.w, b._d.h) - Math.max(a._d.l, a._d.w, a._d.h);
+ const byTall = (a, b) => b._d.h - a._d.h;
+ /* 候选路按优先级排列，靠前的先试；一旦全装立即返回，所以「装得下」的常见场景
+    只付第一路的成本，「装不下」的少数场景才付出全部路数（≤4 路） */
+ let _volSum = 0;
+ for (let i = 0; i < n; i++) _volSum += (items[i].l * items[i].w * items[i].h);
+ const _binCap = (bin.l - 2 * BIN_PAD) * (bin.w - 2 * BIN_PAD) * (bin.h - 2 * BIN_PAD);
+ const roads = (n > 30 && _volSum > _binCap * 0.95)
+   ? [[60, byVol]]
+   : [[60, byVol], [0, byVol], [0, byLong], [60, byTall]];
+ let best = null;
+ for (let r = 0; r < roads.length; r++) {
+  const c = packCore(bin, items, roads[r][0], roads[r][1]);
+  if (!best || c.count > best.count || (c.count === best.count && c.util > best.util)) best = c;
+  if (best.count === items.length) return best;
+ }
+ /* 件数 ≤14（旧门槛是 ≤4，L03 这类 13 件永远进不了兜底）时上 anytime 精确搜索。
+    L03「能小一号吗」的 13 件进 3m³ 仓，4 路贪心只到 9/13，靠这一步才到 13/13——
+    这关的全部卖点就在此，120ms 预算（超时自动放弃，不阻塞界面） */
+ if (n <= 14) {
+  const e = exactPack(bin, items, 120);
   if (e && e.count > best.count) return e;
  }
  return best;
@@ -1376,6 +1418,58 @@ var SCENES = [
   默认成 M 会让默认场景大面积失败；L 的长度 202 与旧默认 200 几乎一致，
   是唯一「同源又不破坏默认体验」的选择。 */
 var DEFAULT_SCENE_ID = 'L';
+/* [TIP-BIN] 提示文案不许再拼「换 1.1 m³ 左右的仓位」这种并不存在的档位：
+   仓位只有 S 1.06 / M 3.05 / L 6.15 / XL 12.32（内部容积，名称按标称 1/3/6/12 m³）。
+   这里直接遍历 SCENES 找「比当前仓大一档、且不小于 minCap」的最小实有档，
+   文案用它的真名。找不到（已最大档）则返回 null，由调用方改说「减少件数」。 */
+/* 结算提示用：找出比当前仓更小、且实测能把这批货全装下的在售档位。
+   与 nextSceneForMinCap 的区别是它不看 minCap 这个手写目标值，而是真的跑一遍装箱
+   —— 算法改进后（多路候选 + 精确搜索）实际能力已超过 minCap 设的标称目标，
+   只看 minCap 会漏掉「还能再小一号」的提示（L04 的货 XL 能装，L 仓其实也能装） */
+function smallerSceneForItems(items, curL, curW, curH) {
+ if (!items || items.length > 30) return null;          /* 大单不跑，省时间 */
+ var curCap = (curL * curW * curH) / 1e6;
+ var cands = [];
+ for (var i = 0; i < SCENES.length; i++) {
+  var sc = SCENES[i];
+  if (!sc.nominal) continue;
+  var cap = (sc.l * sc.w * sc.h) / 1e6;
+  if (cap >= curCap - 1e-9) continue;                   /* 只找更小的 */
+  cands.push({ id: sc.id, name: sc.name, cap: cap, l: sc.l, w: sc.w, h: sc.h });
+ }
+ cands.sort(function (a, b) { return a.cap - b.cap; }); /* 从最小开始试，第一个全装即最优 */
+ for (var k = 0; k < cands.length; k++) {
+  var c = cands[k], rr;
+  try { rr = pack({ l: c.l, w: c.w, h: c.h }, items); } catch (e) { continue; }
+  if (rr && rr.count === items.length) return c;
+ }
+ return null;
+}
+
+/* 仓型容积的唯一口径：内部尺寸 l×w×h（= 标称 + PAD_INNER），与 pack 用的是同一套
+   数字。关卡 minCap 一律由本函数取值，禁止再手写 1.0612 / 6.15 这类近似数
+   —— 手写值曾把 L 仓写成 6.15，而真实是 6.1497，差 0.3 升，导致「换哪档」判断错档 */
+function capM3Of(sceneId) {
+ for (var i = 0; i < SCENES.length; i++) {
+  if (SCENES[i].id === sceneId) return (SCENES[i].l * SCENES[i].w * SCENES[i].h) / 1e6;
+ }
+ return 0;
+}
+function nextSceneForMinCap(minCap, curL, curW, curH) {
+ var curCap = (curL * curW * curH) / 1e6;
+ /* 手写 minCap 与真实容积之间有 ≤0.01% 的口径误差，放宽 2% 以免把真正够装的那档跳过 */
+ var tgt = minCap > 0 ? minCap * 0.98 : 0;
+ var best = null;
+ for (var i = 0; i < SCENES.length; i++) {
+  var sc = SCENES[i];
+  if (!sc.nominal) continue;                       /* 电梯/货车不是仓储档位，不参与推荐 */
+  var cap = (sc.l * sc.w * sc.h) / 1e6;
+  if (cap <= curCap + 1e-9) continue;              /* 只往大一档找 */
+  if (cap + 1e-9 < tgt) continue;                  /* 必须够装 */
+  if (!best || cap < best.cap) best = { id: sc.id, name: sc.name, cap: cap };
+ }
+ return best;
+}
 function sceneById(id) {
  for (var si = 0; si < SCENES.length; si++) if (SCENES[si].id === id) return SCENES[si];
  return SCENES[0];
@@ -1637,8 +1731,19 @@ function fitCamera(wide) {
    只有最靠前的那件露出一角，用户以为"模型没生成/模型不对"。装填后仓外那堆 failed 件同理。
    这里把 placedGroup 的实际包围盒并进来，取更大的距离、更外的目标点。 */
  var diag = Math.sqrt(bin.l * bin.l + bin.h * bin.h + bin.w * bin.w);
- var camDist0 = diag * (wide ? 1.95 : 1.35);
- var tx = bin.l / 2, ty = bin.h * 0.45, tz = bin.w / 2;
+ /* [FIX-CAM-01] 旧版距离只按 diag 固定倍数（1.35/1.95），不看画布宽高比：
+   手机竖屏 aspect≈0.56 时水平半角只有 13°，仓体横向溢出约 48%，画面被裁掉两侧；
+   而拉远一点又会在垂直方向留下大片空白。改为按「包围球刚好装进较窄那个方向」
+   反算距离，并把目标点放到包围盒中心（原来固定在 0.45h，导致上下空白不均）。 */
+ var _aspect = (canvas && canvas.clientHeight) ? (canvas.clientWidth / Math.max(canvas.clientHeight, 1)) : ((camera && camera.aspect) ? camera.aspect : 1);
+ var _tv = Math.tan(Math.PI / 8.0);            /* 垂直 fov 45° 的一半 = 22.5° */
+ var _th = _tv * _aspect;
+ var _halfMin = Math.min(_tv, _th);
+ var _distFit = (diag * 0.5) / Math.max(Math.sin(Math.atan(_halfMin)), 0.08);
+ /* 竖屏 aspect≈0.5 时纯按包围球反算会把距离推到 2.6×diag、物体缩到只占画面三成；
+    设上限 1.45×diag（宽版 2.05×diag），宁可两侧轻微裁切也保住观感 */
+ var camDist0 = Math.min(_distFit * (wide ? 1.25 : 1.06), diag * (wide ? 2.05 : 1.45));
+ var tx = bin.l / 2, ty = bin.h * 0.58, tz = bin.w / 2;   /* 目标点略高于几何中心：抵消底部按钮区占位，压缩下方空白 */
  try {
   if (placedGroup && placedGroup.children.length && typeof T !== 'undefined') {
    var bbObj = new T.Box3().setFromObject(placedGroup);
@@ -1646,7 +1751,8 @@ function fitCamera(wide) {
     var bbAll = new T.Box3(new T.Vector3(0, 0, 0), new T.Vector3(bin.l, bin.h, bin.w)).union(bbObj);
     var cA = new T.Vector3(); bbAll.getCenter(cA);
     var sA = new T.Vector3(); bbAll.getSize(sA);
-    var dA = Math.sqrt(sA.x * sA.x + sA.y * sA.y + sA.z * sA.z) * (wide ? 1.95 : 1.35);
+    var diagA = Math.sqrt(sA.x * sA.x + sA.y * sA.y + sA.z * sA.z);
+    var dA = Math.min(((diagA * 0.5) / Math.max(Math.sin(Math.atan(_halfMin)), 0.08)) * (wide ? 1.25 : 1.06), diagA * (wide ? 2.05 : 1.45));
     if (dA > camDist0) { camDist0 = dA; tx = cA.x; ty = cA.y; tz = cA.z; }
    }
   }
@@ -3463,17 +3569,22 @@ els.mbSkip.addEventListener('click', function (e) { if (e && e.preventDefault) e
   六关数值均来自实跑验证，改物品或仓位尺寸必须重新跑一遍。 */
 var LEVELS = [
  { id:'L01', name:'第一趟', hint:'先看看 1m³ 能不能塞下', bin:'S',
-  items:[['纸箱',4],['行李箱',1]], minCap:1.0612, limit:0 },
+  items:[['纸箱',4],['行李箱',1]], minCap:capM3Of('S'), limit:0 },
  { id:'L02', name:'装不下的时候', hint:'沙发、床垫、自行车，3m³ 真装得下吗', bin:'M',
-  items:[['沙发',1],['床垫',1],['自行车',1]], minCap:6.15, limit:0 },
+  items:[['沙发',1],['床垫',1],['自行车',1]], minCap:capM3Of('L'), limit:0,
+  trapNote:'这关的 3 m³ 是故意留的坑：沙发 200cm，横过来竖过去都超 152cm 的内部，就是要你先把这个坑踩出来' },
  { id:'L03', name:'能小一号吗', hint:'6m³ 装得下，但 3m³ 就够了——省一半租金', bin:'L',
-  items:[['纸箱',6],['收纳箱',4],['椅子',2],['折叠桌',1]], minCap:3.05, limit:0 },
+  items:[['纸箱',6],['收纳箱',4],['椅子',2],['折叠桌',1]], minCap:capM3Of('M'), limit:0 },
  /* [FIX-10] FIX-02 之后"不能倒着放"已经是假话：书架可以躺平进矮仓。
    留着这句会教用户错的做法，改成与判定一致的说法。 */
- { id:'L04', name:'高的进矮仓就废了', hint:'书架 180 高，仓高不够就躺平放倒——立着塞不进别硬立', bin:'XL',
-  items:[['床垫',1],['书架',2],['椅子',2],['洗衣机',1]], minCap:12.32, limit:0 },
+ /* [LEVEL-FIX-04] 目标仓由 XL(高 202) 改 L(高 177)。原目标仓高 202 > 书架 180，
+    书架可以立着放，这一关的教学点「仓高不够就躺平」被架空；真机实测同一批货
+    在 L 仓（202×172×177）6 件全装下且书架必须躺平，教学点才成立。
+    同时消除「仓位选得准 +300」与「最小够用 6 m³」两套口径互相矛盾的问题。 */
+ { id:'L04', name:'高的进矮仓就废了', hint:'书架 180 高，仓高不够就躺平放倒——立着塞不进别硬立', bin:'L',
+  items:[['床垫',1],['书架',2],['椅子',2],['洗衣机',1]], minCap:capM3Of('L'), limit:0 },
  { id:'L05', name:'那个拐角', hint:'全都装进去了，不等于搬得进去', bin:'XL',
-  items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:12.32, limit:0, corner:true },
+  items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:capM3Of('XL'), limit:0, corner:true },
  { id:'L06', name:'限时装车', hint:'60 秒，看你能装多少', bin:'truck',
   items:[['纸箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 }
 ];
@@ -3868,9 +3979,11 @@ function showResult(r, inst) {
  var routeBlocked = rt.blocked.length;
 
  var headTxt, headCls;
- if (routeBlocked) {
+ if (routeBlocked && r.count > 0) {
   /* [FIX-COPY-01] 原文案「有 N 件搬不进去」与下方「N/N 件已装入」并列读起来互相打脸：
-     这里说的是路径（门/电梯/走廊）挡住，不是装不进仓。改为「装得下，但 N 件运不进去」 */
+     这里说的是路径（门/电梯/走廊）挡住，不是装不进仓。改为「装得下，但 N 件运不进去」
+     [FIX-COPY-02] 但 r.count===0 时「装得下」是假话（L02 进 3m³ 仓 0 件装入，
+     旧文案还是「装得下，但 1 件运不进去」）→ 加 count>0 前置条件，0 件走「装不下」分支 */
   headTxt = '✕ 装得下，但 ' + routeBlocked + ' 件运不进去';
   headCls = 'bad';
  } else if (ok) { headTxt = '✓ 全部装下，可直接搬运'; headCls = 'ok'; }
@@ -3902,6 +4015,11 @@ function showResult(r, inst) {
    if (binPts > 300) binPts = 300;
   }
 
+  /* [FIX-COPY-03] 更小一档的实测结果，明细与提示语共用，避免两套判断打架。
+     真机实测 L04 在 12 m³ 拿满分 300 后仍提示「换 6 m³ 分数更高」，实际换过去
+     仍是 1400 分（slack 夹 0 → 同样 300），属文案与评分口径不一致，已按分档改写。 */
+  var sscSmall = (isPerfect && LV.minCap > 0) ? smallerSceneForItems(inst, bin.l, bin.w, bin.h) : null;
+
   var speedPts = 0;
   if (LV.limit > 0 && secs > 0) {
    speedPts = Math.max(0, Math.round(200 - Math.max(0, secs - 30) * 4));
@@ -3925,7 +4043,7 @@ function showResult(r, inst) {
   var brk = [];
   brk.push('装下 ' + r.count + ' 件 ×100 = ' + basePts);
   if (perfectPts) brk.push('全装下 +' + perfectPts);
-  if (binPts) brk.push('仓位选得准 +' + binPts);
+  if (binPts) brk.push('仓位选得准 +' + binPts + (binPts >= 300 && sscSmall ? '（更小一档也装得下）' : ''));
   if (binPts === 0 && LV.minCap > 0 && isPerfect) brk.push('仓位偏大 +0');
   if (speedPts) brk.push('用时 ' + secs.toFixed(0) + 's +' + speedPts);
   if (penPts) brk.push('拐角卡件 ' + cornerN + ' ×50 = -' + penPts);
@@ -3936,10 +4054,25 @@ function showResult(r, inst) {
   } else if (isPerfect && routeBlocked > 0) {
    /* [FIX-STARS] 过不了入户门/电梯同样属于「搬不进去」，必须给提示 */
    tip = '⚠ 装得下但搬不进去：' + routeBlocked + ' 件过不了入户门或电梯，这单实际上发不了货';
-  } else if (isPerfect && binPts < 240 && LV.minCap > 0) {
-   tip = '↓ 还有更小的仓位能装下，换小一号分数更高';
+  } else if (isPerfect && LV.minCap > 0) {
+   /* 只要全装下且还有更小的在售档位真的装得下，就提示换小保存钱。
+      旧条件是 binPts<240（即 minCap 判定为仓位偏大），但算法变强后会出现
+      「minCap 判定仓位正好、其实能再小一号」的情形（L04），故改为实测。
+      [FIX-COPY-03] 仓位分已拿满时不能说「分数更高」：真机实测 L04 在 12 m³ 拿满
+      300 分后提示「换 6 m³ 分数更高」，实际换过去仍是 1400 分（slack 夹 0），
+      属于文案与评分口径打架，改为按 binPts 分档，满分只说「租金更省」。 */
+   if (binPts < 240) tip = '↓ 还有更小的仓位能装下，换小一号分数更高';
+   else if (sscSmall) tip = '↓ 「' + sscSmall.name + '」也装得下（内部约 ' + sscSmall.cap.toFixed(2) + ' m³）：'
+     + (binPts >= 300 ? '换过去租金更省，分数不变（本关仓位分已拿满）' : '换过去分数更高');
   } else if (!isPerfect && LV.minCap > 0) {
-   tip = '换 ' + LV.minCap.toFixed(1) + ' m³ 左右的仓位能全装下';
+   /* [TIP-BIN] 旧文案 `换 X.X m³ 左右的仓位` 里的数字常常不对应任何在售档位
+      （L01 曾提示「换 1.1 m³」，而档位只有 1/3/6/12 m³，玩家找不到那档） */
+   var nsc = nextSceneForMinCap(LV.minCap, bin.l, bin.w, bin.h);
+   tip = nsc
+     ? ('换「' + nsc.name + '」能全装下（内部约 ' + nsc.cap.toFixed(2) + ' m³）')
+     : '这已经是最大仓位：减少件数再试，或改用搬运拆装方案';
+   /* [LEVEL-FIX-04] 故意设坑的关卡（L02）要说明这是设计的坑，否则 0 分像系统坏了 */
+   if (LV.trapNote) tip += '。' + LV.trapNote;
   }
 
   lvBlock += '<div class="lvscore">' +
@@ -5390,9 +5523,13 @@ window.__API__ = {
  routePathBlocked: function () { return checkRoute(cart).pathBlocked; },
  scenes: function () {
   var out = [];
-  for (var i = 0; i < SCENES.length; i++) out.push({ id: SCENES[i].id, name: SCENES[i].name, type: SCENES[i].type });
+  for (var i = 0; i < SCENES.length; i++) out.push({ id: SCENES[i].id, name: SCENES[i].name, type: SCENES[i].type || 'store',
+   l: SCENES[i].l, w: SCENES[i].w, h: SCENES[i].h, nominal: SCENES[i].nominal,
+   capM3: (SCENES[i].l * SCENES[i].w * SCENES[i].h) / 1e6 });
   return out;
  },
+ /* [AUDIT] 测试/审计用：直接问「minCap 该换哪个真档位」，与关卡结算里用的是同一函数 */
+ nextSceneForMinCap: function (minCap, l, w, h) { return nextSceneForMinCap(minCap, l, w, h); },
  openSceneSheet: function () { openBinSheet(); },
  /* 徽标点开：真实点击 DOM 里的徽标（测 UI 交互，不走内部函数） */
  clickBadge: function (id) {
