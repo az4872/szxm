@@ -176,6 +176,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .pqnum{flex:1 1 auto;min-width:0;width:100%;height:44px;padding:0;text-align:center;font-size:15px;font-weight:700;
  font-variant-numeric:tabular-nums;color:#e8f1ff;font-family:inherit;-webkit-appearance:none;appearance:none;
  border-radius:9px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);cursor:text}
+.pqnum.zero{color:rgba(232,241,255,.42);border-style:dashed}
 .pqnum:focus{outline:none;border-color:rgba(77,163,255,.9);background:rgba(77,163,255,.16);
  box-shadow:0 0 0 3px rgba(77,163,255,.18)}
 .ptotal{display:inline-block;font-size:11px;font-weight:700;color:#7cc0ff;
@@ -561,7 +562,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v83</b> · 202611161810</div>
+<div id="verTag"><b>v84</b> · 202611161847</div>
 
 <div id="tripBadge"></div>
 
@@ -3457,13 +3458,13 @@ function renderPicker() {
     return c.l + '×' + c.w + '×' + c.h;
    })() + '</div>' +
    poseLine + sideBtn + boxLine +
-   (q ?
-    '<div class="pqrow"><button class="pminus" data-act="minus" aria-label="减一件">−</button>' +
-    '<input class="pqnum" data-act="qty" data-k="' + catKey(c) + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" value="' + q + '" title="点这里直接输入件数" aria-label="件数，可直接输入">' +
-    '<button class="pplus" data-act="add" aria-label="加一件">＋</button></div>' +
-    '<span class="pqty">×' + q + '</span>' +
-    '<button class="padd" data-act="add">＋ 加入清单</button>'
-    : '<button class="padd" data-act="add">＋ 加入清单</button>') +
+   /* [R11-KB-02 202611161756] 件数框常驻：q=0 的行也直接给出「− 件数 ＋」，
+      用户不必先点一次「加入清单」才能改件数；点数字框即弹数字键盘、可直接键入任意件数。 */
+   '<div class="pqrow"><button class="pminus" data-act="minus" aria-label="减一件">−</button>' +
+   '<input class="pqnum' + (q ? '' : ' zero') + '" data-act="qty" data-k="' + catKey(c) + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" value="' + q + '" title="点这里直接输入件数" aria-label="件数，可直接输入">' +
+   '<button class="pplus" data-act="add" aria-label="加一件">＋</button></div>' +
+   (q ? '<span class="pqty">×' + q + '</span>' : '') +
+   '<button class="padd" data-act="add">' + (q ? '＋ 再加 1 件' : '＋ 加入清单') + '</button>' +
    '</div>';
  }
  var keepScroll = els.pickerList.scrollTop || 0;
@@ -3555,7 +3556,7 @@ function renderPicker() {
    旧实现只有一个 <span> 显示件数，卡片上的 click 委托认不到 data-act 就落到「加 1 件」，
    于是点数字只会 +1、永远弹不出键盘（用户实测反馈）。这里把件数框做成 input，
    给面板挂一条一次性委托：离开输入框时按输入值改写清单（0 = 把这一行移出清单）。 */
-function pickerSetQty(k, raw) {
+function pickerSetQty(k, raw, softInp) {
  var n = Math.floor(Number(String(raw == null ? '' : raw).replace(/[^\d]/g, '')));
  if (!isFinite(n) || n < 0) n = 0;
  if (n > 999) n = 999;
@@ -3574,9 +3575,31 @@ function pickerSetQty(k, raw) {
   if (hit >= 0) cart[hit].qty = n;
  }
  try { refreshCartUI(); bindCartEvents(); afterChange(); } catch (e) {}
+ /* 键盘/失焦路径走 softSync：只就地改这一行的数字与文案，不重建整张列表。
+    （重建会把 DOM 换掉，用户紧接着点「完成」的那一下 click 就落在被替换的旧节点上，面板不收起） */
+ if (softInp) { pqLocalSync(softInp, n, k); return; }
  var keep = els.pickerList.scrollTop || 0;
  renderPicker();
  els.pickerList.scrollTop = keep;
+}
+/* 就地同步一行：数字框 / ×n / 按钮文案 */
+function pqLocalSync(inp, n, k) {
+ try {
+  inp.value = n;
+  inp.className = 'pqnum' + (n ? '' : ' zero');
+  var it = inp.parentNode && inp.parentNode.parentNode;
+  if (!it) return;
+  var qt = it.querySelector('.pqty');
+  if (n) {
+   if (!qt) { qt = document.createElement('span'); qt.className = 'pqty'; if (inp.parentNode.nextSibling) it.insertBefore(qt, inp.parentNode.nextSibling); else it.appendChild(qt); }
+   qt.textContent = '×' + n;
+  } else if (qt && qt.parentNode) { qt.parentNode.removeChild(qt); }
+  var pd = it.querySelector('.padd');
+  if (pd) pd.textContent = n ? '＋ 再加 1 件' : '＋ 加入清单';
+  /* [R11-KB-02] 就地同步绕过了 renderPicker，面板顶部「已加 N 件」与「完成（共 N 件）」
+     不会自己更新，必须在这里补一次，否则用户看到已加 0 件而实际清单已有件 */
+  refreshPickerDone();
+ } catch (e) { }
 }
 (function bindPickerQty() {
  var host = els.pickerList;
@@ -3590,7 +3613,13 @@ function pickerSetQty(k, raw) {
  host.addEventListener('blur', function (ev) {
   var t = ev.target;
   if (!t || t.tagName !== 'INPUT' || t.getAttribute('data-act') !== 'qty') return;
-  pickerSetQty(t.getAttribute('data-k'), t.value);
+  pickerSetQty(t.getAttribute('data-k'), t.value, t);
+ }, true);
+ /* 点进数字框 = 全选现值，直接键入就能覆盖（0 也不用先删） */
+ host.addEventListener('focusin', function (ev) {
+  var t = ev.target;
+  if (!t || t.tagName !== 'INPUT' || t.getAttribute('data-act') !== 'qty') return;
+  setTimeout(function () { try { t.select(); } catch (e) { } }, 40);
  }, true);
 })();
 
@@ -5483,8 +5512,13 @@ els.addBtn.addEventListener('click', function (e) {
  var tt = els.picker.querySelector('.ptitle');
  if (tt) tt.textContent = '要搬什么东西？';
 });
-els.pickerClose.addEventListener('click', hideSheets);
-els.mask.addEventListener('click', hideSheets);
+function flushPickerQty() {
+ var ae = document.activeElement;
+ if (!ae || ae.tagName !== 'INPUT' || !ae.getAttribute || ae.getAttribute('data-act') !== 'qty') return;
+ try { pickerSetQty(ae.getAttribute('data-k'), ae.value, ae); } catch (e) { }
+}
+els.pickerClose.addEventListener('click', function () { flushPickerQty(); hideSheets(); });
+els.mask.addEventListener('click', function () { flushPickerQty(); hideSheets(); });
 els.cartBtn.addEventListener('click', function (e) {
  e.preventDefault();
  refreshCartUI(); bindCartEvents();
