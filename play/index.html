@@ -32,6 +32,9 @@ header h1 em{font-style:normal;color:#4da3ff}
  cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:flex-end;gap:1px;
  min-width:0;flex:0 1 auto}
 .binbtn small{font-size:9px;color:#7f8fa6;font-weight:400}
+.binbtn #binLabel{display:block;text-align:right;line-height:1.25}
+.binbtn #binMain{display:block;font-weight:700}
+.binbtn #binDoor{display:block;font-style:normal;font-size:11px;font-weight:600;color:#8fb2d8;margin-top:1px}
 footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18px;
  background:linear-gradient(0deg,rgba(17,21,28,.98),rgba(17,21,28,0));
  display:flex;flex-direction:column;gap:8px}
@@ -41,7 +44,9 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .btn:active{transform:scale(.97)}
 .primary{flex:1;background:linear-gradient(135deg,#4da3ff,#2b7fe0);color:#fff;
  box-shadow:0 6px 18px rgba(77,163,255,.28)}
-.add{flex:0 0 auto;min-width:120px;background:linear-gradient(135deg,#3ddc84,#22a862);color:#06210f}
+.add{flex:0 0 auto;min-width:104px;background:linear-gradient(135deg,#3ddc84,#22a862);color:#06210f}
+.btn.add{padding:8px 6px;line-height:1.2}
+.btn.add span{display:block}
 .ghost{flex:0 0 84px;background:rgba(255,255,255,.08);color:#c9d6e8;
  border:1px solid rgba(255,255,255,.14);position:relative}
 #cartNum{position:absolute;top:-6px;right:-4px;background:#ff6b6b;color:#fff;
@@ -65,7 +70,9 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 /* [FIX-SHEET-02 20261115] 小屏抽屉内容超过 max-height 时，底部「收起」被推到视口外，
    用户以为面板关不掉（实测 375×667 应 closeY=680 > vh667）。把抽屉内的关闭/确认按钮
    钉在抽屉底部（sticky），无论滚没滚都能点到。 */
-.sheet .sbtn{position:sticky;bottom:0;z-index:5;background:#161d28;box-shadow:0 -10px 14px rgba(0,0,0,.28)}
+/* [R12-BTN] 原此处 background:#161d28 特异性覆盖 .sbtn 的蓝底 #4da3ff，而 color 未被覆盖仍为近黑 #08131f → 主按钮「深底深字」几乎隐形。
+   遮罩职责交回 .sbtns 容器（它有 background:#161d28），本行只管 sticky 与投影。 */
+.sheet .sbtn{position:sticky;bottom:0;z-index:5;box-shadow:0 -10px 14px rgba(0,0,0,.28)}
 /* [FIX-SHEET-03] sticky 关闭条会压住滚动内容最后一行（实测关卡 L06 卡片被盖 35px），
    给抽屉内滚动区留出与按钮等高的尾部空间 */
 #levelSheet #levelList{padding-bottom:8px;margin-bottom:52px}
@@ -191,7 +198,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .sbtn{width:100%;border:none;border-radius:12px;padding:13px;
  background:#4da3ff;color:#08131f;font-size:15px;font-weight:700;
  font-family:inherit;cursor:pointer}
-.sbtn.sec{background:rgba(255,255,255,.09);color:#c9d6e8;margin-top:8px}
+.sbtn.sec{background:#26303e;color:#c9d6e8;margin-top:8px}
 #cartList{flex:1;overflow-y:auto;margin:8px 0 12px}
 .crow{display:flex;align-items:center;gap:10px;padding:11px 2px;
  border-bottom:1px solid rgba(255,255,255,.07)}
@@ -540,8 +547,9 @@ body.kbopen .sheet.full{height:auto!important;
    改为：两按钮并排放进 .sbtns 固定底栏，sticky 只挂在容器上。 */
 .sbtns{position:sticky;bottom:0;z-index:6;display:flex;gap:8px;align-items:stretch;flex-shrink:0;
  background:#161d28;box-shadow:0 -10px 14px rgba(0,0,0,.28);padding-top:8px}
-.sbtns .sbtn{position:static;width:auto;flex:2 1 0;min-width:0;margin:0;box-shadow:none;z-index:auto}
-.sbtns .sbtn.sec{flex:1 1 0;margin-top:0}
+.sbtns .sbtn{position:static;width:auto;flex:2 1 0;min-width:0;margin:0;box-shadow:none;z-index:auto;
+ background:linear-gradient(135deg,#4da3ff,#2b7fe0);color:#08131f;border:1px solid rgba(255,255,255,.16)}
+.sbtns .sbtn.sec{flex:1 1 0;margin-top:0;background:#26303e;color:#c9d6e8;border:1px solid rgba(255,255,255,.10)}
 </style>
 </head>
 <body>
@@ -552,7 +560,7 @@ body.kbopen .sheet.full{height:auto!important;
   <h1>塞得下吗<em> · 搬过便知</em></h1>
   <div class="hdr-right">
   <button class="binbtn" id="binBtn">
-    <span id="binLabel">迷你仓 6 m³ 202×172×177 cm · 门 90×200</span>
+    <span id="binLabel"><b id="binMain">迷你仓 6 m³ 202×172×177 cm</b><i id="binDoor">门 90×200</i></span>
     <small>我的仓位 · 点改</small>
   </button>
   <button class="lvbtn" id="lvBtn">关卡</button>
@@ -562,7 +570,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v84</b> · 202611161847</div>
+<div id="verTag"><b>v85</b> · 202611162055</div>
 
 <div id="tripBadge"></div>
 
@@ -686,7 +694,7 @@ body.kbopen .sheet.full{height:auto!important;
 
 <footer>
   <div class="acts">
-    <button class="btn add" id="addBtn">＋ 添加物品</button>
+    <button class="btn add" id="addBtn" aria-label="添加物品"><span>添加</span><span>物品</span></button>
     <button class="btn ghost" id="cartBtn">清单<span id="cartNum">0</span></button>
     <button class="btn manual" id="manualBtn">手动装</button>
     <button class="btn lamp" id="lampBtn">灯光</button>
@@ -1813,7 +1821,7 @@ function tuneFog(dist) {
  var k = Math.sqrt(-Math.log(Math.max(0.03, 1 - FOGCFG.target))) / d;
  scene.fog.density = Math.max(FOGCFG.min, Math.min(FOGCFG.max, k));
 }
-var camera = new T.PerspectiveCamera(45, 1, 1, 20000);
+var camera = new T.PerspectiveCamera(20, 1, 1, 20000);/* [R12-LENS] 45->20：长焦压缩透视，与 fitCamera 的 1.90->5.80 距离系数联动，构图不变而收敛减到 1/3 */
 
 /* ===== v59 灯光系统重写：四通道归一 + 四预设 + 接触阴影 + 互动联动 =====
    旧版是逐轮「修发黑/剪影」的补光补丁（六向同时补 → 亮度趋同 → 观感上"没有光"）。
@@ -2669,7 +2677,7 @@ function coneGradTex() {
 }
 
 /* ---------- 相机 ---------- */
-var camTarget = new T.Vector3(), camDist = 500, camTheta = 0.9, camPhi = 1.05;
+var camTarget = new T.Vector3(), camDist = 500, camTheta = 0.9, camPhi = 1.26;/* [R12-CAM] 1.05→1.26：俯角 29.8°→18.0°，透视下左右竖棱屏幕倾角从 6.7° 降到 3.7%，仓体不再呈「斜梯形」 */
 function fitCamera(wide) {
  _shotFree = false;
  /* [FIX-09] 原来只按仓位尺寸定距离和目标点，而 renderPreview 把待装物品排在仓外
@@ -2677,7 +2685,7 @@ function fitCamera(wide) {
    只有最靠前的那件露出一角，用户以为"模型没生成/模型不对"。装填后仓外那堆 failed 件同理。
    这里把 placedGroup 的实际包围盒并进来，取更大的距离、更外的目标点。 */
  var diag = Math.sqrt(bin.l * bin.l + bin.h * bin.h + bin.w * bin.w);
- var camDist0 = diag * (wide ? 1.95 : 1.90);   /* [UX-CAM-01] 竖屏 1.35→1.90：1.35 时仓体近端角与门洞金框左半被屏幕左缘裁掉（投影实测门框顶横左端点 x=-73、门中心 x=11.5），1.90 时门框四角全部入画（x 13.7~122.6）。横屏 1.95 不变。 */
+ var camDist0 = diag * (wide ? 5.95 : 5.80);   /* [UX-CAM-01] 竖屏 1.35→1.90：1.35 时仓体近端角与门洞金框左半被屏幕左缘裁掉（投影实测门框顶横左端点 x=-73、门中心 x=11.5），1.90 时门框四角全部入画（x 13.7~122.6）。横屏 1.95 不变。 */
  var tx = bin.l / 2, ty = bin.h * 0.45, tz = bin.w / 2;
  try {
   if (placedGroup && placedGroup.children.length && typeof T !== 'undefined') {
@@ -2686,7 +2694,7 @@ function fitCamera(wide) {
     var bbAll = new T.Box3(new T.Vector3(0, 0, 0), new T.Vector3(bin.l, bin.h, bin.w)).union(bbObj);
     var cA = new T.Vector3(); bbAll.getCenter(cA);
     var sA = new T.Vector3(); bbAll.getSize(sA);
-    var dA = Math.sqrt(sA.x * sA.x + sA.y * sA.y + sA.z * sA.z) * (wide ? 1.95 : 1.35);
+    var dA = Math.sqrt(sA.x * sA.x + sA.y * sA.y + sA.z * sA.z) * (wide ? 5.95 : 4.10);
     if (dA > camDist0) { camDist0 = dA; tx = cA.x; ty = cA.y; tz = cA.z; }
    }
   }
@@ -2716,7 +2724,7 @@ function updateCam() {
      必须保证下限 ≤ 上限，否则钳位区间为空、max(L,min(U,x)) 恒等于 L（相机贴死在近端）。 */
   /* [v77.2] _shotFree（拍照特写）只放宽**下限**——远端 min(4.5dg,12000) 始终保留，
      否则拍照后若有别的路径改 camDist 就会重新飞出 far（六审 haiku 第 5 条）。 */
-  var _dmin = _shotFree ? 4 : _dg * 0.68, _dmax = Math.min(_dg * 4.5, 12000);
+  var _dmin = _shotFree ? 4 : _dg * 2.08, _dmax = Math.min(_dg * 13.7, 12000);
   if (_dmin > _dmax) _dmin = _dmax;      /* 仅当 _dg>17647cm 才退化，退化时贴住 12000（远端），不是近端 */
   camDist = Math.max(_dmin, Math.min(_dmax, camDist));
  }
@@ -3074,6 +3082,8 @@ var els = {
  packBtn: document.getElementById('packBtn'),
  binBtn: document.getElementById('binBtn'),
  binLabel: document.getElementById('binLabel'),
+ binMain: document.getElementById('binMain'),
+ binDoor: document.getElementById('binDoor'),
  mask: document.getElementById('mask'),
  sceneGrid: document.getElementById('sceneGrid'),
  tripBadge: document.getElementById('tripBadge'),
@@ -5698,14 +5708,25 @@ function cbRefresh() {
  return r;
 }
 /* 仓室文本：顶部按钮带门洞，底部条带备注 */
+/* [R12-HDR] 顶栏拆两行：上行仓室信息、下行门信息。对外文本契约不变——
+ binFullText() 用 ' · ' 拼接两行，语义与原单行文本完全一致，
+ 旧的 label/barText/binBarText/binBarValText 全部改读它。 */
+var _doorTxt = '';
 function binText() {
  var dim = bin.l + '×' + bin.w + '×' + bin.h;
- var door = bin.doorW ? (' · 门 ' + bin.doorW + '×' + bin.doorH) : '';
- els.binLabel.textContent = (bin.name || '仓位') + ' ' + dim + ' cm' + door;
- /* [v46] 原来自定义仓的备注挂在已删除的 binBar 上，现在并入顶部卡片文案 */
- if (customBin && customBin.note) {
-  els.binLabel.textContent += '｜' + customBin.note;
+ var main = (bin.name || '仓位') + ' ' + dim + ' cm';
+ if (customBin && customBin.note) main += '｜' + customBin.note;
+ els.binMain.textContent = main;
+ _doorTxt = bin.doorW ? ('门 ' + bin.doorW + '×' + bin.doorH) : '';
+ if (els.binDoor) {
+  els.binDoor.textContent = _doorTxt;
+  els.binDoor.style.display = _doorTxt ? 'block' : 'none';
  }
+ if (!els.binDoor) els.binLabel.textContent = main + (_doorTxt ? ' · ' + _doorTxt : '');
+}
+function binFullText() {
+ var m = (els.binMain && els.binMain.textContent) || '';
+ return m + (_doorTxt ? ' · ' + _doorTxt : '');
 }
 function cbApply(silent) {
  var r = cbValidate();
@@ -6230,7 +6251,7 @@ function aimLights() {
       stageCone.visible = true;
       /* fog:false 的光柱不参与雾衰减，镜头拉远时按距离削弱，避免远景变成一根亮锥。 */
       var _bo = (ud.baseOp == null ? Math.max(0, Math.min(0.11, 0.012 + 0.030 * (LGT.coef.stage == null ? 0.72 : LGT.coef.stage))) : ud.baseOp);   /* [v76-P4] 兜底也 clamp，与 setLightCoef 同口径 */
-      var _dk = Math.max(0.22, Math.min(1, 735 / Math.max(1, camDist || 735)));
+      var _dk = Math.max(0.22, Math.min(1, (_lastDg > 0 ? _lastDg * 2.30 : 735) / Math.max(1, camDist || 735)));
       if (stageCone.material) stageCone.material.opacity = _bo * _dk;
     }
   }
@@ -6419,7 +6440,7 @@ window.__API__ = {
    bin: { l: bin.l, w: bin.w, h: bin.h, name: bin.name, doorW: bin.doorW, doorH: bin.doorH, sceneId: bin.sceneId },
    inner: { l: inL, w: inW, h: inH }, m3: +((bin.l * bin.w * bin.h) / 1e6).toFixed(2),
    scene: sc ? { id: sc.id, l: sc.l, w: sc.w, h: sc.h, name: sc.name } : null,
-   label: els.binLabel.textContent, barText: els.binLabel.textContent
+   label: binFullText(), barText: binFullText()
   };
  },
  /* P0-1 验收：某品类各姿态的占位尺寸（来自 POSE_SPEC，不经渲染） */
@@ -6982,7 +7003,7 @@ window.__API__ = {
   _shotFree = true;                /* 之后所有 updateCam 不再按仓体尺寸钳位 */
   camDist = Math.max(cat.l, cat.h, cat.w) * (opt.dm || 1.45);
   camTheta = (opt.theta != null ? opt.theta : 0.9);
-  camPhi = (opt.phi != null ? opt.phi : 1.15);
+  camPhi = (opt.phi != null ? opt.phi : 1.26);
   updateCam();
   return { ok: true, name: cat.name, dims: [cat.l, cat.w, cat.h] };
  },
@@ -7055,8 +7076,8 @@ window.__API__ = {
   return { valid: !els.binApply.disabled, err: els.binErr.textContent, applied: cbApply(true) };
  },
  customBin: function () { return customBin; },
- binBarText: function () { return els.binLabel.textContent; },
- binBarValText: function () { return els.binLabel.textContent; },
+ binBarText: function () { return binFullText(); },
+ binBarValText: function () { return binFullText(); },
  openBinSheet: function () { openBinSheet(); },
  routeCheck: function () { return checkRoute(cart); },
  /* ===== v34.0 通道路径 API（T0/T1/T2）===== */
@@ -7796,7 +7817,7 @@ window.SZXM = {
    if (!el || !tx) return;
    var last = '';
    function tick() {
-     var src = document.getElementById('binLabel'); if (!src) return;
+     var src = document.getElementById('binDoor') || document.getElementById('binLabel'); if (!src) return;
      var m = (src.textContent || '').split('门')[1] || ''; m = m.match(/([0-9]+)×([0-9]+)/);
      if (m) {
        var t = '门洞 ' + m[1] + '×' + m[2] + 'cm · 超宽搬不进';
