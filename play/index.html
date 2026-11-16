@@ -71,7 +71,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 #levelSheet #levelList{padding-bottom:8px;margin-bottom:52px}
 .sheet.show{transform:translateY(0)}
 
-/* ===== [UX-SHEET-01 202611160826] 抽屉统一手势层：顶部把手(拖拽/上拉全显/下拉关闭) + 右上 X =====
+/* ===== [UX-SHEET-01 202611161135] 抽屉统一手势层：顶部把手(拖拽/上拉全显/下拉关闭) + 右上 X =====
    只在把手上做手势，抽屉正文的滚动列表不受影响（互不抢事件）。 */
 .sheet{padding-top:0}
 .sheet.full{max-height:96vh!important;height:96vh!important}
@@ -89,7 +89,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .sheet .uxx{position:absolute;right:6px;top:1px;width:34px;height:34px;border:0;background:transparent;
  color:#9fb0c6;font-size:22px;line-height:32px;padding:0;font-family:inherit;touch-action:manipulation}
 .sheet .uxx:active{color:#fff;background:rgba(255,255,255,.08);border-radius:17px}
-/* [UX-PACK-01 202611160826] 装填引导：toast 胶囊 + 装填按钮脉冲 */
+/* [UX-PACK-01 202611161135] 装填引导：toast 胶囊 + 装填按钮脉冲 */
 .uxtoast{position:fixed;left:50%;bottom:104px;z-index:60;max-width:86vw;text-align:center;
  display:flex;align-items:center;gap:8px;padding:11px 18px;border-radius:22px;
  background:rgba(24,32,44,.96);border:1px solid rgba(245,197,66,.75);
@@ -99,7 +99,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
  transition:transform .26s cubic-bezier(.2,.9,.3,1),opacity .26s}
 .uxtoast.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
 .uxtoast b{font-weight:700}
-/* ===== [UX-DOORHUD-01 202611160826] 门洞限制常驻提示 =====
+/* ===== [UX-DOORHUD-01 202611161135] 门洞限制常驻提示 =====
    3D 金框要旋转才完整可见，这条保证「这间仓有门洞、超宽件进不来」永远看得见。 */
 #doorHud{position:absolute;left:12px;top:74px;z-index:12;display:flex;align-items:center;gap:7px;
  background:linear-gradient(180deg,rgba(232,182,47,.18),rgba(232,182,47,.07));
@@ -110,14 +110,14 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 #doorHud.show{opacity:1;transform:none}
 #doorHud i{width:11px;height:15px;border:1.5px solid #ffd766;border-bottom:none;border-radius:2px 2px 0 0;position:relative;flex:0 0 auto}
 #doorHud i:after{content:'';position:absolute;left:-3px;right:-3px;bottom:-1px;height:1.5px;background:#ffd766}
-/* ===== [UX-HINT-01 202611160826] 首屏引导文字右移 =====
+/* ===== [UX-HINT-01 202611161135] 首屏引导文字右移 =====
    竖屏相机拉到 1.90 后门洞金框占住画面左侧 1/3（投影 x 14~123 CSS），
    原本居中的「这是你的仓位 3D 空间」左边缘会压到金框右竖上。 */
 #hint{left:31%;right:5px}
 .btn.primary.pulse{animation:uxPulse 1.1s ease-in-out 3}
 @keyframes uxPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,197,66,0)}
  50%{box-shadow:0 0 0 6px rgba(245,197,66,.32);color:#ffe9a8}}
-/* [UX-SHEET-02 202611160826] picker 内容长（自行车类有 4 个姿态选项），76% 高度下
+/* [UX-SHEET-02 202611161135] picker 内容长（自行车类有 4 个姿态选项），76% 高度下
    「完成」按钮要滚一下才看见 → 提到 86%，主操作首屏可见 */
 #picker{max-height:86%}
 /* P0-F：仓室面板加了 5 字段与备注后，小屏要能滚到「按这个尺寸设置」 */
@@ -533,7 +533,7 @@ body.shotmode{background:#11151c}
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v79</b> · 202611160826</div>
+<div id="verTag"><b>v81</b> · 202611161135</div>
 
 <div id="tripBadge"></div>
 
@@ -2470,7 +2470,7 @@ function buildBinGrid() {
 }
 
 
-/* ===== [UX-DOOR-01 202611160826] 门洞金色线框 + 尺寸标注（借鉴同类产线的「门洞警示框」做法）
+/* ===== [UX-DOOR-01 202611161135] 门洞金色线框 + 尺寸标注（借鉴同类产线的「门洞警示框」做法）
    位置：z = bin.w 面（初始相机 camTheta=0.9 位于 +x/+z 象限，z 面是唯一正对镜头的一面）
    尺寸：门宽门高取 bin.doorW/doorH，超仓体尺寸时自动收敛，避免线框穿出仓壁。
    语义：这是客户搬仓时真实的「门口净通过尺寸」，超宽/超高件过不了这道门。 */
@@ -2482,34 +2482,38 @@ function buildDoorFrame() {
   var dw = Number(bin.doorW) || 90, dh = Number(bin.doorH) || 200;
   dw = Math.min(dw, Math.max(40, bin.w * 0.92));     /* 门宽不能超过仓宽 */
   dh = Math.min(dh, bin.h);                          /* 门高不能穿出仓顶 */
-  var th = 2.6;    /* th=线框粗细(cm)：
-     4.0 实测在首屏像一块巨型金条、压过仓位本体，收到 2.6 更像"警示贴条" */
-  var matGold = new T.MeshBasicMaterial({ color: 0xe8b62f, transparent: true, opacity: 0.88,
-    fog: false });   /* fog:false —— 警示线框不能被场景雾淡化，否则远处看不见；
-     亮度从 0xf5c542/0.96 降到 0xe8b62f/0.88，首屏不再抢过仓位本体 */
-  function bar(w, h, d, px, py, pz) {
-    var m = new T.Mesh(new T.BoxGeometry(w, h, d), matGold);
-    m.position.set(px, py, pz);
-    m.renderOrder = 6;
-    g.add(m);
-  }
+  /* [UX-DOOR-03] 门洞 = 无厚度线条（对标同类产线 Grok 的门洞线框）：
+     ① 不是立体门套：旧版 4 条 BoxGeometry(th=2.6cm) 正面是金条、侧视露厚度面，
+        与整体透视线条割裂，抢走注意力（实测反馈「喧宾夺主」）。
+     ② 也不是 1px LineSegments：WebGL 里 linewidth 被忽略，恒定 1 设备像素，
+        dpr=2 的手机上等于 0.5 CSS px，实测「几乎看不见」（视觉复核原话）。
+     ③ 故用 4 条「无厚度薄面片」PlaneGeometry 拼矩形：面片只有长宽、没有厚度，
+        侧视自然收细消失；正对镜头时投影约 3~4 设备像素 = 1.6~2 CSS px，
+        与 Grok 线框同量级，也与仓体青色边线同级，只靠颜色（金 vs 青）区分功能。
+     ④ 门洞内部不加任何填充（同一版删掉半透明金纱）。 */
+  var wb = 1.25;   /* 线带宽（场景单位≈cm） */
+  var matGold = new T.MeshBasicMaterial({ color: 0xf2c14e, fog: false, side: T.DoubleSide });
+  /* fog:false —— 警示线不能被场景雾淡化；Basic 材质不吃灯光，颜色稳定不被场景光污染 */
   /* 门必须画在「正对相机」的那一面 z = bin.w：相机 camTheta=0.9 位于 +x/+z 象限，
      z 面正对镜头、投影最大；画在 x=bin.l 侧面会被透视压扁成窄条，且总贴右缘
      压在底部工具栏上（实测截图重叠严重）。 */
-  var cx = bin.l / 2, xx = bin.w + 1.2;
-  bar(dw, th, th, cx, dh - th / 2, xx);              /* 顶横 */
-  bar(dw, th, th, cx, th / 2, xx);                   /* 底横 */
-  bar(th, dh, th, cx - dw / 2, dh / 2, xx);          /* 左竖 */
-  bar(th, dh, th, cx + dw / 2, dh / 2, xx);          /* 右竖 */
-  /* 门洞内半透明金纱：让「这里是个开口」一眼可读 */
-  var veil = new T.Mesh(
-    new T.PlaneGeometry(dw, dh),
-    new T.MeshBasicMaterial({ color: 0xffcc55, transparent: true, opacity: 0.07,
-      side: T.DoubleSide, depthWrite: false, fog: false })
-  );
-  veil.position.set(cx, dh / 2, bin.w + 0.35);
-  veil.renderOrder = 5;
-  g.add(veil);
+  var cx = bin.l / 2, xx = bin.w + 0.6;
+  var x0 = cx - dw / 2, x1 = cx + dw / 2;
+  function doorBar(ax, ay, bx, by) {
+    var len = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+    /* 长度 +wb：四条边各多出半个带宽，四角严丝合缝，不留缺角 */
+    var pg = new T.PlaneGeometry(len + wb, wb);
+    var m = new T.Mesh(pg, matGold);
+    m.position.set((ax + bx) / 2, (ay + by) / 2, 0);
+    m.rotation.z = Math.atan2(by - ay, bx - ax);
+    m.renderOrder = 6;
+    return m;
+  }
+  g.add(doorBar(x0, 0, x1, 0));      /* 底横 */
+  g.add(doorBar(x1, 0, x1, dh));     /* 右竖 */
+  g.add(doorBar(x1, dh, x0, dh));    /* 顶横 */
+  g.add(doorBar(x0, dh, x0, 0));     /* 左竖 */
+  g.position.z = xx;
   /* [UX-DOOR-02] 3D 内不再放尺寸牌 Sprite：竖屏水平视野只有 ±10.8°，门面在屏幕左侧
      （投影 x 14~123 CSS），牌子贴左缘必被裁字、放上方又压住顶横（实测视觉复核两条都命中）。
      尺寸信息改由 #doorHud 常驻金色胶囊承担（读顶部仓位文案，永远可见、永远不裁字）。 */
@@ -7493,7 +7497,7 @@ window.SZXM = {
 </script>
 
 <script>
-/* ===== [UX-SHEET-01 / UX-PACK-01 202611160826] 抽屉手势层 + 添加完成引导装填 =====
+/* ===== [UX-SHEET-01 / UX-PACK-01 202611161135] 抽屉手势层 + 添加完成引导装填 =====
    注入式实现：不改动原有 showSheet/hideSheets 逻辑，只在其之上补一层手势与关闭按钮。
    手势规则（只在顶部把手上响应，正文滚动不受影响）：
      上拉 > 46px → 展开全屏（96vh）；满屏后下拉 < 70px 收回常态，> 200px 直接关闭；
