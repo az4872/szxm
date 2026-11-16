@@ -588,7 +588,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v87</b> · 202611170005</div>
+<div id="verTag"><b>v88</b> · 202611170030</div>
 
 <div id="tripBadge"></div>
 
@@ -7192,6 +7192,46 @@ window.__API__ = {
  /* [R14-DIAG] 几何诊断：物品世界旋转 + 三向棱的屏幕倾角 + 与仓壁间隙；仓室三条主棱屏幕倾角。
     口径：只统计实体 Mesh，排除接触阴影面片（MeshBasicMaterial / userData.isShadowPatch），
     否则 1.55× 的阴影片会把包围盒撑大、造出「越界」假象（本轮踩过）。 */
+ /* [R14-A] 逐件可见性：只切 visible，不动位置/材质/父节点。
+    无头浏览器「隐藏第 i 件 → 截图 → 与全显图逐像素差分」得到该件的屏幕像素数，
+    这是完全绕开 diagProj 的可见性证据（审查要求 A 项）。 */
+ hideItem: function (i, v) {
+  var g = placedGroup, o = g && g.children && g.children[i];
+  if (!o) return null;
+  o.visible = (v === false) ? false : true;
+  /* 关键：渲染循环会停帧，只改 visible 不改缓冲；必须立刻重绘一次，
+     否则无头截图与 readPixels 拿到的都是旧帧（本轮踩过，见攻关记录） */
+  try { renderer.render(scene, camera); } catch (e) {}
+  return o.visible;
+ },
+ placedCount: function () { return placedGroup && placedGroup.children ? placedGroup.children.length : 0; },
+ /* [R14-A2] 逐件像素差分（页面内 gl.readPixels，绕开合成层）：
+    全显帧 F vs 只隐藏第 i 件的 H，三通道和 >18 的像素数 = 该件在画面上的可见面积。
+    返回 px=0 表示该件被前件彻底遮死（那是用户真实看不到，不是接口问题）。 */
+ pixItemDiff: function (i) {
+  var r = renderer, gl = (r.getContext ? r.getContext() : null);
+  if (!gl) return { err: 'no gl' };
+  var w = r.domElement.width, h = r.domElement.height;
+  function grab() {
+   r.render(scene, camera);
+   var buf = new Uint8Array(w * h * 4);
+   gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+   return buf;
+  }
+  var kids = placedGroup.children.slice(), vis = kids.map(function (o) { return o.visible; });
+  kids.forEach(function (o) { o.visible = true; });
+  var F = grab();
+  kids.forEach(function (o, j) { o.visible = (j === i) ? false : true; });
+  var H = grab();
+  kids.forEach(function (o, j) { o.visible = vis[j]; });
+  if (r.render && scene && camera) r.render(scene, camera);
+  var n = w * h, cnt = 0;
+  for (var k = 0; k < n; k++) {
+   var q = k * 4;
+   if (Math.abs(F[q] - H[q]) + Math.abs(F[q + 1] - H[q + 1]) + Math.abs(F[q + 2] - H[q + 2]) > 18) cnt++;
+  }
+  return { px: cnt, pct: +(cnt / n * 100).toFixed(2), w: w, h: h };
+ },
  diagProj: function () {
   var PI = Math.PI;
   function ndc(x, y, z) { var v = new T.Vector3(x, y, z).project(camera); return [v.x, v.y]; }
