@@ -47,6 +47,9 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .add{flex:0 0 auto;min-width:104px;background:linear-gradient(135deg,#3ddc84,#22a862);color:#06210f}
 .btn.add{padding:8px 6px;line-height:1.2}
 .btn.add span{display:block}
+/* [R13-BTN2] 底栏「一键装填」四字两行：与「添加物品」同 padding / 行高，五个按钮的按钮盒高度保持一致 */
+#packBtn{padding:8px 4px;line-height:1.2}
+#packBtn span{display:block}
 .ghost{flex:0 0 84px;background:rgba(255,255,255,.08);color:#c9d6e8;
  border:1px solid rgba(255,255,255,.14);position:relative}
 #cartNum{position:absolute;top:-6px;right:-4px;background:#ff6b6b;color:#fff;
@@ -293,6 +296,21 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
  background:rgba(20,26,36,.995);border-top:1px solid rgba(255,255,255,.12);
  border-radius:16px 16px 0 0;padding:16px 16px 18px}
 #result.show{display:block}
+/* [R13-RESULT] 结果面板把手（上拉展开 / 下拉关闭）
+   抽屉那套 .sheet .uxbar / .sheet .uxx 的选择器作用域写死在 .sheet 里，
+   结果面板是独立浮层（#result + body.ropen），因此一条都没生效 —— 这就是「弹窗不能下拉消失」的原因。
+   这里补一套等价样式，并让它 sticky 吸顶（面板内容可滚动，把手必须常驻可抓）。 */
+#result .uxbar{position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:center;
+ height:30px;margin:-14px 0 2px;background:rgba(20,26,36,.99);cursor:grab;touch-action:none;
+ -webkit-user-select:none;user-select:none}
+#result .uxbar:active{cursor:grabbing}
+#result .uxbar:before{content:'';width:42px;height:4px;border-radius:2px;background:rgba(255,255,255,.38);
+ transition:background .18s}
+#result .uxbar:active:before{background:rgba(255,255,255,.72)}
+#result.full .uxbar:before{background:rgba(245,197,66,.8)}
+#result .uxbar>#resultClose{position:absolute;top:0;right:0;width:34px;height:30px;border:0;
+ background:transparent;color:#9fb0c6;font-size:20px;border-radius:0}
+#result.full{max-height:calc(100vh - 52px)!important;max-height:calc(100dvh - 52px)!important}
 .rhead{font-size:19px;font-weight:800;letter-spacing:.5px;margin-bottom:3px;padding-right:26px}  /* 给右上角 × 让位，避免压住标题尾部 */
 .rhead.ok{color:#3ddc84}
 .rhead.bad{color:#ff6b6b}
@@ -570,7 +588,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v85</b> · 202611162055</div>
+<div id="verTag"><b>v86</b> · 202611162155</div>
 
 <div id="tripBadge"></div>
 
@@ -698,7 +716,7 @@ body.kbopen .sheet.full{height:auto!important;
     <button class="btn ghost" id="cartBtn">清单<span id="cartNum">0</span></button>
     <button class="btn manual" id="manualBtn">手动装</button>
     <button class="btn lamp" id="lampBtn">灯光</button>
-    <button class="btn primary" id="packBtn">一键装填</button>
+    <button class="btn primary" id="packBtn" aria-label="一键装填"><span>一键</span><span>装填</span></button>
   </div>
   <div id="lvHead"></div>
   <div id="status">先添加你要搬的物品 · 共 0 件</div>
@@ -1821,7 +1839,25 @@ function tuneFog(dist) {
  var k = Math.sqrt(-Math.log(Math.max(0.03, 1 - FOGCFG.target))) / d;
  scene.fog.density = Math.max(FOGCFG.min, Math.min(FOGCFG.max, k));
 }
-var camera = new T.PerspectiveCamera(20, 1, 1, 20000);/* [R12-LENS] 45->20：长焦压缩透视，与 fitCamera 的 1.90->5.80 距离系数联动，构图不变而收敛减到 1/3 */
+var ORTHO_K = 0.35266;   /* [R13-ORTHO] 2*tan(20°/2)=0.35266 —— 正交取景高度 / camDist，与旧 fov20 透视同框 */
+var camera = new T.OrthographicCamera(-1, 1, 1, -1, 1, 20000);
+/* [R13-ORTHO] 透视 → 正交（R12 的长焦改造没解决「侧面看斜」的根因）
+   透视是中心投影：长方体斜看时，两条平行竖棱离相机的距离不同（近的占的像素多、远的少），
+   必然向主点收敛成梯形——顶部边线倾斜、左右竖边向内收。fov 缩小只是把倾角变小
+   （R12 实测 3.48°→1.25°），数学上永远压不到 0。
+   正交是平行投影：平行线在屏幕上保持平行，camera.up=(0,1,0) 时 cameraRight 恒垂直于世界 Y，
+   世界竖直方向的棱投影后严格竖直 → 正对某面是标准矩形，斜看是对边平行的等轴测图，都不会「歪」。
+   取景尺寸由 applyOrtho() 按 camDist*ORTHO_K 换算，竖直视野与旧 fov20 完全一致（构图不变）。 */
+function applyOrtho() {
+ var w = (canvas && canvas.clientWidth) || 390, h = (canvas && canvas.clientHeight) || 844;
+ var aspect = w / Math.max(h, 1);
+ var viewH = Math.max(30, camDist || 500) * ORTHO_K;
+ camera.top = viewH / 2;
+ camera.bottom = -viewH / 2;
+ camera.left = -(viewH * aspect) / 2;
+ camera.right = (viewH * aspect) / 2;
+ camera.updateProjectionMatrix();
+}
 
 /* ===== v59 灯光系统重写：四通道归一 + 四预设 + 接触阴影 + 互动联动 =====
    旧版是逐轮「修发黑/剪影」的补光补丁（六向同时补 → 亮度趋同 → 观感上"没有光"）。
@@ -2745,6 +2781,7 @@ function updateCam() {
   camTarget.z + camDist * sp * Math.cos(camTheta)
  );
  camera.lookAt(camTarget);
+ applyOrtho();      /* [R13-ORTHO] 机位一变就重算取景框：正交相机没有 aspect 字段，宽高比必须自己摊到 left/right */
  tuneFog(camDist);   /* [v75] 远了就稀释雾，保证物品区雾浓度恒定 */
  aimLights();   /* [v73] 机位一变，灯位立刻跟着变（截图/无头环境不依赖 loop） */
 }
@@ -5598,7 +5635,8 @@ els.packBtn.addEventListener('click', function (e) {
    而主路径 showResult 用 innerHTML=h 整体覆盖，把 #resultClose 一起冲掉（实测 getElementById 返回
    null，× 根本不渲染），再加上原监听绑在已被销毁的旧节点上 → 用户看到结果后没有任何关闭入口。
    统一由 resultHTML() 注入关闭按钮，点击交给 #result 上的事件委托处理。 */
-function resultHTML(h) { return '<button id="resultClose" aria-label="关闭结果面板">×</button>' + h; }
+function resultHTML(h) { return '<div class="uxbar" role="button" aria-label="上拉展开 / 下拉关闭"><button id="resultClose" aria-label="关闭结果面板">×</button></div>' + h; }
+/* [R13-RESULT] 把手必须进这个模板：els.result.innerHTML = resultHTML(h) 每次整体覆盖，写在模板外会被冲掉 */
 /* [FIX-MOBILE-02 20261115] 结论前置：把「最小够用仓型」（.rec）从面板末尾搬到
    主数字（.rbig）之后，保证第一屏不滚动就能看到「换小一号仓能装下 / 还差几厘米」。
    原顺序里它排在第 9 位，手机用户基本看不到。 */
@@ -5624,9 +5662,74 @@ els.result.addEventListener('click', function (ev) {
 
 function closeResult() {
  els.result.classList.remove('show');
+ els.result.classList.remove('full');   /* [R13-RESULT] 清全高态，下次打开回到默认高度 */
+ els.result.style.transform = '';
  document.body.classList.remove('ropen');
  setTimeout(function () { resize(); fitCamera(true); }, 320);
 }
+/* ---- [R13-RESULT] 结果面板：上拉展开 / 下拉关闭 -------------------------------------------
+   原来整套手势只服务 .sheet 抽屉（选择器与监听都作用域在 .sheet 里），结果面板一条都没有，
+   所以「一键装填结果弹窗」只能靠右上角 × 关，不能下拉消失。
+   监听必须写在本块内：els 与 closeResult 都是这个闭包的变量，写到别的 <script> 块会 ReferenceError（实测过）。
+   阈值：下拉 ≥110px → 收起 / 上拉 ≥46px → 全高 / 全高态下拉 ≥70px 退回默认高度、≥200px 直接收起。 */
+(function () {
+ var r = els.result;
+ if (!r) return;
+ var drag = null;
+ function back() {
+  r.style.transition = 'transform .16s ease-out';
+  r.style.transform = '';
+  setTimeout(function () { r.style.transition = ''; }, 180);
+ }
+ function dropOut() {
+  r.style.transition = 'transform .18s ease-in';
+  r.style.transform = 'translateY(104%)';
+  setTimeout(function () {
+   r.style.transition = ''; r.style.transform = '';
+   closeResult();
+  }, 190);
+ }
+ r.addEventListener('pointerdown', function (e) {
+  var bar = (e.target && e.target.closest) ? e.target.closest('.uxbar') : null;
+  if (!bar || e.target.id === 'resultClose') return;
+  drag = { y: e.clientY, x: e.clientX, dy: 0, full: r.classList.contains('full') };
+  r.style.transition = '';
+  try { bar.setPointerCapture(e.pointerId); } catch (err) {}
+ });
+ r.addEventListener('pointermove', function (e) {
+  if (!drag) return;
+  var dy = e.clientY - drag.y, dx = Math.abs(e.clientX - drag.x);
+  if (dx > Math.abs(dy) && dx > 24) { drag = null; back(); return; }
+  drag.dy = dy;
+  if (drag.full) {
+   r.style.transform = (dy > 0) ? 'translateY(' + Math.min(dy, 260) + 'px)' : '';
+  } else if (dy > 0) {
+   r.style.transform = 'translateY(' + Math.min(dy, 320) + 'px)';
+  } else {
+   r.style.transform = '';
+   if (dy < -46) { r.classList.add('full'); drag.full = true; }
+  }
+ });
+ function finish() {
+  if (!drag) return;
+  var dy = drag.dy, wasFull = drag.full;
+  drag = null;
+  r.style.transform = '';
+  if (dy < -46) { r.classList.add('full'); return; }
+  if (dy <= 0) { back(); return; }
+  if (wasFull) {
+   if (dy >= 200) dropOut();
+   else if (dy >= 70) { r.classList.remove('full'); back(); }
+   else back();
+  } else if (dy >= 110) {
+   dropOut();
+  } else {
+   back();
+  }
+ }
+ r.addEventListener('pointerup', finish);
+ r.addEventListener('pointercancel', finish);
+})();
 /* 旧绑定指向已被 innerHTML 销毁的节点，保留会造成「看起来绑了其实没绑」，已由上方委托替代 */
 function showSheet(el) {
  /* v60：同层浮层互斥。原实现只加自己，v59 新增的灯光面板会与清单/仓室面板叠成多层
@@ -6149,8 +6252,7 @@ function resize() {
  var w = canvas.clientWidth, h = canvas.clientHeight;
  if (canvas.width !== w || canvas.height !== h) {
   renderer.setSize(w, h, false);
-  camera.aspect = w / Math.max(h, 1);
-  camera.updateProjectionMatrix();
+  applyOrtho();   /* [R13-ORTHO] 正交相机无 aspect → 宽高比改由 applyOrtho 重算 left/right（结果面板开合会改画布高度，必须跟着刷） */
  }
 }
 /* ===== [v73] 舞台光：主光/背光/射灯跟随镜头 =====
@@ -7060,6 +7162,19 @@ window.__API__ = {
   };
  },
  camInfo: function () { return { theta: camTheta, phi: camPhi, dist: camDist }; },
+ /* [R13] 投影自查接口：正交判定 + 世界点 → 屏幕 NDC（用于「竖棱是否严格竖直 / 对边是否平行」的数学验收，替代肉眼看图） */
+ camType: function () { return camera.isOrthographicCamera ? 'ortho' : 'persp'; },
+ camProj: function (x, y, z) {
+  var v = new T.Vector3(x, y, z).project(camera);
+  return { x: v.x, y: v.y, d: v.z };
+ },
+ resultHTML: resultHTML,   /* [R13] 让验收脚本能直调模板，确认 uxbar 真的在模板里（不再靠肉眼看面板） */
+ orthoInfo: function () {   /* [R13] 正交取景框真值：竖直视野 = top-bottom（宽高比摊在横向 left/right） */
+  return { top: camera.top, bottom: camera.bottom, left: camera.left, right: camera.right,
+   viewH: camera.top - camera.bottom, viewW: camera.right - camera.left,
+   canvasW: (canvas ? canvas.clientWidth : 0), canvasH: (canvas ? canvas.clientHeight : 0),
+   near: camera.near, far: camera.far, dist: camDist, isOrtho: !!camera.isOrthographicCamera };
+ },
  levelBest: function () { return levelBest; },
  setBin: function (l, w, h, name) {
   bin.l = l; bin.w = w; bin.h = h;
