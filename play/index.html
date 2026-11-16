@@ -588,7 +588,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v88</b> · 202611170030</div>
+<div id="verTag"><b>v90</b> · 202611170720</div>
 
 <div id="tripBadge"></div>
 
@@ -1839,8 +1839,21 @@ function tuneFog(dist) {
  var k = Math.sqrt(-Math.log(Math.max(0.03, 1 - FOGCFG.target))) / d;
  scene.fog.density = Math.max(FOGCFG.min, Math.min(FOGCFG.max, k));
 }
-var ORTHO_K = 0.35266;   /* [R13-ORTHO] 2*tan(20°/2)=0.35266 —— 正交取景高度 / camDist，与旧 fov20 透视同框 */
-var camera = new T.OrthographicCamera(-1, 1, 1, -1, 1, 20000);
+var ORTHO_K = 0.35266;   /* 2*tan(20°/2)=0.35266 —— 正交取景高度 / camDist，与 fov20 透视同框 */
+/* [R22-PROJ] 投影改造：R21 用 Hough 同度量比对 Grok 与我方截图，Grok 竖棱中位 90.00°（0~3% 偏>3°），
+  正交还有个硬伤：ratioW=ratioH=1.0000，物理上没有近大远小，用户读成「近小远大」，且 θ=0 时深度边与
+  竖棱在屏幕上重合（alongZ=-90°），顶面被压成窄高平行四边形。
+  透视与竖棱垂直是同一根杠杆（vertMax ∝ fov，ratio 反向），只能取平衡：
+  cam_sim 扫参给 fov 12→vertMax 1.57°/ratio 0.881、fov 16→2.0°/0.85。
+  取景高度换算：ORTHO_K/(2*tan(fov/2)) 即「同框系数」，camDist 乘它后透视视野高度与正交完全一致。 */
+var PROJCFG = { mode: 'persp', fov: 16.0, align: 1 };
+function projDistK() {
+ if (PROJCFG.mode !== 'persp') return 1;
+ return ORTHO_K / (2 * Math.tan(PROJCFG.fov * Math.PI / 360));
+}
+var camera = (PROJCFG.mode === 'persp')
+ ? new T.PerspectiveCamera(PROJCFG.fov, 1, 20, 40000)
+ : new T.OrthographicCamera(-1, 1, 1, -1, 1, 20000);
 /* [R13-ORTHO] 透视 → 正交（R12 的长焦改造没解决「侧面看斜」的根因）
    透视是中心投影：长方体斜看时，两条平行竖棱离相机的距离不同（近的占的像素多、远的少），
    必然向主点收敛成梯形——顶部边线倾斜、左右竖边向内收。fov 缩小只是把倾角变小
@@ -1848,9 +1861,15 @@ var camera = new T.OrthographicCamera(-1, 1, 1, -1, 1, 20000);
    正交是平行投影：平行线在屏幕上保持平行，camera.up=(0,1,0) 时 cameraRight 恒垂直于世界 Y，
    世界竖直方向的棱投影后严格竖直 → 正对某面是标准矩形，斜看是对边平行的等轴测图，都不会「歪」。
    取景尺寸由 applyOrtho() 按 camDist*ORTHO_K 换算，竖直视野与旧 fov20 完全一致（构图不变）。 */
-function applyOrtho() {
+function applyProj() {
  var w = (canvas && canvas.clientWidth) || 390, h = (canvas && canvas.clientHeight) || 844;
  var aspect = w / Math.max(h, 1);
+ if (camera.isPerspectiveCamera) {
+  camera.fov = PROJCFG.fov;
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+  return;
+ }
  var viewH = Math.max(30, camDist || 500) * ORTHO_K;
  camera.top = viewH / 2;
  camera.bottom = -viewH / 2;
@@ -1858,6 +1877,7 @@ function applyOrtho() {
  camera.right = (viewH * aspect) / 2;
  camera.updateProjectionMatrix();
 }
+function applyOrtho() { applyProj(); }
 
 /* ===== v59 灯光系统重写：四通道归一 + 四预设 + 接触阴影 + 互动联动 =====
    旧版是逐轮「修发黑/剪影」的补光补丁（六向同时补 → 亮度趋同 → 观感上"没有光"）。
@@ -2406,10 +2426,36 @@ function csTex() {
  _csTex = new T.CanvasTexture(cv);
  return _csTex;
 }
+var _floorVigTex = null;
+/* [R22-VIG] 仓底四周压暗：整堆与仓壁之间那 8~11cm 的物理空隙（5 件总填充率 43%，几何上无法消除）
+   在观感上容易被读成「箱子漂浮在仓室正中」。这里只改地板贴图，把四周 13% 边宽压成暗带，
+   让空隙读作「地板阴影 / 结构暗角」，不动几何、不动装填判定、不动物品位置。
+   边缘带 36/256 = 14% 边宽 ≈ 102cm 仓的 14cm。 */
+function floorVigTex() {
+ if (_floorVigTex) return _floorVigTex;
+ var cvs = document.createElement('canvas');
+ cvs.width = 256; cvs.height = 256;
+ var g2 = cvs.getContext('2d');
+ g2.fillStyle = '#252e3a';
+ g2.fillRect(0, 0, 256, 256);
+ var B = 'rgba(7,10,15,0.92)', Z = 'rgba(7,10,15,0)';
+ var grd;
+ grd = g2.createLinearGradient(0, 0, 0, 36); grd.addColorStop(0, B); grd.addColorStop(1, Z);
+ g2.fillStyle = grd; g2.fillRect(0, 0, 256, 36);
+ grd = g2.createLinearGradient(0, 256, 0, 220); grd.addColorStop(0, B); grd.addColorStop(1, Z);
+ g2.fillStyle = grd; g2.fillRect(0, 220, 256, 36);
+ grd = g2.createLinearGradient(0, 0, 36, 0); grd.addColorStop(0, B); grd.addColorStop(1, Z);
+ g2.fillStyle = grd; g2.fillRect(0, 0, 36, 256);
+ grd = g2.createLinearGradient(256, 0, 220, 0); grd.addColorStop(0, B); grd.addColorStop(1, Z);
+ g2.fillStyle = grd; g2.fillRect(220, 0, 36, 256);
+ _floorVigTex = new T.CanvasTexture(cvs);
+ return _floorVigTex;
+}
+
 function makeShadowPatch(l, ph, w) {
  var m = new T.Mesh(
-  new T.PlaneGeometry(l * 1.55, w * 1.55),
-  new T.MeshBasicMaterial({ map: csTex(), transparent: true, depthWrite: false, opacity: 0.96 })
+  new T.PlaneGeometry(l * 1.78, w * 1.78),   /* [R22-AO] 1.55→1.78：贴片外沿更宽，箱底与仓底之间不再"悬空" */
+  new T.MeshBasicMaterial({ map: csTex(), transparent: true, depthWrite: false, opacity: 1.0 })   /* [R22-AO] 0.96→1.0 接地感 */
  );
  m.rotation.x = -Math.PI / 2;
  /* 主光从 (+x,+z) 上方来（d1 在仓位右上前），影自然落向左下，贴片跟着偏 */
@@ -2420,6 +2466,116 @@ function makeShadowPatch(l, ph, w) {
  m.visible = !!(typeof LGT !== 'undefined' && LGT.shadow);
  /* 掩膜天然干净：maskView 会把 transparent 的 mesh 一并隐藏，不会污染缝隙判定 */
  return m;
+}
+
+/* [R22-ALIGN] 模型去歪斜：最小体积 AABB 旋转搜索。
+   为什么必须做（离线实测 tools/audit_box_mesh.py）：打包后的顶点云 AABB 恒为 [-0.5,0.5]³，
+   也就是说「歪的箱子」被归一化到**它自己的外接盒**；运行时再按占位盒非等比拉伸，
+   箱子的六个面就被拉成斜面 —— 这就是「纵边斜 4.76°」+「表面不平整」的同一条因果链。
+   为什么不用 PCA：顶点在单位立方体表面均匀分布 → 协方差 λ2≈λ3（实测 0.2/0.1/0.1），主轴是噪声，
+   上一轮 meshAudit 的 pcaAxisDevDeg 6.32° 本身就是伪指标（已记入错误台账）。
+   为什么用体积目标：绕 45° 一定会把 AABB 撑大，所以「体积最小」天然拒绝轴置换（长边不会被转去占 y），
+   可以放心在 ±45° 全区间搜索；方形截面绕长轴转 90° 等价，搜索会稳在 0。
+   精度：三轮（粗 3° / 细 0.5° / 收 0.1°），每轮 x-y-z 各一次，2 万次以内 AABB 求值，单件 <5ms。 */
+var ALIGNDBG = {};
+function unskewGeo(geo, key) {
+ var pa = geo.attributes.position, n = pa.count;
+ if (!pa || n < 24) return 0;
+ var S = [], step = Math.max(1, Math.floor(n / 1400)), i;
+ for (i = 0; i < n; i += step) S.push([pa.getX(i), pa.getY(i), pa.getZ(i)]);
+ function volRot(pts, ax, ang) {
+  var c = Math.cos(ang), s = Math.sin(ang);
+  var mn0 = 1e18, mn1 = 1e18, mn2 = 1e18, mx0 = -1e18, mx1 = -1e18, mx2 = -1e18, j, p, x, y, z, a0, a1, a2;
+  for (j = 0; j < pts.length; j++) {
+   p = pts[j]; x = p[0]; y = p[1]; z = p[2];
+   if (ax === 0) { a0 = x; a1 = y * c - z * s; a2 = y * s + z * c; }
+   else if (ax === 1) { a0 = x * c + z * s; a1 = y; a2 = -x * s + z * c; }
+   else { a0 = x * c - y * s; a1 = x * s + y * c; a2 = z; }
+   if (a0 < mn0) mn0 = a0; if (a0 > mx0) mx0 = a0;
+   if (a1 < mn1) mn1 = a1; if (a1 > mx1) mx1 = a1;
+   if (a2 < mn2) mn2 = a2; if (a2 > mx2) mx2 = a2;
+  }
+  return (mx0 - mn0) * (mx1 - mn1) * (mx2 - mn2);
+ }
+ function rotArr(pts, ax, ang) {
+  var c = Math.cos(ang), s = Math.sin(ang), out = [], j, p, x, y, z;
+  for (j = 0; j < pts.length; j++) {
+   p = pts[j]; x = p[0]; y = p[1]; z = p[2];
+   if (ax === 0) out.push([x, y * c - z * s, y * s + z * c]);
+   else if (ax === 1) out.push([x * c + z * s, y, -x * s + z * c]);
+   else out.push([x * c - y * s, x * s + y * c, z]);
+  }
+  return out;
+ }
+ var cur = S, curV = volRot(S, 0, 0), tot = [0, 0, 0];
+ var spans = [45, 3, 0.5], stp = [3, 0.5, 0.1], rnd, ax, kk, bestA, bestV, a, v;
+ for (rnd = 0; rnd < 3; rnd++) {
+  for (ax = 0; ax < 3; ax++) {
+   bestA = 0; bestV = curV;
+   var K = Math.round(spans[rnd] / stp[rnd]);
+   for (kk = -K; kk <= K; kk++) {
+    if (kk === 0) continue;
+    a = kk * stp[rnd] * Math.PI / 180;
+    v = volRot(cur, ax, a);
+    if (v < bestV - 1e-12) { bestV = v; bestA = a; }
+   }
+   if (bestA !== 0) { cur = rotArr(cur, ax, bestA); curV = bestV; tot[ax] += bestA; }
+  }
+ }
+ var dev = Math.sqrt(tot[0] * tot[0] + tot[1] * tot[1] + tot[2] * tot[2]) * 180 / Math.PI;
+ ALIGNDBG[key] = { dev: +dev.toFixed(2), ang: [+(tot[0] * 180 / Math.PI).toFixed(2), +(tot[1] * 180 / Math.PI).toFixed(2), +(tot[2] * 180 / Math.PI).toFixed(2)], vol0: +volRot(S, 0, 0).toFixed(4), vol1: +curV.toFixed(4) };
+ if (dev < 0.6) return dev;
+ var c0 = Math.cos(tot[0]), s0 = Math.sin(tot[0]), c1 = Math.cos(tot[1]), s1 = Math.sin(tot[1]), c2 = Math.cos(tot[2]), s2 = Math.sin(tot[2]);
+ var mn0 = 1e18, mn1 = 1e18, mn2 = 1e18, mx0 = -1e18, mx1 = -1e18, mx2 = -1e18;
+ for (i = 0; i < n; i++) {
+  var x0 = pa.getX(i), y0 = pa.getY(i), z0 = pa.getZ(i);
+  var x1 = x0, y1 = y0 * c0 - z0 * s0, z1 = y0 * s0 + z0 * c0;
+  var x2 = x1 * c1 + z1 * s1, y2 = y1, z2 = -x1 * s1 + z1 * c1;
+  var x3 = x2 * c2 - y2 * s2, y3 = x2 * s2 + y2 * c2, z3 = z2;
+  if (x3 < mn0) mn0 = x3; if (x3 > mx0) mx0 = x3;
+  if (y3 < mn1) mn1 = y3; if (y3 > mx1) mx1 = y3;
+  if (z3 < mn2) mn2 = z3; if (z3 > mx2) mx2 = z3;
+ }
+ var ctr = [(mn0 + mx0) / 2, (mn1 + mx1) / 2, (mn2 + mx2) / 2];
+ for (i = 0; i < n; i++) {
+  var xq = pa.getX(i), yq = pa.getY(i), zq = pa.getZ(i);
+  var xr = xq, yr = yq * c0 - zq * s0, zr = yq * s0 + zq * c0;
+  var xs = xr * c1 + zr * s1, ys = yr, zs = -xr * s1 + zr * c1;
+  var xt = xs * c2 - ys * s2, yt = xs * s2 + ys * c2, zt = zs;
+  pa.setXYZ(i, xt - ctr[0], yt - ctr[1], zt - ctr[2]);
+ }
+ pa.needsUpdate = true;
+ geo.deleteAttribute('normal');
+ geo.computeVertexNormals();
+ return dev;
+}
+var ALIGN_KEYS = { box: 1, storagebox: 1, suitcase: 1 };
+/* [R22-SNAP] 表面拍平：用户截图 Hough 复核（修正角度定义后）竖段中位 0.00°（主棱本来就竖直），
+   13 条偏>3° 的全是 60~99px 的短线段，位置都在箱体表面 → 是纸箱翻边/折痕/印刷边的走向，
+   不是箱体主棱。Grok 参考是「无缝光面收纳箱」，我方是「开盖瓦楞纸箱」，翻边在不同视角下呈斜面，
+   被读成「纵向边不平行 + 表面不平整」。修法：把靠近 ±0.5 面的顶点（|coord|>0.40）吸附到该面，
+   翻边/折痕被抹平、箱体恢复严格方正；顶点数不变、拓扑不动，不会破面。
+   只对纸箱类做；行李箱的拉杆/轮子是外形加分项，不拍平。 */
+var SNAP_KEYS = { box: 1, storagebox: 1 };
+var SNAPDBG = {};
+function snapGeo(geo, key) {
+ var pa = geo.attributes.position, n = pa.count;
+ if (!pa || n < 24) return 0;
+ var TH = 0.40, moved = 0, i, x, y, z, nx, ny, nz;
+ for (i = 0; i < n; i++) {
+  x = pa.getX(i); y = pa.getY(i); z = pa.getZ(i);
+  nx = x > TH ? 0.5 : (x < -TH ? -0.5 : x);
+  ny = y > TH ? 0.5 : (y < -TH ? -0.5 : y);
+  nz = z > TH ? 0.5 : (z < -TH ? -0.5 : z);
+  if (nx !== x || ny !== y || nz !== z) { pa.setXYZ(i, nx, ny, nz); moved++; }
+ }
+ pa.needsUpdate = true;
+ geo.deleteAttribute('normal');
+ geo.computeVertexNormals();
+ geo.computeBoundingBox();
+ geo.computeBoundingSphere();
+ SNAPDBG[key] = { verts: n, moved: moved, pct: +(100 * moved / n).toFixed(1) };
+ return moved;
 }
 
 function buildRealMesh(key, fallbackColor) {
@@ -2439,6 +2595,9 @@ function buildRealMesh(key, fallbackColor) {
   if (d.uv) geo.setAttribute('uv', new T.BufferAttribute(b64f32(d.uv), 2));
   geo.setIndex(new T.BufferAttribute(b64u32(d.idx), 1));
  }
+ /* [R22-ALIGN] 只对盒状件扶正：椅/沙发/跑步机本体就有斜面（靠背、把手、跑带），强扶会变形 */
+ if (PROJCFG.align && ALIGN_KEYS[key]) unskewGeo(geo, key);
+ if (PROJCFG.align && SNAP_KEYS[key]) snapGeo(geo, key);   /* [R22-SNAP] 见 snapGeo 注释 */
  if (!d.nrm) geo.computeVertexNormals();
  /* 顶点色：打包时随模型一起写入 uint8 RGB（归一化），单材质一模型，不引贴图 */
  var useVC = !!d.col;
@@ -2620,7 +2779,7 @@ function drawBin() {
    粗糙度下降会让底板变成反光板，光斑会盖住物品轮廓，比黑底更难读 */
  var floor = new T.Mesh(
   new T.PlaneGeometry(bin.l, bin.w),
-  new T.MeshStandardMaterial({ color: 0x252e3a, roughness: 0.95 })
+  new T.MeshStandardMaterial({ color: 0xffffff, map: floorVigTex(), roughness: 0.95 })   /* [R22-VIG] 地板挂暗角贴图 */
  );
  floor.rotation.x = -Math.PI / 2;
  floor.position.set(bin.l / 2, 0, bin.w / 2);
@@ -2735,7 +2894,7 @@ function fitCamera(wide) {
    }
   }
  } catch (e) {}
- camDist = camDist0;
+ camDist = camDist0 * projDistK();   /* [R22-PROJ] 透视：按等价视野高度回算距离，构图与正交一致 */
  camTarget.set(tx, ty, tz);
  updateCam();
 }
@@ -2773,6 +2932,13 @@ function updateCam() {
      即便触发，far/near 比值也只在 1.3e4 量级，深度精度安全。 */
   var _needFar = camDist + _lastDg * 1.6;
   if (_needFar > camera.far) { camera.far = Math.ceil(_needFar); camera.updateProjectionMatrix(); }
+ }
+ /* [R22-PROJ] 透视 near 必须跟随距离：固定 near=1 会让 far/near 到 2e4 量级，
+    24 位深度精度不够 → 箱面 z-fighting 斑驳。near=0.06*dist：dist≈1285cm 时 near≈77cm，
+    物品在 dist±diag/2=1197~1373，安全。 */
+ if (camera.isPerspectiveCamera) {
+  var _nr = Math.max(4, camDist * 0.06);
+  if (!(camera.near > _nr * 0.8 && camera.near < _nr * 1.25)) { camera.near = _nr; camera.updateProjectionMatrix(); }
  }
  var sp = Math.sin(camPhi), cp = Math.cos(camPhi);
  camera.position.set(
@@ -7231,6 +7397,205 @@ window.__API__ = {
    if (Math.abs(F[q] - H[q]) + Math.abs(F[q + 1] - H[q + 1]) + Math.abs(F[q + 2] - H[q + 2]) > 18) cnt++;
   }
   return { px: cnt, pct: +(cnt / n * 100).toFixed(2), w: w, h: h };
+ },
+  /* [R21] 模型自身姿态审计：箱子是「轴对齐的盒子」还是「歪的三角网」。
+     AABB 恒为轴对齐，无法反映模型内部顶点歪斜——这是前几轮「箱斜」排查的盲区。
+     pcaAxisDevDeg：顶点云最大主轴与世界最近的坐标轴的夹角（0°=轴对齐）
+     edgeAxisRatio / faceAxisRatio：边方向、面法线与最近坐标轴夹角 <2.63°(cos>0.995) 的占比
+     maxEdgeDev / normDevP95：非轴对齐边/面法线的偏差分位数（表面平整度的量化） */
+  meshAudit: function () {
+   var PI = Math.PI, V = T.Vector3, out = [];
+   placedGroup.children.forEach(function (o, i) {
+    var pts = [], nEdge = 0, nAxisEdge = 0, devList = [], nTri = 0, nAxisNorm = 0, normList = [], nV = 0;
+    o.updateMatrixWorld(true);
+    o.traverse(function (m) {
+     if (!m.isMesh || !m.geometry) return;
+     var g = m.geometry, pa = g.attributes.position;
+     if (!pa) return;
+     var idx = g.index ? g.index.array : null, cnt = idx ? idx.length : pa.count;
+     var stride = Math.max(3, Math.floor(cnt / 3 / 4000) * 3);
+     for (var k = 0; k + 2 < cnt; k += stride) {
+      var a = idx ? idx[k] : k, b = idx ? idx[k + 1] : k + 1, c = idx ? idx[k + 2] : k + 2;
+      var A = new V(pa.getX(a), pa.getY(a), pa.getZ(a)).applyMatrix4(m.matrixWorld);
+      var B = new V(pa.getX(b), pa.getY(b), pa.getZ(b)).applyMatrix4(m.matrixWorld);
+      var C = new V(pa.getX(c), pa.getY(c), pa.getZ(c)).applyMatrix4(m.matrixWorld);
+      var e1 = B.clone().sub(A), e2 = C.clone().sub(A);
+      var nrm = e1.clone().cross(e2);
+      if (nrm.lengthSq() < 1e-12) continue;
+      nrm.normalize(); nTri++;
+      var mxN = Math.max(Math.abs(nrm.x), Math.abs(nrm.y), Math.abs(nrm.z));
+      if (mxN > 0.995) nAxisNorm++; else normList.push(+(Math.acos(mxN) * 180 / PI).toFixed(1));
+      var es = [e1, e2, C.clone().sub(B)];
+      for (var z = 0; z < 3; z++) {
+       var e = es[z], L = e.length(); if (L < 1e-6) continue;
+       e.normalize(); nEdge++;
+       var mx = Math.max(Math.abs(e.x), Math.abs(e.y), Math.abs(e.z));
+       if (mx > 0.995) nAxisEdge++; else devList.push(+(Math.acos(mx) * 180 / PI).toFixed(1));
+      }
+     }
+     for (var q = 0; q < pa.count; q += Math.max(1, Math.floor(pa.count / 300))) {
+      pts.push(new V(pa.getX(q), pa.getY(q), pa.getZ(q)).applyMatrix4(m.matrixWorld)); nV++;
+     }
+    });
+    var cx = 0, cy = 0, cz = 0;
+    pts.forEach(function (v) { cx += v.x; cy += v.y; cz += v.z; });
+    var n = pts.length || 1; cx /= n; cy /= n; cz /= n;
+    var M = [[0,0,0],[0,0,0],[0,0,0]];
+    pts.forEach(function (v) {
+     var dx = v.x - cx, dy = v.y - cy, dz = v.z - cz;
+     M[0][0] += dx*dx; M[0][1] += dx*dy; M[0][2] += dx*dz;
+     M[1][1] += dy*dy; M[1][2] += dy*dz; M[2][2] += dz*dz;
+    });
+    M[1][0] = M[0][1]; M[2][0] = M[0][2]; M[2][1] = M[1][2];
+    var vec = [1, 1, 1];
+    for (var it = 0; it < 60; it++) {
+     var w = [M[0][0]*vec[0] + M[0][1]*vec[1] + M[0][2]*vec[2],
+              M[1][0]*vec[0] + M[1][1]*vec[1] + M[1][2]*vec[2],
+              M[2][0]*vec[0] + M[2][1]*vec[1] + M[2][2]*vec[2]];
+     var L2 = Math.sqrt(w[0]*w[0] + w[1]*w[1] + w[2]*w[2]);
+     if (L2 < 1e-12) break;
+     vec = [w[0]/L2, w[1]/L2, w[2]/L2];
+    }
+    var mxP = Math.max(Math.abs(vec[0]), Math.abs(vec[1]), Math.abs(vec[2]));
+    var pcaDev = +(Math.acos(Math.min(1, mxP)) * 180 / PI).toFixed(2);
+    function p95(arr) {
+     if (!arr.length) return 0;
+     var s2 = arr.slice().sort(function (x, y) { return x - y; });
+     return s2[Math.floor(s2.length * 0.95)];
+    }
+    /* 顶点云在各世界轴上的实际极值（与 AABB 不同：这里只取采样点，误差 <0.3%） */
+    var lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+    pts.forEach(function (v) {
+     var t = [v.x, v.y, v.z];
+     for (var k2 = 0; k2 < 3; k2++) { lo[k2] = Math.min(lo[k2], t[k2]); hi[k2] = Math.max(hi[k2], t[k2]); }
+    });
+    out.push({ i: i,
+     tris: nTri, verts: nV,
+     pcaAxis: vec.map(function (x) { return +x.toFixed(3); }), pcaAxisDevDeg: pcaDev,
+     edgeAxisRatio: +(nAxisEdge / (nEdge || 1)).toFixed(3),
+     faceAxisRatio: +(nAxisNorm / (nTri || 1)).toFixed(3),
+     maxEdgeDev: devList.length ? Math.max.apply(null, devList) : 0,
+     normDevP95: p95(normList), normDevMax: normList.length ? Math.max.apply(null, normList) : 0,
+     ptBounds: { min: lo.map(function (x) { return +x.toFixed(1); }), max: hi.map(function (x) { return +x.toFixed(1); }) }
+    });
+   });
+   return out;
+  },
+ /* [R22-EDGE] 模型真实棱线审计：AABB 的 8 角投影恒竖直（已两次证明是盲区），要判断「箱子的纵向边与仓边平行」
+    必须直接取几何网格的凸棱（相邻两面法线夹角>21.5° 的共享边），用 matrixWorld 变换到世界再投影，
+    统计「世界方向以竖直为主(|dy|/len>0.85)」的棱在屏幕上的倾角（0=完全竖直）。这条不经过截图，不受 UI 干扰。 */
+ meshEdgeAudit: function () {
+  var ob = (this.objBoxes ? this.objBoxes() : []) || [];
+  var out = [], CWV = canvas.width, CHV = canvas.height;
+  function SP(x, y, z) { return window.__API__.camProj(x, y, z); }
+  placedGroup.children.forEach(function (o, i) {
+   o.updateMatrixWorld(true);
+   var res = { i: i, cat: (ob[i] && ob[i].catId) || '?', vCount: 0, vMedian: null, vMean: null, vP90: null, vMax: null, edges: [] };
+   var MW = new T.Matrix4();
+   o.traverse(function (m) {
+    if (!m.isMesh || !m.geometry || m.userData.isShadowPatch) return;
+    var g = m.geometry, pa = g.attributes.position, ia = g.index;
+    if (!pa || !ia) return;
+    MW.copy(m.matrixWorld);
+    var tri = Math.floor(ia.count / 3), nrm = [], t, i0, i1, i2;
+    for (t = 0; t < tri; t++) {
+     i0 = ia.getX(t * 3); i1 = ia.getX(t * 3 + 1); i2 = ia.getX(t * 3 + 2);
+     var a = new T.Vector3(pa.getX(i0), pa.getY(i0), pa.getZ(i0)).applyMatrix4(MW);
+     var b = new T.Vector3(pa.getX(i1), pa.getY(i1), pa.getZ(i1)).applyMatrix4(MW);
+     var c = new T.Vector3(pa.getX(i2), pa.getY(i2), pa.getZ(i2)).applyMatrix4(MW);
+     var n = b.clone().sub(a).cross(c.clone().sub(a)), l = n.length();
+     nrm.push(l > 1e-12 ? n.multiplyScalar(1 / l) : null);
+    }
+    var emap = {};
+    for (t = 0; t < tri; t++) {
+     var ix = [ia.getX(t * 3), ia.getX(t * 3 + 1), ia.getX(t * 3 + 2)];
+     for (var e = 0; e < 3; e++) {
+      var p1 = ix[e], p2 = ix[(e + 1) % 3];
+      var key = p1 < p2 ? (p1 + '_' + p2) : (p2 + '_' + p1);
+      var E = emap[key] || (emap[key] = { a: Math.min(p1, p2), b: Math.max(p1, p2), n: [] });
+      E.n.push(t);
+     }
+    }
+    Object.keys(emap).forEach(function (k) {
+     var E = emap[k];
+     if (E.n.length !== 2) return;
+     var n1 = nrm[E.n[0]], n2 = nrm[E.n[1]];
+     if (!n1 || !n2) return;
+     if (Math.abs(n1.dot(n2)) > 0.93) return;
+     var A = new T.Vector3(pa.getX(E.a), pa.getY(E.a), pa.getZ(E.a)).applyMatrix4(MW);
+     var B = new T.Vector3(pa.getX(E.b), pa.getY(E.b), pa.getZ(E.b)).applyMatrix4(MW);
+     var wl = A.distanceTo(B);
+     if (wl < 0.5) return;
+     var sA = SP(A.x, A.y, A.z), sB = SP(B.x, B.y, B.z);
+     var dx = (sB.x - sA.x) * CWV / 2, dy = -(sB.y - sA.y) * CHV / 2;
+     var len = Math.sqrt(dx * dx + dy * dy);
+     var ang = Math.abs(Math.atan2(dx, Math.abs(dy)) * 180 / Math.PI);
+     var wy = Math.abs(B.y - A.y) / wl;
+     if (len > 60 && wy > 0.85) res.edges.push({ len: +len.toFixed(1), ang: +ang.toFixed(2), wl: +wl.toFixed(2), wy: +wy.toFixed(3),
+      a: [+A.x.toFixed(1), +A.y.toFixed(1), +A.z.toFixed(1)], b: [+B.x.toFixed(1), +B.y.toFixed(1), +B.z.toFixed(1)] });
+    });
+   });
+   var vs = res.edges.map(function (e) { return e.ang; }).sort(function (a, b) { return a - b; });
+   res.vCount = vs.length;
+   if (vs.length) {
+    res.vMedian = +vs[Math.floor(vs.length / 2)].toFixed(2);
+    res.vMean = +(vs.reduce(function (a, b) { return a + b; }, 0) / vs.length).toFixed(2);
+    res.vP90 = +vs[Math.floor(vs.length * 0.9)].toFixed(2);
+    res.vMax = +vs[vs.length - 1].toFixed(2);
+   }
+   if (res.edges.length > 300) res.edges = res.edges.slice(0, 300);
+   out.push(res);
+  });
+  return out;
+ },
+ /* [R22-GAP] 间隙明细：逐件 mesh-only AABB（排除 1.55x 接触阴影面片）→ 距仓壁六面 + 两两分离。
+    上一轮只报整堆两侧 gapL/gapR=8.1/8.2，不知道空在哪一层、哪一对，所以改不动。 */
+ gapDetail: function () {
+  var ob = (this.objBoxes ? this.objBoxes() : []) || [];
+  var out = { bin: { l: bin.l, w: bin.w, h: bin.h }, items: [], pairs: [] }, bx = [];
+  placedGroup.children.forEach(function (o, i) {
+   o.updateMatrixWorld(true);
+   var mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9], seen = false;
+   o.traverse(function (m) {
+    if (!m.isMesh || !m.geometry || m.userData.isShadowPatch) return;
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    var bb = m.geometry.boundingBox;
+    if (!bb) return;
+    seen = true;
+    for (var cx = 0; cx < 2; cx++) for (var cy = 0; cy < 2; cy++) for (var cz = 0; cz < 2; cz++) {
+     var v = new T.Vector3(cx ? bb.max.x : bb.min.x, cy ? bb.max.y : bb.min.y, cz ? bb.max.z : bb.min.z).applyMatrix4(m.matrixWorld);
+     mn[0] = Math.min(mn[0], v.x); mn[1] = Math.min(mn[1], v.y); mn[2] = Math.min(mn[2], v.z);
+     mx[0] = Math.max(mx[0], v.x); mx[1] = Math.max(mx[1], v.y); mx[2] = Math.max(mx[2], v.z);
+    }
+   });
+   if (!seen) return;
+   var rec = { i: i, cat: (ob[i] && ob[i].catId) || '?',
+    size: [+(mx[0] - mn[0]).toFixed(2), +(mx[1] - mn[1]).toFixed(2), +(mx[2] - mn[2]).toFixed(2)],
+    min: mn.map(function (x) { return +x.toFixed(2); }), max: mx.map(function (x) { return +x.toFixed(2); }),
+    wall: { x0: +mn[0].toFixed(2), x1: +(bin.l - mx[0]).toFixed(2), z0: +mn[2].toFixed(2), z1: +(bin.w - mx[2]).toFixed(2),
+            y0: +mn[1].toFixed(2), y1: +(bin.h - mx[1]).toFixed(2) } };
+   out.items.push(rec); bx.push({ mn: mn, mx: mx });
+  });
+  for (var a2 = 0; a2 < bx.length; a2++) for (var b2 = a2 + 1; b2 < bx.length; b2++) {
+   var g = [];
+   for (var k2 = 0; k2 < 3; k2++) g.push(+(Math.max(0, Math.max(bx[a2].mn[k2] - bx[b2].mx[k2], bx[b2].mn[k2] - bx[a2].mx[k2]))).toFixed(2));
+   out.pairs.push({ a: a2, b: b2, sepX: g[0], sepY: g[1], sepZ: g[2] });
+  }
+  out.align = ALIGNDBG;
+  out.snap = SNAPDBG;
+  return out;
+ },
+ /* [R22-PROJ] 投影扫参口：mode='persp'|'ortho'，fov 度 */
+ setProj: function (mode, fov) {
+  if (mode === 'persp' || mode === 'ortho') PROJCFG.mode = mode;
+  if (fov != null && isFinite(+fov)) PROJCFG.fov = Math.max(4, Math.min(60, +fov));
+  var wantP = PROJCFG.mode === 'persp';
+  if (wantP !== !!camera.isPerspectiveCamera) {
+   camera = wantP ? new T.PerspectiveCamera(PROJCFG.fov, 1, 20, 40000) : new T.OrthographicCamera(-1, 1, 1, -1, 1, 20000);
+  }
+  if (wantP) { camera.far = 40000; camera.near = Math.max(4, (camDist || 500) * 0.06); }
+  fitCamera();
+  return { mode: PROJCFG.mode, fov: PROJCFG.fov, isPersp: !!camera.isPerspectiveCamera, dist: +camDist.toFixed(1), distK: +projDistK().toFixed(4) };
  },
  diagProj: function () {
   var PI = Math.PI;
