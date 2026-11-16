@@ -173,7 +173,11 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
  border-radius:9px;border:1px solid rgba(77,163,255,.55);background:rgba(77,163,255,.18);
  color:#cfe3ff;font-size:20px;font-weight:600;font-family:inherit;cursor:pointer;touch-action:manipulation}
 .pplus:active{background:rgba(77,163,255,.34)}
-.pqnum{flex:1 1 auto;text-align:center;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:#e8f1ff}
+.pqnum{flex:1 1 auto;min-width:0;width:100%;height:44px;padding:0;text-align:center;font-size:15px;font-weight:700;
+ font-variant-numeric:tabular-nums;color:#e8f1ff;font-family:inherit;-webkit-appearance:none;appearance:none;
+ border-radius:9px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);cursor:text}
+.pqnum:focus{outline:none;border-color:rgba(77,163,255,.9);background:rgba(77,163,255,.16);
+ box-shadow:0 0 0 3px rgba(77,163,255,.18)}
 .ptotal{display:inline-block;font-size:11px;font-weight:700;color:#7cc0ff;
  background:rgba(77,163,255,.14);border-radius:8px;padding:2px 8px;margin-bottom:7px;
  font-variant-numeric:tabular-nums}
@@ -513,6 +517,30 @@ body.shotmode{background:#11151c}
   .lp-grid{grid-template-columns:repeat(2,1fr)}
   .btn{font-size:13px}
 }
+
+/* ===== [R11-KB-01 202611161800] 清单件数框：以前是纯文字，现在可直接键入 ===== */
+.qbqty{width:56px;height:34px;padding:0;text-align:center;border-radius:9px;
+ border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#e8f1ff;
+ font-size:14px;font-weight:700;font-family:inherit;font-variant-numeric:tabular-nums;
+ -webkit-appearance:none;appearance:none;cursor:text}
+.qbqty:focus{outline:none;border-color:rgba(77,163,255,.9);background:rgba(77,163,255,.16);
+ box-shadow:0 0 0 3px rgba(77,163,255,.16)}
+
+/* ===== [R11-KB-03 202611161800] 软键盘弹出时把抽屉抬到键盘上方 =====
+   抽屉是 absolute bottom:0，贴的是 layout viewport；iOS 只缩 visual viewport，
+   抽屉不会自己上移 → 底部那排「确定」被键盘盖住，用户以为「填完尺寸没有确定项」。
+   下面用 JS 量到的键盘高度 --kbpx 把它顶起来，并同步收紧 max-height（否则顶部会顶出屏幕）。 */
+body.kbopen .sheet{bottom:var(--kbpx,0px)!important;
+ max-height:calc(100% - var(--kbpx,0px) - 8px)!important}
+body.kbopen .sheet.full{height:auto!important;
+ max-height:calc(100% - var(--kbpx,0px) - 8px)!important}
+/* [FIX-SBTN-01 202611161810] 一个抽屉里出现两个 .sbtn 时，两条都 sticky:bottom:0 会叠在同一位置，
+   后渲染的「取消」正好盖住「确定」→ 手指点确定实际点到取消（面板收起、尺寸没生效、3D 不出现仓室）。
+   改为：两按钮并排放进 .sbtns 固定底栏，sticky 只挂在容器上。 */
+.sbtns{position:sticky;bottom:0;z-index:6;display:flex;gap:8px;align-items:stretch;flex-shrink:0;
+ background:#161d28;box-shadow:0 -10px 14px rgba(0,0,0,.28);padding-top:8px}
+.sbtns .sbtn{position:static;width:auto;flex:2 1 0;min-width:0;margin:0;box-shadow:none;z-index:auto}
+.sbtns .sbtn.sec{flex:1 1 0;margin-top:0}
 </style>
 </head>
 <body>
@@ -533,7 +561,7 @@ body.shotmode{background:#11151c}
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v81</b> · 202611161135</div>
+<div id="verTag"><b>v83</b> · 202611161810</div>
 
 <div id="tripBadge"></div>
 
@@ -592,8 +620,8 @@ body.shotmode{background:#11151c}
   </div>
   <input id="binNote" maxlength="40" placeholder="备注（最多 40 字）：例 房东说门只有 78cm，实测内净 236×158×138">
   <div id="binErr"></div>
-  <button class="sbtn" id="binApply">按这个尺寸设置</button>
-  <button class="sbtn sec" id="binCancel">取消</button>
+  <div class="cnote2" style="margin:6px 0 10px">填完上面格子，点下面蓝色按钮才生成仓室。<br>门宽/门高留空就按仓体自动估算，不影响通过性判定。</div>
+  <div class="sbtns"><button class="sbtn" id="binApply">✓ 确定 · 生成仓室</button><button class="sbtn sec" id="binCancel">取消</button></div>
 </div>
 
 <div class="sheet" id="pathSheet">
@@ -618,8 +646,7 @@ body.shotmode{background:#11151c}
   </div>
   <div id="pPathErr"></div>
   <div id="pPathWarn" class="pw"></div>
-  <button class="sbtn" id="pPathApply">按这套通道判定</button>
-  <button class="sbtn sec" id="pPathCancel">取消</button>
+  <div class="sbtns"><button class="sbtn" id="pPathApply">按这套通道判定</button><button class="sbtn sec" id="pPathCancel">取消</button></div>
 </div>
 
 <div id="manualBar">
@@ -3153,7 +3180,7 @@ function refreshCartUI() {
     '</div>' +
     '<div class="qty">' +
      '<button class="qb" data-act="minus" data-i="' + i + '">−</button>' +
-     '<span>' + c.qty + '</span>' +
+     '<input class="qbqty" data-act="setqty" data-i="' + i + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" value="' + c.qty + '" aria-label="件数，可直接输入">' +
      '<button class="qb" data-act="plus" data-i="' + i + '">＋</button>' +
     '</div>' +
     '<button class="cdel" data-act="del" data-i="' + i + '">删</button>' +
@@ -3178,6 +3205,23 @@ function bindCartEvents() {
  var btns = els.cartList.querySelectorAll('[data-act]');
  for (var i = 0; i < btns.length; i++) {
   (function (b) {
+   /* [R11-KB-01] 清单里的件数框：直接键入（原来改 12 件要点 12 次 ＋） */
+   if (b.tagName === 'INPUT') {
+    b.addEventListener('keydown', function (ev) {
+     if (ev.key === 'Enter') { ev.preventDefault(); b.blur(); }
+    });
+    b.addEventListener('blur', function () {
+     var ci2 = +b.getAttribute('data-i'), c2 = cart[ci2];
+     if (!c2) return;
+     var n2 = Math.floor(Number(String(b.value || '').replace(/[^\d]/g, '')));
+     if (!isFinite(n2) || n2 < 0) n2 = 0;
+     if (n2 > 999) n2 = 999;
+     if (!n2) cart.splice(ci2, 1); else c2.qty = n2;
+     refreshCartUI(); bindCartEvents(); renderPreview();
+     els.status.textContent = '清单已更新（' + totalQty() + ' 件），点「一键装填」重新计算';
+    });
+    return;
+   }
    b.addEventListener('click', function () {
     var act = b.getAttribute('data-act');
     var idx = +b.getAttribute('data-i');
@@ -3415,7 +3459,7 @@ function renderPicker() {
    poseLine + sideBtn + boxLine +
    (q ?
     '<div class="pqrow"><button class="pminus" data-act="minus" aria-label="减一件">−</button>' +
-    '<span class="pqnum">' + q + '</span>' +
+    '<input class="pqnum" data-act="qty" data-k="' + catKey(c) + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" value="' + q + '" title="点这里直接输入件数" aria-label="件数，可直接输入">' +
     '<button class="pplus" data-act="add" aria-label="加一件">＋</button></div>' +
     '<span class="pqty">×' + q + '</span>' +
     '<button class="padd" data-act="add">＋ 加入清单</button>'
@@ -3437,6 +3481,7 @@ function renderPicker() {
      if (act === 'side') { sideToggle = true; break; }
      if (act === 'pose') { posePick = t.getAttribute('data-pose'); break; }
      if (act === 'mat' || act === 'taper') { act2 = act; break; }
+     if (act === 'qty') { return; }   /* [R11] 点件数框 = 编辑件数，不能被当成「加一件」 */
      if (act === 'minus') { dec = true; break; }
      t = t.parentNode;
     }
@@ -3505,6 +3550,49 @@ function renderPicker() {
  }
  refreshPickerDone();
 }
+
+/* ===== [R11-KB-01 202611161800] 物品面板：件数框可直接键入 =====
+   旧实现只有一个 <span> 显示件数，卡片上的 click 委托认不到 data-act 就落到「加 1 件」，
+   于是点数字只会 +1、永远弹不出键盘（用户实测反馈）。这里把件数框做成 input，
+   给面板挂一条一次性委托：离开输入框时按输入值改写清单（0 = 把这一行移出清单）。 */
+function pickerSetQty(k, raw) {
+ var n = Math.floor(Number(String(raw == null ? '' : raw).replace(/[^\d]/g, '')));
+ if (!isFinite(n) || n < 0) n = 0;
+ if (n > 999) n = 999;
+ var hit = -1, i, j;
+ for (i = 0; i < cart.length; i++) if (itemKey(cart[i]) === k) { hit = i; break; }
+ if (!n) {
+  if (hit >= 0) cart.splice(hit, 1);
+ } else if (hit >= 0) {
+  cart[hit].qty = n;
+ } else {
+  var cat = null;
+  for (j = 0; j < CATALOG.length; j++) if (catKey(CATALOG[j]) === k) { cat = CATALOG[j]; break; }
+  if (!cat) { renderPicker(); return; }
+  addToCart(cat);
+  for (i = 0; i < cart.length; i++) if (itemKey(cart[i]) === k) { hit = i; break; }
+  if (hit >= 0) cart[hit].qty = n;
+ }
+ try { refreshCartUI(); bindCartEvents(); afterChange(); } catch (e) {}
+ var keep = els.pickerList.scrollTop || 0;
+ renderPicker();
+ els.pickerList.scrollTop = keep;
+}
+(function bindPickerQty() {
+ var host = els.pickerList;
+ if (!host || host.getAttribute('data-qtybind') === '1') return;
+ host.setAttribute('data-qtybind', '1');
+ host.addEventListener('keydown', function (ev) {
+  var t = ev.target;
+  if (!t || t.tagName !== 'INPUT' || t.getAttribute('data-act') !== 'qty') return;
+  if (ev.key === 'Enter') { ev.preventDefault(); t.blur(); }
+ }, true);
+ host.addEventListener('blur', function (ev) {
+  var t = ev.target;
+  if (!t || t.tagName !== 'INPUT' || t.getAttribute('data-act') !== 'qty') return;
+  pickerSetQty(t.getAttribute('data-k'), t.value);
+ }, true);
+})();
 
 /* 读图算前景包围盒比例，把最接近的品类排前面（这是推断，不是识别） */
 function rankByImage(img, done) {
@@ -5550,8 +5638,16 @@ function cbValidate() {
   if (v < CB_MIN || v > CB_MAX) return name + '要在 ' + CB_MIN + '–' + CB_MAX + ' cm 之间';
   return '';
  }
- err = rng(L, '长') || rng(W, '宽') || rng(H, '高') || rng(DW, '门宽') || rng(DH, '门高');
- if (!err && DW > W) err = '门宽不能大于仓宽（' + W + ' cm）';
+ /* [R11-KB-02 202611161800] 门宽/门高从「必填」改成「可选」。
+    旧逻辑把它们当必填，留空时 cbValidate 直接返回「门宽没填」，cbRefresh 把 #binApply 置灰
+    ——用户填完长宽高找不到能点的确定项，以为这个面板根本没有「确定」。现在不填就按仓体推一个净通过尺寸。 */
+ err = rng(L, '长') || rng(W, '宽') || rng(H, '高');
+ if (!err && isFinite(DW) && (DW < CB_MIN || DW > CB_MAX)) err = '门宽要在 ' + CB_MIN + '–' + CB_MAX + ' cm 之间';
+ if (!err && isFinite(DH) && (DH < CB_MIN || DH > CB_MAX)) err = '门高要在 ' + CB_MIN + '–' + CB_MAX + ' cm 之间';
+ if (!isFinite(DW)) DW = Math.min(90, Math.max(CB_MIN, Math.round(W * 0.62)));
+ if (!isFinite(DH)) DH = Math.min(200, H);
+ if (isFinite(DW) && isFinite(W) && DW > W) DW = W;
+ if (isFinite(DH) && isFinite(H) && DH > H) DH = H;
  if (!err && DH > H + 0.001) err = '门高不能大于仓高（' + H + ' cm）';
  if (!err && note.length > CB_NOTE_MAX) err = '备注最多 ' + CB_NOTE_MAX + ' 字';
  return { ok: !err, err: err, v: { l: L, w: W, h: H, doorW: DW, doorH: DH, note: note } };
@@ -5562,7 +5658,7 @@ function cbRefresh() {
  if (els.binErr) {
   els.binErr.className = r.ok ? 'ok' : '';
   els.binErr.textContent = r.ok
-   ? ('将设为 内部 ' + r.v.l + '×' + r.v.w + '×' + r.v.h + ' cm · 门 ' + r.v.doorW + '×' + r.v.doorH + ' cm')
+   ? ('点下面「✓ 确定 · 生成仓室」即生效：内部 ' + r.v.l + '×' + r.v.w + '×' + r.v.h + ' cm · 门 ' + r.v.doorW + '×' + r.v.doorH + ' cm')
    : r.err;
  }
  return r;
@@ -5592,8 +5688,18 @@ function cbApply(silent) {
   hideSheets();
   drawBin();
   renderPreview();
+  /* [R11-KB-02 202611161800] 仓室尺寸变了必须重算画布并重新取景：旧实现只 drawBin + renderPreview，
+     相机距离/取景还按旧仓的对角线算 —— 从小仓改成 400cm 大仓，新仓整块落到画面外，
+     用户看到的就是「3D 里没有出现我填的那个仓」。 */
+  try { resize(); fitCamera(true); } catch (e) {}
+  setTimeout(function () { try { resize(); fitCamera(true); } catch (e) {} }, 260);
   els.status.textContent = '仓室已设为 内部 ' + v.l + '×' + v.w + '×' + v.h +
    ' cm，门 ' + v.doorW + '×' + v.doorH + ' cm 已参与通过性判定';
+  try {
+   if (typeof window.__szToast === 'function') {
+    window.__szToast('仓室已生成：内部 ' + v.l + '×' + v.w + '×' + v.h + ' cm · 门 ' + v.doorW + '×' + v.doorH + ' cm');
+   }
+  } catch (e) {}
  }
  return true;
 }
@@ -5611,6 +5717,7 @@ function openBinSheet(e) {
  cbRefresh();
  if (typeof applyGreyboxUI === 'function') applyGreyboxUI();
  showSheet(els.binSheet);
+ try { els.binSheet.scrollTop = 0; } catch (e) {}
 }
 
 els.binBtn.addEventListener('click', openBinSheet);
@@ -7542,6 +7649,7 @@ window.SZXM = {
    clearTimeout(toast._t);
    toast._t = setTimeout(function () { el.classList.remove('show'); }, TOAST_MS);
  }
+ try { window.__szToast = toast; } catch (e) {}
  function pulsePack() {
    var b = document.getElementById('packBtn'); if (!b) return;
    b.classList.remove('pulse');
@@ -7664,6 +7772,56 @@ window.SZXM = {
    }
    tick(); setInterval(tick, 500);
  })();
+})();
+</script>
+<script>
+/* ===== [R11-KB-03 202611161800] 软键盘适配 =====
+   抽屉是 position:absolute;bottom:0，贴的是 layout viewport。iOS（和部分安卓 WebView）
+   弹键盘时只缩 visual viewport、不缩 layout viewport，抽屉因此原地不动，
+   底部那排「确定」被键盘盖住 —— 用户以为「自定义仓室填完没有确定项」。
+   做法：量出键盘占高写入 --kbpx、给 body 加 .kbopen，CSS 把抽屉 bottom 抬到键盘上方；
+   输入框聚焦后再把自己滚到可视中段，避免正在填的那一格被键盘挡住。 */
+(function () {
+ 'use strict';
+ var vv = window.visualViewport || null;
+ var lastKb = -1;
+ function num(v) { v = Number(v); return isFinite(v) ? v : 0; }
+ function sync() {
+  var kb = 0;
+  if (vv) {
+   var ih = num(window.innerHeight);
+   var vh = num(vv.height) || ih;
+   var vt = num(vv.offsetTop);
+   kb = Math.max(0, Math.round(ih - vh - vt));
+  }
+  if (kb < 90) kb = 0;          /* 地址栏收起那几十像素不算键盘 */
+  if (kb === lastKb) return;
+  lastKb = kb;
+  var root = document.documentElement;
+  if (kb > 0) {
+   root.style.setProperty('--kbpx', kb + 'px');
+   document.body.classList.add('kbopen');
+  } else {
+   root.style.setProperty('--kbpx', '0px');
+   document.body.classList.remove('kbopen');
+  }
+ }
+ if (vv) { vv.addEventListener('resize', sync); vv.addEventListener('scroll', sync); }
+ window.addEventListener('resize', sync);
+ window.addEventListener('orientationchange', function () { setTimeout(sync, 260); });
+ document.addEventListener('focusin', function (ev) {
+  var t = ev.target;
+  if (!t || !(/^(INPUT|TEXTAREA|SELECT)$/).test(t.tagName)) return;
+  setTimeout(function () {
+   try {
+    var sh = t.closest ? t.closest('.sheet') : null;
+    if (sh) t.scrollIntoView({ block: 'center' });
+   } catch (e) {}
+  }, 320);
+ }, true);
+ document.addEventListener('focusout', function () { setTimeout(sync, 160); }, true);
+ sync();
+ setTimeout(sync, 120);
 })();
 </script>
 </body>
