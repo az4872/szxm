@@ -47,7 +47,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
 .add{flex:0 0 auto;min-width:104px;background:linear-gradient(135deg,#3ddc84,#22a862);color:#06210f}
 .btn.add{padding:8px 6px;line-height:1.2}
 .btn.add span{display:block}
-/* [R13-BTN2] 底栏「一键装填」四字两行：与「添加物品」同 padding / 行高，五个按钮的按钮盒高度保持一致 */
+/* [R14-BTN] 底栏「AI/装填」两行：与「添加物品」同 padding / 行高，五个按钮的按钮盒高度保持一致 */
 #packBtn{padding:8px 4px;line-height:1.2}
 #packBtn span{display:block}
 .ghost{flex:0 0 84px;background:rgba(255,255,255,.08);color:#c9d6e8;
@@ -301,7 +301,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
    结果面板是独立浮层（#result + body.ropen），因此一条都没生效 —— 这就是「弹窗不能下拉消失」的原因。
    这里补一套等价样式，并让它 sticky 吸顶（面板内容可滚动，把手必须常驻可抓）。 */
 #result .uxbar{position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:center;
- height:30px;margin:-14px 0 2px;background:rgba(20,26,36,.99);cursor:grab;touch-action:none;
+ height:30px;margin:-14px 0 22px;background:rgba(20,26,36,.99);cursor:grab;touch-action:none;
  -webkit-user-select:none;user-select:none}
 #result .uxbar:active{cursor:grabbing}
 #result .uxbar:before{content:'';width:42px;height:4px;border-radius:2px;background:rgba(255,255,255,.38);
@@ -588,7 +588,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v86</b> · 202611162155</div>
+<div id="verTag"><b>v87</b> · 202611170005</div>
 
 <div id="tripBadge"></div>
 
@@ -716,7 +716,7 @@ body.kbopen .sheet.full{height:auto!important;
     <button class="btn ghost" id="cartBtn">清单<span id="cartNum">0</span></button>
     <button class="btn manual" id="manualBtn">手动装</button>
     <button class="btn lamp" id="lampBtn">灯光</button>
-    <button class="btn primary" id="packBtn" aria-label="一键装填"><span>一键</span><span>装填</span></button>
+    <button class="btn primary" id="packBtn" aria-label="AI装填"><span>AI</span><span>装填</span></button>
   </div>
   <div id="lvHead"></div>
   <div id="status">先添加你要搬的物品 · 共 0 件</div>
@@ -2543,7 +2543,7 @@ function buildBinGrid() {
 
 
 /* ===== [UX-DOOR-01 202611161135] 门洞金色线框 + 尺寸标注（借鉴同类产线的「门洞警示框」做法）
-   位置：z = bin.w 面（初始相机 camTheta=0.9 位于 +x/+z 象限，z 面是唯一正对镜头的一面）
+   位置：z = bin.w 面（R14 起初始相机 camTheta=0，正对 z 面；斜视角下这条面会与前壁在屏幕上错位）
    尺寸：门宽门高取 bin.doorW/doorH，超仓体尺寸时自动收敛，避免线框穿出仓壁。
    语义：这是客户搬仓时真实的「门口净通过尺寸」，超宽/超高件过不了这道门。 */
 /* [UX-DOOR-02] doorLabelSprite 已随 3D 尺寸牌一并移除（尺寸信息交给 #doorHud 胶囊）。 */
@@ -2566,7 +2566,7 @@ function buildDoorFrame() {
   var wb = 1.25;   /* 线带宽（场景单位≈cm） */
   var matGold = new T.MeshBasicMaterial({ color: 0xf2c14e, fog: false, side: T.DoubleSide });
   /* fog:false —— 警示线不能被场景雾淡化；Basic 材质不吃灯光，颜色稳定不被场景光污染 */
-  /* 门必须画在「正对相机」的那一面 z = bin.w：相机 camTheta=0.9 位于 +x/+z 象限，
+  /* 门必须画在「正对相机」的那一面 z = bin.w：相机 camTheta=0 正对 z 面，
      z 面正对镜头、投影最大；画在 x=bin.l 侧面会被透视压扁成窄条，且总贴右缘
      压在底部工具栏上（实测截图重叠严重）。 */
   var cx = bin.l / 2, xx = bin.w + 0.6;
@@ -2713,7 +2713,7 @@ function coneGradTex() {
 }
 
 /* ---------- 相机 ---------- */
-var camTarget = new T.Vector3(), camDist = 500, camTheta = 0.9, camPhi = 1.26;/* [R12-CAM] 1.05→1.26：俯角 29.8°→18.0°，透视下左右竖棱屏幕倾角从 6.7° 降到 3.7%，仓体不再呈「斜梯形」 */
+var camTarget = new T.Vector3(), camDist = 500, camTheta = 0, camPhi = 1.26;/* [R12-CAM] 1.05→1.26：俯角 29.8°→18.0°，透视下左右竖棱屏幕倾角从 6.7° 降到 3.7%，仓体不再呈「斜梯形」 */
 function fitCamera(wide) {
  _shotFree = false;
  /* [FIX-09] 原来只按仓位尺寸定距离和目标点，而 renderPreview 把待装物品排在仓外
@@ -3266,7 +3266,7 @@ function bindCartEvents() {
      if (n2 > 999) n2 = 999;
      if (!n2) cart.splice(ci2, 1); else c2.qty = n2;
      refreshCartUI(); bindCartEvents(); renderPreview();
-     els.status.textContent = '清单已更新（' + totalQty() + ' 件），点「一键装填」重新计算';
+     els.status.textContent = '清单已更新（' + totalQty() + ' 件），点「AI装填」重新计算';
     });
     return;
    }
@@ -3294,7 +3294,7 @@ function bindCartEvents() {
     refreshCartUI();
     bindCartEvents();
     renderPreview();
-    els.status.textContent = '清单已更新（' + totalQty() + ' 件），点「一键装填」重新计算';
+    els.status.textContent = '清单已更新（' + totalQty() + ' 件），点「AI装填」重新计算';
    });
   })(btns[i]);
  }
@@ -4839,7 +4839,7 @@ els.mbExit.addEventListener('click', function (e) {
  if (manual.obj) { placedGroup.remove(manual.obj); manual.obj = null; }
  if (typeof refreshCartUI === 'function') { try { refreshCartUI(); } catch (e1) {} }
  if (cart.length) {
-  els.status.textContent = '已退出手动装 · 你放下的 ' + manual.placed.length + ' 件仍留在仓里，点「一键装填」重新用算法装';
+  els.status.textContent = '已退出手动装 · 你放下的 ' + manual.placed.length + ' 件仍留在仓里，点「AI装填」重新用算法装';
   /* 不在这里调 doPack：doPack 会直接打开结果面板（body.ropen 又把底栏藏起来），
      等于把用户从「手动装无出口」换到「结果面板无出口」，实测过这个坑。
      已落位的件保留不清场——清掉等于让用户白摆一遍。 */
@@ -4965,7 +4965,7 @@ function loadLevel(idx) {
   els.lvHead.innerHTML = '<b>' + L.id + ' · ' + L.name + '</b> ｜ 目标：' + goal +
    ' ｜ 当前仓：' + L.bin.toUpperCase() + ' ' + bin.l + '×' + bin.w + '×' + bin.h;
  }
- els.status.textContent = L.id + ' · ' + L.name + (L.limit > 0 ? '（限时 ' + L.limit + ' 秒）' : '') + '，点「一键装填」';
+ els.status.textContent = L.id + ' · ' + L.name + (L.limit > 0 ? '（限时 ' + L.limit + ' 秒）' : '') + '，点「AI装填」';
  hideSheets();
  placedGroup.clear();
  document.body.classList.remove('ropen');
@@ -5050,7 +5050,7 @@ function playTrips() {
    tripPlaying = false;
    els.tripBadge.classList.remove('show');
    if (els.tripBadge) els.tripBadge.textContent = '';
-   els.status.textContent = '分 ' + plan.trips.length + ' 趟演示结束，点「一键装填」可回到完整结果';
+   els.status.textContent = '分 ' + plan.trips.length + ' 趟演示结束，点「AI装填」可回到完整结果';
    return;
   }
   var names = plan.trips[k].names;
@@ -5067,13 +5067,14 @@ function playTrips() {
   if (r2) {
    var byName = {};
    for (var i3 = 0; i3 < cartInst.length; i3++) byName[cartInst[i3].name] = cartInst[i3];
+   var _CS = centerShift(r2.placed, { l: bin.l, w: bin.w });
    for (var j = 0; j < r2.placed.length; j++) {
     var p = r2.placed[j];
     var src = byName[p.name];
     if (!src) continue;
     /* P0-C2 零间隙：真实尺寸 */
     var obj = makeObjSized(src.cat, p.l, p.h, p.w, p);
-    var tx = p.x + p.l / 2, ty = p.z + p.h / 2, tz = p.y + p.w / 2;
+    var tx = p.x + p.l / 2 + _CS.dx, ty = p.z + p.h / 2, tz = p.y + p.w / 2 + _CS.dy;
     obj.userData.target = new T.Vector3(tx, ty, tz);
     obj.position.set(tx, ty + 350, tz);
     obj.userData.appearAt = nowMs() + j * 150;
@@ -5162,6 +5163,25 @@ function doPassCheck() {
  setTimeout(function () { resize(); fitCamera(); }, 320);
 }
 
+/* [R14-CENTER 20261117] 物品堆在仓内水平居中：只平移渲染位置，不改 pack 判定（体积/越界判定不变）。
+   动机：pack 从 x=0/y=0 角贴边堆放，v86 线上反馈「箱子挤在一边，左右中间有明显间隙」（实测贴左 0.1cm、
+   右边空 16.2cm、后面空 22.2cm）。这里把整堆在长度轴与深度轴上各自居中，高度轴不动（必须贴地）。
+   placed 字段：x=长度轴、y=深度轴、z=高度轴（与 doPack 映射 ty=p.z / tz=p.y 严格对应）。 */
+function centerShift(placed, bn) {
+ var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+ for (var i = 0; i < placed.length; i++) {
+  var q = placed[i];
+  if (q.x < x0) x0 = q.x;
+  if (q.x + q.l > x1) x1 = q.x + q.l;
+  if (q.y < y0) y0 = q.y;
+  if (q.y + q.w > y1) y1 = q.y + q.w;
+ }
+ var dx = 0, dy = 0;
+ if (isFinite(x0)) dx = (bn.l - (x1 - x0)) / 2 - x0;
+ if (isFinite(y0)) dy = (bn.w - (y1 - y0)) / 2 - y0;
+ return { dx: dx, dy: dy };
+}
+
 function doPack() {
  /* v34.0 T0：通道不再是「场景」，bin.type 不会再有 'pass'；
    若历史状态里还残留，一律改跳通道配置面板（保留 doPassCheck 供旧数据兜底） */
@@ -5220,6 +5240,7 @@ function doPack() {
 
  /* 装下的按坐标放：用 placed 的实际占位尺寸重建，避免旋转/压缩导致穿模 */
  var overflow = 0, overflowNames = [];
+ var _CS = centerShift(r.placed, { l: bin.l, w: bin.w });
  for (var b = 0; b < r.placed.length; b++) {
   var p = r.placed[b];
   var c2 = idMap[p.name];
@@ -5227,7 +5248,7 @@ function doPack() {
   /* P0-C2 零间隙：placed 的 l/w/h 就是物品真实尺寸，不再减 pad
     P0-2：统一走 buildObj，参数是 (长, 高, 深)，不在此处另排一套顺序 */
   var obj = buildObj(c2, { l: p.l, h: p.h, w: p.w }, p);
-  var tx = p.x + p.l / 2, ty = p.z + p.h / 2, tz = p.y + p.w / 2;
+  var tx = p.x + p.l / 2 + _CS.dx, ty = p.z + p.h / 2, tz = p.y + p.w / 2 + _CS.dy;
   obj.userData.target = new T.Vector3(tx, ty, tz);
   obj.position.set(tx, ty + 350, tz);
   obj.userData.appearAt = nowMs() + (b * 190);
@@ -5669,7 +5690,7 @@ function closeResult() {
 }
 /* ---- [R13-RESULT] 结果面板：上拉展开 / 下拉关闭 -------------------------------------------
    原来整套手势只服务 .sheet 抽屉（选择器与监听都作用域在 .sheet 里），结果面板一条都没有，
-   所以「一键装填结果弹窗」只能靠右上角 × 关，不能下拉消失。
+   所以「AI装填结果弹窗」只能靠右上角 × 关，不能下拉消失。
    监听必须写在本块内：els 与 closeResult 都是这个闭包的变量，写到别的 <script> 块会 ReferenceError（实测过）。
    阈值：下拉 ≥110px → 收起 / 上拉 ≥46px → 全高 / 全高态下拉 ≥70px 退回默认高度、≥200px 直接收起。 */
 (function () {
@@ -7104,7 +7125,7 @@ window.__API__ = {
   camTarget.set(0, 0, 0);          /* makeObjSized 已把几何中心移到原点 */
   _shotFree = true;                /* 之后所有 updateCam 不再按仓体尺寸钳位 */
   camDist = Math.max(cat.l, cat.h, cat.w) * (opt.dm || 1.45);
-  camTheta = (opt.theta != null ? opt.theta : 0.9);
+  camTheta = (opt.theta != null ? opt.theta : 0);
   camPhi = (opt.phi != null ? opt.phi : 1.26);
   updateCam();
   return { ok: true, name: cat.name, dims: [cat.l, cat.w, cat.h] };
@@ -7167,6 +7188,69 @@ window.__API__ = {
  camProj: function (x, y, z) {
   var v = new T.Vector3(x, y, z).project(camera);
   return { x: v.x, y: v.y, d: v.z };
+ },
+ /* [R14-DIAG] 几何诊断：物品世界旋转 + 三向棱的屏幕倾角 + 与仓壁间隙；仓室三条主棱屏幕倾角。
+    口径：只统计实体 Mesh，排除接触阴影面片（MeshBasicMaterial / userData.isShadowPatch），
+    否则 1.55× 的阴影片会把包围盒撑大、造出「越界」假象（本轮踩过）。 */
+ diagProj: function () {
+  var PI = Math.PI;
+  function ndc(x, y, z) { var v = new T.Vector3(x, y, z).project(camera); return [v.x, v.y]; }
+  function ang(a, b) {
+   var dx = b[0] - a[0], dy = b[1] - a[1];
+   var d = Math.sqrt(dx * dx + dy * dy);
+   if (d < 1e-9) return null;
+   return +(Math.atan2(dy, dx) * 180 / PI).toFixed(3);
+  }
+  function meshBox(root) {
+   var bb = new T.Box3(), tmp = new T.Box3(), has = false;
+   root.traverse(function (x) {
+    if (!x.isMesh || !x.geometry) return;
+    if (x.userData && x.userData.isShadowPatch) return;
+    var m = x.material, mats = Array.isArray(m) ? m : [m];
+    for (var k = 0; k < mats.length; k++) if (mats[k] && mats[k].isMeshBasicMaterial) return;
+    x.updateMatrixWorld(true);
+    tmp.setFromObject(x);
+    if (!has) { bb.copy(tmp); has = true; } else bb.union(tmp);
+   });
+   return has ? bb : new T.Box3().setFromObject(root);
+  }
+  var L = bin.l, W = bin.w, H = bin.h;
+  var p000 = ndc(0, 0, 0), pL00 = ndc(L, 0, 0), p0H0 = ndc(0, H, 0), p00W = ndc(0, 0, W);
+  var binE = { vert: ang(p000, p0H0), alongX: ang(p000, pL00), alongZ: ang(p000, p00W) };
+  var objs = [];
+  placedGroup.children.forEach(function (o, i) {
+   var bb = meshBox(o), mn = bb.min, mx = bb.max;
+   var q = new T.Quaternion(); o.getWorldQuaternion(q);
+   var e = new T.Euler().setFromQuaternion(q, 'XYZ');
+   var A = ndc(mn.x, mn.y, mn.z), B = ndc(mx.x, mn.y, mn.z),
+       C = ndc(mn.x, mx.y, mn.z), D = ndc(mn.x, mn.y, mx.z);
+   objs.push({
+    i: i, catId: o.userData.catId || null,
+    size: [+ (mx.x - mn.x).toFixed(1), + (mx.y - mn.y).toFixed(1), + (mx.z - mn.z).toFixed(1)],
+    min: [+ mn.x.toFixed(1), + mn.y.toFixed(1), + mn.z.toFixed(1)],
+    max: [+ mx.x.toFixed(1), + mx.y.toFixed(1), + mx.z.toFixed(1)],
+    rotDeg: [+ (e.x * 180 / PI).toFixed(2), + (e.y * 180 / PI).toFixed(2), + (e.z * 180 / PI).toFixed(2)],
+    angV: ang(A, C), angX: ang(A, B), angZ: ang(A, D),
+    gapL: + mn.x.toFixed(1), gapR: + (L - mx.x).toFixed(1),
+    gapB: + mn.y.toFixed(1), gapT: + (H - mx.y).toFixed(1),
+    gapF: + mn.z.toFixed(1), gapK: + (W - mx.z).toFixed(1)
+   });
+  });
+  var bxs = objs.map(function (o) { return [o.min, o.max]; });
+  var union = null;
+  if (bxs.length) {
+   var lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+   bxs.forEach(function (p) {
+    for (var k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], p[0][k]); hi[k] = Math.max(hi[k], p[1][k]); }
+   });
+   union = { min: lo.map(function (v) { return + v.toFixed(1); }),
+             max: hi.map(function (v) { return + v.toFixed(1); }),
+             gapL: + lo[0].toFixed(1), gapR: + (L - hi[0]).toFixed(1),
+             gapF: + lo[2].toFixed(1), gapK: + (W - hi[2]).toFixed(1) };
+  }
+  return { camType: camera.isOrthographicCamera ? 'ortho' : 'persp',
+   theta: + camTheta.toFixed(4), phi: + camPhi.toFixed(4), dist: + camDist.toFixed(1),
+   bin: { l: L, w: W, h: H }, binEdges: binE, objs: objs, union: union };
  },
  resultHTML: resultHTML,   /* [R13] 让验收脚本能直调模板，确认 uxbar 真的在模板里（不再靠肉眼看面板） */
  orthoInfo: function () {   /* [R13] 正交取景框真值：竖直视野 = top-bottom（宽高比摊在横向 left/right） */
@@ -7910,14 +7994,14 @@ window.SZXM = {
  }
  function enhanceAll() { sheets().forEach(enhance); }
  enhanceAll();
- /* ---- 2) 添加物品完成 → 引导一键装填 ---- */
+ /* ---- 2) 添加物品完成 → 引导AI装填 ---- */
  var pk = document.getElementById('pickerClose');
  if (pk) {
    pk.addEventListener('click', function () {
      setTimeout(function () {
        var n = 0;
        try { n = parseInt(document.getElementById('cartNum').textContent, 10) || 0; } catch (e) {}
-       if (n > 0) { toast('已加 ' + n + ' 件 · 点这里一键装填 →', doPackNow); pulsePack(); }
+       if (n > 0) { toast('已加 ' + n + ' 件 · 点这里AI装填 →', doPackNow); pulsePack(); }
      }, 60);
    });
  }
