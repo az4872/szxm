@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v92</b> · 202611171510</div>
+<div id="verTag"><b>v93</b> · 202611172210</div>
 
 <div id="tripBadge"></div>
 
@@ -1642,9 +1642,12 @@ function boxFamilyCats() {
  for (var i = 0; i < BOX_SIZES.length; i++) { var c = boxCatById(BOX_SIZES[i].id); if (c) a.push(c); }
  return a;
 }
+/* [R25-A] 材质固化：只切「当前选中规格」的默认材质。
+   原来点一次「塑料」→ setFamilyMat 遍历 6 档 → setBoxMat 把 cart 里所有同 id 条目全改成塑料，
+   用户先加纸箱再点塑料，之前添加的纸箱全跟着变，最终清单只剩一种材质（用户实测）。
+   现在材质在「加入清单」那一刻固化进 cart 条目（cartKey 已含 mat），两种材质可并存两行。 */
 function setFamilyMat(mat) {
- var cs = boxFamilyCats();
- for (var i = 0; i < cs.length; i++) setBoxMat(cs[i], mat);
+ setBoxMat(boxSelCat(), mat);
 }
 function setFamilyTapered(v) {
  var cs = boxFamilyCats();
@@ -1683,14 +1686,10 @@ function boxVolL(cat, opt) {
 function setBoxMat(cat, mat) {
  var o = boxOptOf(cat); if (!o) return -1;
  o.mat = (mat === 'plastic') ? 'plastic' : 'cardboard';
- o.side = (o.mat === 'plastic');          /* 塑料箱默认可侧放 */
- for (var i = 0; i < cart.length; i++) {
-  if (cart[i].id === cat.id) { cart[i].mat = o.mat; cart[i].color = BOX_MATS[o.mat].color; cart[i].side = o.side; }
- }
- /* P0-5（第7轮）：材质切换必须立刻重绘已摆放的同类箱子 ——
-   原来只改 cart 的 color 字段，画面里已摆的箱子一直挂着旧色，
-   于是 cardboard / plastic 两张截图 0 像素差异、MAE 0.00 */
- return repaintBoxes(cat.id, BOX_MATS[o.mat].color);
+ /* [R25-A] 不再改写 cart 已有条目、不再重绘已摆放件：材质在加入那一刻固化，
+    改选项只影响之后新加的件 → 纸箱 3 件 + 塑料 2 件可以同时存在（清单两行）。
+    [R25-B] 侧放也不再由材质自动推导（塑料≠一定可侧放），改由卡片上的「可侧放」按钮显式设置。 */
+ return 0;
 }
 /* 遍历已摆放物件，把同一品类、且是箱体的那几件的材质色改掉 */
 function repaintBoxes(catId, col) {
@@ -1726,10 +1725,7 @@ function repaintBoxes(catId, col) {
 function setTapered(cat, val) {
  var o = boxOptOf(cat); if (!o) return;
  o.tapered = !!val;
- var d = boxDims(cat, o);
- for (var i = 0; i < cart.length; i++) {
-  if (cart[i].id === cat.id) { cart[i].tapered = o.tapered; cart[i].l = d.l; cart[i].w = d.w; cart[i].h = d.h; }
- }
+ /* [R25-A] 插口盖同样固化到新加入的件（cartKey 含 tapered），不改已有条目尺寸 */
 }
 
 /* ---------- 状态 ---------- */
@@ -1743,16 +1739,11 @@ function sideOf(cat) {
  return sidePref[cat.id] !== undefined ? sidePref[cat.id] : !!cat.side;
 }
 function setSide(cat, val) {
- if (cat.box) {
-  var bo = boxOptOf(cat);
-  bo.side = !!val;
-  for (var j = 0; j < cart.length; j++) if (cart[j].id === cat.id) cart[j].side = !!val;
-  return;
- }
+ /* [R25-A/B] 只改「之后新加入的件」的摆放选项，不再回头改写清单里已有的条目：
+    已加件的 side 在加入那一刻固化，用户改选项不会把之前添加的一起变。 */
+ if (cat.box) { var bo = boxOptOf(cat); if (bo) bo.side = !!val; return; }
  if (cat.side === undefined) return;
  sidePref[cat.id] = !!val;
- /* 清单里同 id 的项一起同步（按类开关） */
- for (var i = 0; i < cart.length; i++) if (cart[i].id === cat.id) cart[i].side = !!val;
 }
 /* P1（第7轮）：默认仓位不在这里硬写数字 —— 原先写 {200,150,120,'迷你仓 M'}，
   而 SCENES 里 M 实际是 152×152×132，用户点一下列表里的 M，仓位就从 3.6m³ 缩到 3.05m³。
@@ -2504,6 +2495,15 @@ function voxFor(cat) {
    var vv = window.visualViewport, ih = window.innerHeight || 0, vh = vv && vv.height ? vv.height : ih;
    var h = Math.min(ih, vh);
    if (!h || h < 320 || h > 2400) h = ih;
+   /* [R25-E] 魔搭创空间把产品装在 iframe 里（外壳给 iframe 100vh 高，页面内拿不到浏览器
+      地址栏/工具栏的真实占位）：实测 390 宽外壳下 iframe 底边贴到屏幕最底，footer 是
+      absolute 挂 body → 整条落进浏览器工具栏后面：首页底栏完全不可见，关卡页五键只露出
+      上半截且没有文字。iframe 内主动让出 96px 安全区（仅窄屏生效，PC 端 iframe 不受影响）。 */
+   var inFrame = false;
+   try { inFrame = (window.self !== window.top); } catch (e) { inFrame = true; }
+   /* [R25-F3] 96 → 112：用户真机截图里首页五键「完全不可见」，即遮挡高度 ≥ 底栏整高 92px，
+      96 只是擦边；Android Chrome 与 iOS Safari 的 overlay 工具栏常在 90~110px，取 112 才稳。 */
+   if (inFrame && h < 1100 && (window.innerWidth || 0) < 620) h = Math.max(320, h - 112);
    h = Math.round(h);
    document.documentElement.style.height = h + 'px';
    document.body.style.height = h + 'px';
@@ -2511,6 +2511,7 @@ function voxFor(cat) {
    var gap = Math.max(0, ih - h);
    if (h < ih * 0.72) gap = 0;            /* 软键盘弹出时 innerHeight 会同步缩，差值不当作工具栏 */
    gap = Math.min(gap, 160);
+   if (inFrame) gap = 0;                  /* iframe 内的 96px 安全区不是工具栏，不写进 --vvGap */
    document.documentElement.style.setProperty('--vvGap', gap + 'px');
    /* [R24-D] 实测底栏高度写进 --barH：抽屉用它让位，收起位移用它加长，都不靠硬编码 */
    var ft = document.querySelector('footer');
@@ -2941,7 +2942,13 @@ function boxMeshOf(cat) {
  /* [R23-FIX] 用户选的材质（boxOpt）优先于 CATALOG 里的默认 mat：
     否则 cat.mat='cardboard' 会永远遮蔽 boxOpt，切换塑料后仍出 p_carton（实测）。 */
  var m = null;
- if (cat.box) { var o = boxOptOf(cat); m = o && o.mat; }
+ if (cat.box) {
+  /* [R25-A] CATALOG 里的货架品类读全局选项（预览/探测用）；
+     cart 条目（含已摆放件的 src.cat）读自己固化下来的 mat，换选项不串味。
+     判据用 CATALOG.indexOf：R23 的 cat.mat 遮蔽 bug 就是没区分这两类对象。 */
+  if (CATALOG.indexOf(cat) >= 0) { var o = boxOptOf(cat); m = o && o.mat; }
+  else m = cat.mat || ((boxOptOf(cat) || {}).mat);
+ }
  if (!m) m = cat.mat;
  if (m === 'plastic') return 'p_plastic';
  if (m === 'cardboard') return 'p_carton';
@@ -3245,7 +3252,7 @@ function coneGradTex() {
 
 /* ---------- 相机 ---------- */
 var camTarget = new T.Vector3(), camDist = 500, camTheta = 0, camPhi = 1.26;/* [R12-CAM] 1.05→1.26：俯角 29.8°→18.0°，透视下左右竖棱屏幕倾角从 6.7° 降到 3.7%，仓体不再呈「斜梯形」 */
-function fitCamera(wide) {
+function fitCamera(wide, keepCenter) {
  _shotFree = false;
  /* [FIX-09] 原来只按仓位尺寸定距离和目标点，而 renderPreview 把待装物品排在仓外
    （px = bin.l + 55 起，沿 Z 排一行），镜头却只框住仓位本身 → 加完物品画面里一件都看不见，
@@ -3262,16 +3269,36 @@ function fitCamera(wide) {
     var cA = new T.Vector3(); bbAll.getCenter(cA);
     var sA = new T.Vector3(); bbAll.getSize(sA);
     var dA = Math.sqrt(sA.x * sA.x + sA.y * sA.y + sA.z * sA.z) * (wide ? 5.95 : 4.10);
-    if (dA > camDist0) { camDist0 = dA; tx = cA.x; ty = cA.y; tz = cA.z; }
+    /* [R25-C] 仓外有待装件/失败件时，union 包围盒的中心被拉向仓外右侧 →
+       目标点跟着右移 → 仓体被推到画面左边（用户报「3D 预览区仓室远离视觉中心」，关卡第一关必现）。
+       keepCenter 时目标点只向仓外让出 8%（实测 26% 时 L01 仓体中心仅到画面 35.9%，
+       用户仍判「远离视觉中心」；8% 时约 46~48%，待装件仍留在右缘可见）。 */
+    var outward = (bbObj.max.x > bin.l + 0.5) || (bbObj.min.x < -0.5) ||
+                  (bbObj.max.z > bin.w + 0.5) || (bbObj.min.z < -0.5) ||
+                  (bbObj.max.y > bin.h + 0.5);
+    if (dA > camDist0) {
+     camDist0 = dA;
+     if (keepCenter && outward) {
+      /* [R25-F8] 边距 1.10→1.16（待装件右缘实测到 103% 略裁）、让出权重 0.08→0.05（仓体更靠中） */
+      camDist0 = dA * 1.16;
+      tx = bin.l / 2 + (cA.x - bin.l / 2) * 0.05;
+      ty = bin.h * 0.45;
+      tz = bin.w / 2;
+     } else { tx = cA.x; ty = cA.y; tz = cA.z; }
+    }
    }
   }
  } catch (e) {}
  camDist = camDist0 * projDistK();   /* [R22-PROJ] 透视：按等价视野高度回算距离，构图与正交一致 */
+ /* [R25-F7] updateCam 的远端上限是 _dg*13.7，小仓（L01 diag≈177 → 2421）会把这里算出的
+    union 构图距离钳死 → 待装件出画。记下本次构图所需距离，供钳位上限使用。 */
+ _camNeed = camDist;
  camTarget.set(tx, ty, tz);
  updateCam();
 }
 var RULE_TXT = '<div class="rule">判定口径：按贴边摆放（物品之间不留缝）计算，只留仓壁安全量；实际搬运建议每件留 2cm，否则门框和楼梯会卡</div>';
 var _lastDg = 0;
+var _camNeed = 0;      /* [R25-F7] fitCamera 算出的构图距离，作为 updateCam 远端钳位的下限上限 */
 var _shotFree = false;   /* [v77.1] 拍照模式：距离由被拍物品尺寸决定，不套仓体对角线的钳位区间。
    否则在大仓型下单件特写会被 _dg*0.68 顶到很远，物品小得看不见（五审 sol 抓到）。 */
 function updateCam() {
@@ -3291,7 +3318,8 @@ function updateCam() {
      必须保证下限 ≤ 上限，否则钳位区间为空、max(L,min(U,x)) 恒等于 L（相机贴死在近端）。 */
   /* [v77.2] _shotFree（拍照特写）只放宽**下限**——远端 min(4.5dg,12000) 始终保留，
      否则拍照后若有别的路径改 camDist 就会重新飞出 far（六审 haiku 第 5 条）。 */
-  var _dmin = _shotFree ? 4 : _dg * 2.08, _dmax = Math.min(_dg * 13.7, 12000);
+  var _dmax = Math.min(Math.max(_dg * 13.7, _camNeed > 0 ? _camNeed : 0), 12000);
+  var _dmin = _shotFree ? 4 : _dg * 2.08;
   if (_dmin > _dmax) _dmin = _dmax;      /* 仅当 _dg>17647cm 才退化，退化时贴住 12000（远端），不是近端 */
   camDist = Math.max(_dmin, Math.min(_dmax, camDist));
  }
@@ -3405,7 +3433,8 @@ function partsOfPlaced(placed) {
   原来画面走模型/盒体自带的 #b98a55，BOX_MATS.plastic 的 #4f7f9a 从来没送到渲染。 */
 function objColorOf(cat) {
  if (cat && cat.box) {
-  var m = cat.mat || ((boxOptOf(cat) || {}).mat);
+  /* [R25-A] CATALOG 品类读全局选项；cart 条目读自己固化的 mat */
+  var m = (CATALOG.indexOf(cat) >= 0) ? ((boxOptOf(cat) || {}).mat) : (cat.mat || ((boxOptOf(cat) || {}).mat));
   if (m && BOX_MATS[m]) return BOX_MATS[m].color;
  }
  return cat.color;
@@ -3959,14 +3988,17 @@ var lastOrder = null;   /* 拍照后按轮廓比例排好的品类顺序 */
    规则：POSE_MERGE 内的品类，姿态不进匹配键 → 同品类合并为一条、数量累加；
    已有那一条的姿态不被后来者覆盖（先加的是哪种就按哪种装，改姿态请用面板重选）。 */
 var POSE_MERGE = { table: 1 };
-function cartKey(id, pose, mat, tapered) {
- return id + '|' + (POSE_MERGE[id] ? '-' : (pose || '-')) + '|' + (mat || '-') + '|' + (tapered ? 1 : 0);
+function cartKey(id, pose, mat, tapered, side) {
+ /* [R25-F1] 侧放维度必须并进 key：原来 cartKey 只含 id/pose/mat/tapered，
+    用户在「可侧放 / 不可侧放」之间切换后加件，会被当成同一行累加 qty，
+    新件沿用了旧件的 side —— 选项等于没生效（实测「可侧放 ✓」后加件 side 仍 false）。 */
+ return id + '|' + (POSE_MERGE[id] ? '-' : (pose || '-')) + '|' + (mat || '-') + '|' + (tapered ? 1 : 0) + '|' + (side ? 'S' : 'N');
 }
-function itemKey(it) { return cartKey(it.id, it.pose || null, it.mat || null, !!it.tapered); }
+function itemKey(it) { return cartKey(it.id, it.pose || null, it.mat || null, !!it.tapered, !!it.side); }
 function catKey(cat) {
  var ps = (POSE_SEL[cat.id] !== undefined) ? POSE_SEL[cat.id] : null;
  var bo = cat.box ? boxOptOf(cat) : null;
- return cartKey(cat.id, ps, bo ? bo.mat : null, bo ? !!bo.tapered : false);
+ return cartKey(cat.id, ps, bo ? bo.mat : null, bo ? !!bo.tapered : false, bo ? !!bo.side : false);
 }
 
 function pickerQtyOf(cat) {
@@ -4010,7 +4042,7 @@ function renderPicker() {
   var q = pickerQtyOf(fc);
   var sv = sideOf(fc);
   var sideMark = (sv === true) ? ' <i class="smark">· 可侧放</i>' : '';
-  var sideBtn = (c.boxSet || c.side === undefined) ? '' :
+  var sideBtn = (!c.boxSet && c.side === undefined) ? '' :
    '<button class="pside' + (sv ? ' on' : '') + '" data-act="side">' +
    (sv ? '可侧放 ✓' : '不可侧放') + '</button>';
   /* P1 箱子专属：材质切换 + 插口箱 + 标准箱折算 */
@@ -4022,6 +4054,8 @@ function renderPicker() {
     '<button class="pside' + (so.mat !== 'plastic' ? ' on' : '') + '" data-act="fmat" data-mat="cardboard">纸箱</button>' +
     '<button class="pside' + (so.mat === 'plastic' ? ' on' : '') + '" data-act="fmat" data-mat="plastic">塑料</button>' +
     '<button class="pside' + (so.tapered ? ' on' : '') + '" data-act="ftaper">' + (so.tapered ? '插口盖 ✓' : '插口盖') + '</button></div>' +
+    '<div class="pbox"><span class="pstd2">摆放</span>' +
+     '<button class="pside' + (sv ? ' on' : '') + '" data-act="fside">' + (sv ? '可侧放 ✓' : '不可侧放') + '</button></div>' +
     '<div class="pbox pszrow"><span class="pstd2">规格</span>' + (function () {
      var s = '';
      for (var zi = 0; zi < BOX_SIZES.length; zi++) {
@@ -4103,6 +4137,7 @@ function renderPicker() {
      if (act === 'fmat') { act2 = 'fmat'; fPick = t.getAttribute('data-mat'); break; }
      if (act === 'ftaper') { act2 = 'ftaper'; break; }
      if (act === 'fsize') { act2 = 'fsize'; fPick = t.getAttribute('data-size'); break; }
+     if (act === 'fside') { act2 = 'fside'; break; }
      if (act === 'qty') { return; }   /* [R11] 点件数框 = 编辑件数，不能被当成「加一件」 */
      if (act === 'minus') { dec = true; break; }
      t = t.parentNode;
@@ -4123,6 +4158,13 @@ function renderPicker() {
     if (act2 === 'fsize') {
      /* 选规格 = 切当前规格（不加件），件数与加入清单都跟着这张规格走 */
      BOX_SEL = fPick || 'carton';
+     renderPicker();
+     els.pickerList.scrollTop = keepScroll;
+     return;
+    }
+    if (act2 === 'fside') {
+     /* [R25-B] 可侧放 / 不可侧放：只切选项，已加件不变（固化在加入那一刻） */
+     try { var _bs = boxSelCat(); setSide(_bs, !sideOf(_bs)); } catch (e) {}
      renderPicker();
      els.pickerList.scrollTop = keepScroll;
      return;
@@ -5561,7 +5603,9 @@ function loadLevel(idx) {
  }
  els.status.textContent = L.id + ' · ' + L.name + (L.limit > 0 ? '（限时 ' + L.limit + ' 秒）' : '') + '，点「AI装填」';
  hideSheets();
- placedGroup.clear();
+ /* [R25-F4] 原来这里还有一句 placedGroup.clear()，把 renderPreview 刚排好的待装件全清掉：
+   进关后画面里一件待装物品都看不见，相机却停在「含待装件」的 union 构图 → 仓体被推到画面左侧。
+   renderPreview 开头本来就有 placedGroup.clear()，这行冗余，删掉。 */
  document.body.classList.remove('ropen');
  els.lvBtn.textContent = '退出关卡';     /* P0-D */
 }
@@ -5704,18 +5748,29 @@ function renderPreview() {
   var c = cart[i];
   for (var q = 0; q < c.qty; q++) inst.push(c);
  }
- var px = bin.l + 55, pz = 0;
+ /* [R25-C] 待装件原来从 bin.l+55 起排（离仓壁太远，把构图整体推偏），收到 +26 */
+ var px = bin.l + 26, pz = 0, py = 0, rowH = 0;
  var maxZ = Math.max(bin.w, 110);
+ var maxY = Math.max(bin.h, 90) * 1.8;
  for (var k = 0; k < inst.length; k++) {
   var cat = inst[k];
-  if (pz + cat.w > maxZ) { pz = 0; px += 100; }
+  /* [R25-F6] 原来每行摞满就 px += 110 开新列，5 件待装件排出 3 列、最右件到画面 167% 处彻底出画。
+     改成：本行摞满先向上叠一层，竖向也满（bin.h×1.8）才向右开新列。 */
+  if (pz + cat.w > maxZ) {
+   pz = 0;
+   py += (rowH || cat.h) + 14;
+   rowH = 0;
+   if (py + cat.h > maxY) { py = 0; px += cat.l + 26; }
+  }
   var o = makeObj(cat);
-  o.position.set(px + cat.l / 2, cat.h / 2, pz + cat.w / 2);
+  o.position.set(px + cat.l / 2, py + cat.h / 2, pz + cat.w / 2);
   o.userData.target = o.position.clone();
   placedGroup.add(o);
   pz += cat.w + 14;
+  if (cat.h > rowH) rowH = cat.h;
  }
- fitCamera(true);
+ /* [R25-C] keepCenter：仓体保持画面中心 */
+ fitCamera(true, true);
 }
 
 var idMap = {};
@@ -6290,7 +6345,7 @@ function closeResult() {
  els.result.classList.remove('full');   /* [R13-RESULT] 清全高态，下次打开回到默认高度 */
  els.result.style.transform = '';
  document.body.classList.remove('ropen');
- setTimeout(function () { resize(); fitCamera(true); }, 320);
+ setTimeout(function () { resize(); fitCamera(true, true); }, 320);
 }
 /* ---- [R13-RESULT] 结果面板：上拉展开 / 下拉关闭 -------------------------------------------
    原来整套手势只服务 .sheet 抽屉（选择器与监听都作用域在 .sheet 里），结果面板一条都没有，
@@ -6474,8 +6529,8 @@ function cbApply(silent) {
   /* [R11-KB-02 202611161800] 仓室尺寸变了必须重算画布并重新取景：旧实现只 drawBin + renderPreview，
      相机距离/取景还按旧仓的对角线算 —— 从小仓改成 400cm 大仓，新仓整块落到画面外，
      用户看到的就是「3D 里没有出现我填的那个仓」。 */
-  try { resize(); fitCamera(true); } catch (e) {}
-  setTimeout(function () { try { resize(); fitCamera(true); } catch (e) {} }, 260);
+  try { resize(); fitCamera(true, true); } catch (e) {}
+  setTimeout(function () { try { resize(); fitCamera(true, true); } catch (e) {} }, 260);
   els.status.textContent = '仓室已设为 内部 ' + v.l + '×' + v.w + '×' + v.h +
    ' cm，门 ' + v.doorW + '×' + v.doorH + ' cm 已参与通过性判定';
   try {
