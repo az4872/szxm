@@ -403,14 +403,14 @@ body.manual footer{display:none}
 .mb-btn:disabled{opacity:.35}
 body.manual #c{height:calc(100% - 182px)}
 /* v36 T-02：版本号 + 构建时间移到右下角小字（footer 之上），肉眼一眼看出线上是不是最新 */
-#verTag{position:fixed;right:10px;bottom:calc(150px + var(--vvGap,0px));z-index:13;font-size:10px;line-height:14px;
+#verTag{position:absolute;right:10px;bottom:calc(var(--barH,92px) + 6px);z-index:13;font-size:10px;line-height:14px;
  color:#8b9db5;font-variant-numeric:tabular-nums;letter-spacing:.2px;pointer-events:none;
  background:rgba(12,16,22,.55);padding:2px 6px;border-radius:6px}
 #verTag b{color:#6db4ff;font-weight:700}
 #lvHead{display:none;margin:6px 10px 0;padding:6px 8px;border-radius:8px;background:#1b2740;border:1px solid #2f4a76;font-size:11px;line-height:16px;color:#cfe0f7}
 #lvHead b{color:#6db4ff}
 #lvHead.on{display:block}
-body.manual #verTag{bottom:12px}
+body.manual #verTag{bottom:calc(var(--mbBarH,182px) + 6px)}
 body.shotmode #verTag{display:none}
 /* v45 P0-1：原是 position:absolute 钉在 right:14/top:14，与 header 右端 .binbtn 同坐标重叠，
    桌面宽屏一样叠（只是鼠标点得到不易察觉）。改为 header 第三个 flex 子项，触控 44×44 */
@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v93</b> · 202611172210</div>
+<div id="verTag"><b>v94</b> · 202611172020</div>
 
 <div id="tripBadge"></div>
 
@@ -2529,6 +2529,42 @@ function voxFor(cat) {
  if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', fitVP, { passive: true });
   window.visualViewport.addEventListener('scroll', fitVP, { passive: true });
+ }
+})();
+/* [R26-A 202611172020] 版本号压底栏（仅魔搭）：R25-F3 让 iframe 内 body 高度自减 112px 安全区
+   （appH 732），但 #verTag 仍是 position:fixed + 硬编码 bottom:150px，它相对视口(844)算，不认
+   body 的安全区 → 落进 footer 竖条内部（footer 640~732，verTag 676~694），压住「AI 装填」。
+   GitHub 无安全区（appH=视口高 844）所以不重叠。改成 absolute 相对 body，并用 footer / manualBar
+   的实测顶边反算 bottom，首页 92px / 关卡 152px(lvHead 显示) / 手动 182px 自动适配。 */
+(function () {
+ var vt = document.getElementById('verTag');
+ if (!vt) return;
+ function bars() { return [document.querySelector('footer'), document.getElementById('manualBar')]; }
+ function place() {
+  if (!vt) return;
+  var bb = document.body.getBoundingClientRect().bottom, topY = null;
+  bars().forEach(function (b) {
+   if (!b) return;
+   var cs = window.getComputedStyle(b);
+   if (cs.display === 'none' || cs.visibility === 'hidden') return;
+   var r = b.getBoundingClientRect();
+   if (r.height < 1) return;
+   topY = (topY === null) ? r.top : Math.min(topY, r.top);
+  });
+  if (topY === null) return;
+  var gap = Math.round(bb - topY) + 6;
+  if (gap < 8) gap = 8;
+  vt.style.bottom = gap + 'px';
+ }
+ window.__placeVerTag = place;
+ place();
+ [0, 60, 200, 500, 1200].forEach(function (t) { setTimeout(place, t); });
+ window.addEventListener('resize', place, { passive: true });
+ window.addEventListener('orientationchange', function () { setTimeout(place, 300); }, { passive: true });
+ window.addEventListener('touchstart', function () { setTimeout(place, 320); }, { passive: true });
+ if (window.ResizeObserver) {
+  var ro = new window.ResizeObserver(function () { place(); });
+  bars().forEach(function (b) { if (b) { try { ro.observe(b); } catch (e) {} } });
  }
 })();
 var SAT_BOOST = 1.45;   /* v59：ACES 失色补偿系数 */
