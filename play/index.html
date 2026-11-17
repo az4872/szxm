@@ -7,8 +7,14 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📦</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;height:100dvh;overflow:hidden;background:#11151c;
+html,body{width:100%;height:100%;height:100dvh;overflow:hidden;overscroll-behavior:none;background:#11151c;
  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#e8eef7}
+/* [R24-A1 202611171450] 底栏"完全不可见"真因：4 个抽屉（picker/cart/level/bin）收起时只靠
+   transform 移出，布局盒仍在原地，把 html.scrollHeight 撑到 1420（视口 844），页面实际可滚 576px。
+   footer 是 absolute 挂在 body 上 → 手指拖 3D 时一滚，底栏整条被推出屏幕；#verTag 是 fixed 所以
+   还看得见（用户截图正是"3D 区+版本号有、底栏没有"）。这里把 body 钉死成不可滚动容器。 */
+body{position:fixed;left:0;top:0;right:0;bottom:0;width:100%;height:100%;height:var(--appH,100dvh);
+ overflow:hidden;overscroll-behavior:none}
 /* [v73] 舞台渐晕：四角沉、中心亮，配合射灯才有舞台感。pointer-events:none 不挡任何点击 */
 #vig{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:1;
   background:radial-gradient(122% 90% at 50% 44%,rgba(0,0,0,0) 34%,rgba(3,6,11,.42) 72%,rgba(1,3,6,.72) 100%)}
@@ -35,7 +41,7 @@ header h1 em{font-style:normal;color:#4da3ff}
 .binbtn #binLabel{display:block;text-align:right;line-height:1.25}
 .binbtn #binMain{display:block;font-weight:700}
 .binbtn #binDoor{display:block;font-style:normal;font-size:11px;font-weight:600;color:#8fb2d8;margin-top:1px}
-footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:8px 14px calc(10px + env(safe-area-inset-bottom));
+footer{position:absolute;left:0;right:0;bottom:0;z-index:12;padding:8px 14px calc(10px + env(safe-area-inset-bottom,0px));
  background:linear-gradient(0deg,rgba(17,21,28,.98),rgba(17,21,28,0));
  display:flex;flex-direction:column;gap:8px}
 .acts{display:flex;gap:8px}
@@ -58,10 +64,12 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:8px 14px cal
 #status{font-size:11px;color:#7f8fa6;text-align:center;line-height:1.5}
 
 /* 抽屉通用 */
-#mask{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:29;
+#mask{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:11;
+/* [R24-D] 遮罩 z-index 由 29 降到 11：半屏抽屉（关卡/清单）展开时，遮罩仍盖住 3D 区与顶栏防误触，
+   但主底栏（z12）浮在它上面——底栏五键既看得见也点得到；全屏模态（picker z30 / result z25）仍整块盖住底栏。 */
  display:none;opacity:0;transition:.2s}
 #mask.show{display:block;opacity:1}
-.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;max-height:76%;
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;max-height:76%;will-change:transform;
  background:#161d28;border-top:1px solid rgba(255,255,255,.12);
  border-radius:18px 18px 0 0;padding:16px 14px 22px;
  transform:translateY(105%);transition:.28s;display:flex;flex-direction:column}
@@ -80,6 +88,15 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:8px 14px cal
    给抽屉内滚动区留出与按钮等高的尾部空间 */
 #levelSheet #levelList{padding-bottom:8px;margin-bottom:52px}
 .sheet.show{transform:translateY(0)}
+.sheet:not(.show){visibility:hidden;pointer-events:none}
+.sheet.show{visibility:visible;pointer-events:auto}
+/* [R24-B] 添加物品弹窗底部双按钮（完成 / 装填）+ 搬家箱卡的规格子项 */
+.pactrow{position:sticky;bottom:0;z-index:6;display:flex;gap:10px;box-shadow:0 -10px 14px rgba(0,0,0,.28)}
+.pactrow .sbtn{flex:1;width:auto;position:static;box-shadow:none;margin-top:0}
+.pactrow .sbtn.sec{margin-top:0}
+.pstd2{font-size:10px;color:#8fa3bd;margin-right:1px}
+.pszrow{gap:4px}
+.pszb{min-width:28px;padding:4px 5px;font-size:11px}
 
 /* ===== [UX-SHEET-01 202611161135] 抽屉统一手势层：顶部把手(拖拽/上拉全显/下拉关闭) + 右上 X =====
    只在把手上做手势，抽屉正文的滚动列表不受影响（互不抢事件）。 */
@@ -88,6 +105,13 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:8px 14px cal
 /* !important 是必需的：新增的 #picker{max-height:86%} 是 id 选择器，
    特异性高于 class 组合，不加会被它压住，上拉后只到 86% 而不是 96vh */
 .sheet.dragging{transition:none!important}
+
+/* [R24-D 202611171440] 关卡 / 清单抽屉底边抬到主底栏上沿：
+   原来 .sheet 一律 bottom:0，抽屉展开后整块压在「添加物品/清单/手动装/灯光/AI装填」五键上，
+   用户在手机里看到的就是"点关卡后下栏没显示"。全屏模态（picker / binSheet / result，均有遮罩）保持不动。 */
+#levelSheet,#cartSheet{bottom:var(--barH,92px);max-height:calc(76% - var(--barH,92px))}
+/* 收起位移要额外加一个底栏高度，否则 105% 只够把抽屉挪到 bottom:92 的下方 27px 处，动画中会露一条边 */
+.sheet{transform:translateY(calc(105% + var(--barH,92px)))}
 .sheet .uxbar{flex:0 0 auto;height:30px;margin:0 -14px 2px;display:flex;align-items:center;
  justify-content:center;position:relative;touch-action:none;cursor:grab;
  -webkit-user-select:none;user-select:none}
@@ -100,7 +124,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:8px 14px cal
  color:#9fb0c6;font-size:22px;line-height:32px;padding:0;font-family:inherit;touch-action:manipulation}
 .sheet .uxx:active{color:#fff;background:rgba(255,255,255,.08);border-radius:17px}
 /* [UX-PACK-01 202611161135] 装填引导：toast 胶囊 + 装填按钮脉冲 */
-.uxtoast{position:fixed;left:50%;bottom:86px;z-index:60;max-width:86vw;text-align:center;
+.uxtoast{position:fixed;left:50%;bottom:calc(86px + var(--vvGap,0px));z-index:60;max-width:86vw;text-align:center;
  display:flex;align-items:center;gap:8px;padding:11px 18px;border-radius:22px;
  background:rgba(24,32,44,.96);border:1px solid rgba(245,197,66,.75);
  color:#ffd766;font-size:14px;line-height:1.2;text-align:center;
@@ -379,7 +403,7 @@ body.manual footer{display:none}
 .mb-btn:disabled{opacity:.35}
 body.manual #c{height:calc(100% - 182px)}
 /* v36 T-02：版本号 + 构建时间移到右下角小字（footer 之上），肉眼一眼看出线上是不是最新 */
-#verTag{position:fixed;right:10px;bottom:150px;z-index:13;font-size:10px;line-height:14px;
+#verTag{position:fixed;right:10px;bottom:calc(150px + var(--vvGap,0px));z-index:13;font-size:10px;line-height:14px;
  color:#8b9db5;font-variant-numeric:tabular-nums;letter-spacing:.2px;pointer-events:none;
  background:rgba(12,16,22,.55);padding:2px 6px;border-radius:6px}
 #verTag b{color:#6db4ff;font-weight:700}
@@ -588,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v91</b> · 202611171250</div>
+<div id="verTag"><b>v92</b> · 202611171510</div>
 
 <div id="tripBadge"></div>
 
@@ -606,11 +630,11 @@ body.kbopen .sheet.full{height:auto!important;
 <div class="sheet" id="picker">
   <div class="ptitle">要搬什么东西？</div>
   <div class="ptotal" id="pickerTotal">已加 0 件</div>
-  <div class="psub">点品类可以连续加，同一件点几次就是几件；加够了点底部「完成」。尺寸是品类标准值，加进清单后可以按你家的实际尺寸改。带「真实模型」的会显示扫描出来的外形。</div>
+  <div class="psub">点品类可以连续加，同一件点几次就是几件。加够了点底部「装填 →」直接出装填结果，「完成」只是收起面板。搬家箱在卡片里选类型（纸箱 / 塑料）和规格（S–MAX），不用再翻一堆箱子。</div>
   <button class="photoEntry" id="photoBtn">📷 拍一张 / 从相册选（本地无法自动识别，需你确认品类）</button>
   <img id="photoPrev" alt="">
   <div class="plist" id="pickerList"></div>
-  <button class="sbtn" id="pickerClose">完成（共 0 件）</button>
+  <div class="pactrow"><button class="sbtn sec" id="pickerClose">完成（共 0 件）</button><button class="sbtn" id="pickerPack">装填 →</button></div>
 </div>
 
 <div class="sheet" id="cartSheet">
@@ -1482,7 +1506,7 @@ if (typeof window !== 'undefined' && !window.__ERRLOG__) {
 
 /* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
 var CATALOG = [
- { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55, side:false,
+ { id:'carton',   name:'搬家箱',  l:60,  w:40,  h:40,  boxSet:true,     mesh:'box',      color:0xb98a55, side:false,
   box:true, mat:'cardboard', tapered:false, vol:96000, std:1.2 },
  { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78 },
  { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b },
@@ -1586,8 +1610,53 @@ for (var _bi = 0; _bi < BOX_LIST.length; _bi++) {
  _b.mat = 'cardboard';
  _b.tapered = false;
  _b.color = BOX_MATS.cardboard.color;
+ /* [R24-B] 6 档标准箱不再各占弹窗一格，改为「搬家箱」卡片内的规格子项 */
+ _b.hidden = true;
 }
 CATALOG = CATALOG.concat(BOX_LIST);
+
+/* ===== [R24-B 202611171445] 搬家箱单入口 =====
+   纸箱 + 6 档标准箱合并为一个「搬家箱」品类：类型（纸箱 / 塑料）与规格（S–MAX）
+   都在同一张卡里选，弹窗里只占一格。id 与 CATALOG 结构保持不变，加/减件仍按
+   各规格自己的 id 记账，清单与关卡匹配逻辑不受影响。 */
+var BOX_SIZES = [
+ { id:'stdS',   tag:'S',   note:'40×30×30' },
+ { id:'stdM',   tag:'M',   note:'50×40×40' },
+ { id:'carton', tag:'L',   note:'60×40×40' },
+ { id:'stdXL',  tag:'XL',  note:'60×40×50' },
+ { id:'stdXXL', tag:'XXL', note:'60×50×50' },
+ { id:'stdMAX', tag:'MAX', note:'70×50×50' }
+];
+var BOX_SEL = 'carton';
+function boxCatById(id) {
+ for (var i = 0; i < CATALOG.length; i++) if (CATALOG[i].id === id) return CATALOG[i];
+ return null;
+}
+function boxSelCat() { return boxCatById(BOX_SEL) || boxCatById('carton'); }
+function boxSelTag() {
+ for (var i = 0; i < BOX_SIZES.length; i++) if (BOX_SIZES[i].id === BOX_SEL) return BOX_SIZES[i].tag;
+ return 'L';
+}
+function boxFamilyCats() {
+ var a = [];
+ for (var i = 0; i < BOX_SIZES.length; i++) { var c = boxCatById(BOX_SIZES[i].id); if (c) a.push(c); }
+ return a;
+}
+function setFamilyMat(mat) {
+ var cs = boxFamilyCats();
+ for (var i = 0; i < cs.length; i++) setBoxMat(cs[i], mat);
+}
+function setFamilyTapered(v) {
+ var cs = boxFamilyCats();
+ for (var i = 0; i < cs.length; i++) setTapered(cs[i], !!v);
+}
+/* 清单里各规格要能分辨；L 保留「搬家箱」三字，关卡按这个名字匹配到 carton */
+(function () {
+ for (var i = 0; i < BOX_SIZES.length; i++) {
+  var B = BOX_SIZES[i], bc = boxCatById(B.id);
+  if (bc && B.id !== 'carton') bc.name = '搬家箱 ' + B.tag;
+ }
+})();
 
 /* 每个人的箱子选项（材质 / 插口箱）单独存，不污染 CATALOG —— 关卡按 CATALOG 取值 */
 var boxOpt = {};
@@ -2428,20 +2497,38 @@ function voxFor(cat) {
    layout viewport 算高度，footer 掉到地址栏后面且 overflow:hidden 无法滚动露出来。
    这里用 visualViewport 的真实可视高度直接钉住 html/body 高度，双保险。 */
 (function () {
+ /* [R24-A4] 取 innerHeight 与 visualViewport 的较小值：安卓/微信里大地址栏会吃掉 60~130px，
+    只信 innerHeight 会把底栏钉到被工具栏覆盖的区域。同时把差值写进 --vvGap，抽屉与 toast 用它抬升。 */
  function fitVP() {
   try {
-   var vv = window.visualViewport;
-   var h = window.innerHeight;
-   if (vv && vv.height && vv.height > 100 && vv.height > window.innerHeight * 0.75) h = vv.height;
+   var vv = window.visualViewport, ih = window.innerHeight || 0, vh = vv && vv.height ? vv.height : ih;
+   var h = Math.min(ih, vh);
+   if (!h || h < 320 || h > 2400) h = ih;
    h = Math.round(h);
    document.documentElement.style.height = h + 'px';
    document.body.style.height = h + 'px';
+   document.documentElement.style.setProperty('--appH', h + 'px');
+   var gap = Math.max(0, ih - h);
+   if (h < ih * 0.72) gap = 0;            /* 软键盘弹出时 innerHeight 会同步缩，差值不当作工具栏 */
+   gap = Math.min(gap, 160);
+   document.documentElement.style.setProperty('--vvGap', gap + 'px');
+   /* [R24-D] 实测底栏高度写进 --barH：抽屉用它让位，收起位移用它加长，都不靠硬编码 */
+   var ft = document.querySelector('footer');
+   if (ft) {
+    var bh = Math.round(ft.getBoundingClientRect().height);
+    if (bh > 40 && bh < 260) document.documentElement.style.setProperty('--barH', bh + 'px');
+   }
   } catch (e) {}
  }
  fitVP();
+ [0, 60, 200, 500, 1200].forEach(function (t) { setTimeout(fitVP, t); });
  window.addEventListener('resize', fitVP, { passive: true });
- window.addEventListener('orientationchange', function () { setTimeout(fitVP, 260); }, { passive: true });
- if (window.visualViewport) window.visualViewport.addEventListener('resize', fitVP, { passive: true });
+ window.addEventListener('orientationchange', function () { setTimeout(fitVP, 300); }, { passive: true });
+ window.addEventListener('touchstart', function () { setTimeout(fitVP, 320); }, { passive: true });
+ if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fitVP, { passive: true });
+  window.visualViewport.addEventListener('scroll', fitVP, { passive: true });
+ }
 })();
 var SAT_BOOST = 1.45;   /* v59：ACES 失色补偿系数 */
 /* v59 贴片接触阴影：径向渐变黑面，贴在物品底面外扩 18%，开关直接控制 visible */
@@ -3600,6 +3687,7 @@ var els = {
  pickerList: document.getElementById('pickerList'),
  pickerTotal: document.getElementById('pickerTotal'),
  pickerClose: document.getElementById('pickerClose'),
+ pickerPack: document.getElementById('pickerPack'),
  cartSheet: document.getElementById('cartSheet'),
  cartList: document.getElementById('cartList'),
  cartClose: document.getElementById('cartClose'),
@@ -3909,20 +3997,43 @@ function refreshPickerDone() {
 function renderPicker() {
  var h = '';
  var list = lastOrder || CATALOG;
+ /* [R24-B] 6 档标准箱已合并进「搬家箱」卡片的规格子项，不再各占一格 */
+ var _famCat = boxSelCat();
  for (var i = 0; i < list.length; i++) {
   var c = list[i];
+  if (c.hidden) continue;
   var ci = CATALOG.indexOf(c);
   var rank = lastOrder ? (i < 3 ? ' guess' : '') : '';
   var tag = lastOrder ? (i < 3 ? '<span class="mk guessmk">推荐' + (i + 1) + '</span>' : '') : '';
-  var q = pickerQtyOf(c);
-  var sv = sideOf(c);
+  /* 搬家箱卡按「当前选中规格」显示件数与键值；点加/减作用于该规格 */
+  var fc = c.boxSet ? _famCat : c;
+  var q = pickerQtyOf(fc);
+  var sv = sideOf(fc);
   var sideMark = (sv === true) ? ' <i class="smark">· 可侧放</i>' : '';
-  var sideBtn = (c.side === undefined) ? '' :
+  var sideBtn = (c.boxSet || c.side === undefined) ? '' :
    '<button class="pside' + (sv ? ' on' : '') + '" data-act="side">' +
    (sv ? '可侧放 ✓' : '不可侧放') + '</button>';
   /* P1 箱子专属：材质切换 + 插口箱 + 标准箱折算 */
   var boxLine = '';
-  if (c.box) {
+  if (c.boxSet) {
+   /* 搬家箱：类型（纸箱 / 塑料）+ 插口盖 + 规格 S–MAX，全在卡片里 */
+   var so = boxOptOf(fc), sd = boxDims(fc, so), sTag = boxSelTag();
+   boxLine = '<div class="pbox"><span class="pstd2">类型</span>' +
+    '<button class="pside' + (so.mat !== 'plastic' ? ' on' : '') + '" data-act="fmat" data-mat="cardboard">纸箱</button>' +
+    '<button class="pside' + (so.mat === 'plastic' ? ' on' : '') + '" data-act="fmat" data-mat="plastic">塑料</button>' +
+    '<button class="pside' + (so.tapered ? ' on' : '') + '" data-act="ftaper">' + (so.tapered ? '插口盖 ✓' : '插口盖') + '</button></div>' +
+    '<div class="pbox pszrow"><span class="pstd2">规格</span>' + (function () {
+     var s = '';
+     for (var zi = 0; zi < BOX_SIZES.length; zi++) {
+      var B = BOX_SIZES[zi], bc = boxCatById(B.id);
+      if (!bc) continue;
+      var bdd = boxDims(bc, boxOptOf(bc));
+      s += '<button class="pside pszb' + (B.id === BOX_SEL ? ' on' : '') + '" data-act="fsize" data-size="' + B.id + '" title="' + bdd.l + '×' + bdd.w + '×' + bdd.h + ' cm">' + B.tag + '</button>';
+     }
+     return s;
+    })() + '</div>' +
+    '<span class="pstd">已选 ' + sTag + ' · ' + sd.l + '×' + sd.w + '×' + sd.h + ' cm · ≈' + fc.std.toFixed(2) + ' 标准箱</span>';
+  } else if (c.box) {
    var o = boxOptOf(c), d = boxDims(c, o), bl = BOX_MATS[o.mat].label;
    boxLine = '<div class="pbox">' +
     '<button class="pside' + (o.mat === 'plastic' ? ' on' : '') + '" data-act="mat">' + bl + '</button>' +
@@ -3958,13 +4069,15 @@ function renderPicker() {
       if (pa[k].id === cp && pa[k].dims) return pa[k].dims[0] + '×' + pa[k].dims[1] + '×' + pa[k].dims[2] + ' cm';
      }
     }
-    return c.l + '×' + c.w + '×' + c.h;
+    /* [R24-C] 搬家箱卡的尺寸栏必须跟着当前选中规格走，否则点 S 后上面还写着 60×40×40 */
+    if (c.boxSet) return fc.l + '×' + fc.w + '×' + fc.h + ' cm';
+    return c.l + '×' + c.w + '×' + c.h + ' cm';
    })() + '</div>' +
    poseLine + sideBtn + boxLine +
    /* [R11-KB-02 202611161756] 件数框常驻：q=0 的行也直接给出「− 件数 ＋」，
       用户不必先点一次「加入清单」才能改件数；点数字框即弹数字键盘、可直接键入任意件数。 */
    '<div class="pqrow"><button class="pminus" data-act="minus" aria-label="减一件">−</button>' +
-   '<input class="pqnum' + (q ? '' : ' zero') + '" data-act="qty" data-k="' + catKey(c) + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" value="' + q + '" title="点这里直接输入件数" aria-label="件数，可直接输入">' +
+   '<input class="pqnum' + (q ? '' : ' zero') + '" data-act="qty" data-k="' + catKey(fc) + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" value="' + q + '" title="点这里直接输入件数" aria-label="件数，可直接输入">' +
    '<button class="pplus" data-act="add" aria-label="加一件">＋</button></div>' +
    (q ? '<span class="pqty">×' + q + '</span>' : '') +
    '<button class="padd" data-act="add">' + (q ? '＋ 再加 1 件' : '＋ 加入清单') + '</button>' +
@@ -3976,18 +4089,43 @@ function renderPicker() {
  for (var j = 0; j < its.length; j++) {
   (function (el) {
    el.addEventListener('click', function (ev) {
-    var cat = CATALOG[+el.getAttribute('data-i')];
-    if (!cat) return;
+    var cat0 = CATALOG[+el.getAttribute('data-i')];
+    if (!cat0) return;
+    /* [R24-B] 搬家箱卡片里加/减的是「当前选中规格」这一件；类型/规格按钮只改选项不加件 */
+    var cat = cat0.boxSet ? boxSelCat() : cat0;
     /* 点到条目上的「−」= 减 1，其余位置 = 加 1；两种情况都留在面板里，可连续点 */
-    var t = ev && ev.target, dec = false, sideToggle = false, act2 = '', posePick = '';
+    var t = ev && ev.target, dec = false, sideToggle = false, act2 = '', posePick = '', fPick = '';
     while (t && t !== el) {
      var act = t.getAttribute && t.getAttribute('data-act');
      if (act === 'side') { sideToggle = true; break; }
      if (act === 'pose') { posePick = t.getAttribute('data-pose'); break; }
      if (act === 'mat' || act === 'taper') { act2 = act; break; }
+     if (act === 'fmat') { act2 = 'fmat'; fPick = t.getAttribute('data-mat'); break; }
+     if (act === 'ftaper') { act2 = 'ftaper'; break; }
+     if (act === 'fsize') { act2 = 'fsize'; fPick = t.getAttribute('data-size'); break; }
      if (act === 'qty') { return; }   /* [R11] 点件数框 = 编辑件数，不能被当成「加一件」 */
      if (act === 'minus') { dec = true; break; }
      t = t.parentNode;
+    }
+    if (act2 === 'fmat') {
+     /* 类型切换：全家 6 档规格一起切，清单里不会出现纸箱与塑料混色 */
+     try { setFamilyMat(fPick === 'plastic' ? 'plastic' : 'cardboard'); } catch (e) {}
+     renderPicker(); refreshCartUI(); afterChange();
+     els.pickerList.scrollTop = keepScroll;
+     return;
+    }
+    if (act2 === 'ftaper') {
+     try { setFamilyTapered(!boxOptOf(cat).tapered); } catch (e) {}
+     renderPicker(); refreshCartUI(); afterChange();
+     els.pickerList.scrollTop = keepScroll;
+     return;
+    }
+    if (act2 === 'fsize') {
+     /* 选规格 = 切当前规格（不加件），件数与加入清单都跟着这张规格走 */
+     BOX_SEL = fPick || 'carton';
+     renderPicker();
+     els.pickerList.scrollTop = keepScroll;
+     return;
     }
     if (act2 === 'mat') {
      /* P1 材质切换：纸板 ⇄ 塑料（塑料默认可侧放），只改选项不删清单里的件 */
@@ -4924,7 +5062,7 @@ function planTrips(inst, bin2) {
   try { r = pack({ l: bin2.l, w: bin2.w, h: bin2.h }, remain); }
   catch (e) { break; }
   if (!r.placed.length) break;
-  /* [FIX-TRIP] 原实现按 name 去重：装 3 个纸箱只放下 1 个时，doneNames['纸箱']=1
+  /* [FIX-TRIP] 原实现按 name 去重：装 3 个纸箱只放下 1 个时，doneNames['搬家箱']=1
      会把剩下 2 个一并剔除，导致 reports "1 趟够" 而实际差 2 件。
      改为按 _src 引用精确剔除；引用缺失时回退到「同名按数量扣减」。 */
   var doneRef = [], doneNames = {};
@@ -5309,12 +5447,12 @@ els.mbExit.addEventListener('click', function (e) {
   六关数值均来自实跑验证，改物品或仓位尺寸必须重新跑一遍。 */
 var LEVELS = [
  { id:'L01', name:'第一趟', hint:'先看看 1m³ 能不能塞下', bin:'S',
-  items:[['纸箱',4],['行李箱',1]], minCap:capM3Of('S'), limit:0 },
+  items:[['搬家箱',4],['行李箱',1]], minCap:capM3Of('S'), limit:0 },
  { id:'L02', name:'装不下的时候', hint:'沙发、床垫、自行车，3m³ 真装得下吗', bin:'M',
   items:[['沙发',1],['床垫',1],['自行车',1]], minCap:capM3Of('L'), limit:0,
   trapNote:'这关的 3 m³ 是故意留的坑：沙发 200cm，横过来竖过去都超 152cm 的内部，就是要你先把这个坑踩出来' },
  { id:'L03', name:'能小一号吗', hint:'6m³ 装得下，但 3m³ 就够了——省一半租金', bin:'L',
-  items:[['纸箱',6],['收纳箱',4],['椅子',2],['折叠桌',1]], minCap:capM3Of('M'), limit:0 },
+  items:[['搬家箱',6],['收纳箱',4],['椅子',2],['折叠桌',1]], minCap:capM3Of('M'), limit:0 },
  /* [FIX-10] FIX-02 之后"不能倒着放"已经是假话：书架可以躺平进矮仓。
    留着这句会教用户错的做法，改成与判定一致的说法。 */
  /* [LEVEL-FIX-04] 目标仓由 XL(内高 202) 改 L(内高 177)：原目标仓比书架 180 还高，
@@ -5326,12 +5464,12 @@ var LEVELS = [
  { id:'L05', name:'那个拐角', hint:'全都装进去了，不等于搬得进去', bin:'XL',
   items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:capM3Of('XL'), limit:0, corner:true },
  { id:'L06', name:'限时装车', hint:'60 秒，看你能装多少', bin:'truck',
-  items:[['纸箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 },
+  items:[['搬家箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 },
  /* [FIX-L07 20261115] 第 7 关：薄板件（落地镜 160×40×5）。镜子平放要占 1.6×0.4 一片地面，
     真实搬运平放还容易压碎玻璃 —— 立起来靠墙几乎不占地。M 仓内高 130cm 立不起来（镜高 160），
     L 仓内高 175cm 才立得住，所以教育点是「薄板件要立」，不是「换更大的仓」。 */
  { id:'L07', name:'镜子怎么进门', hint:'薄板件立起来靠墙，平躺占地还容易压碎', bin:'L',
-  items:[['落地镜',1],['纸箱',14],['收纳箱',7],['椅子',2]], minCap:5.95, limit:0, mirrorStand:true }
+  items:[['落地镜',1],['搬家箱',14],['收纳箱',7],['椅子',2]], minCap:5.95, limit:0, mirrorStand:true }
 ];
 
 var curLevel = -1;
@@ -6042,6 +6180,16 @@ function flushPickerQty() {
  try { pickerSetQty(ae.getAttribute('data-k'), ae.value, ae); } catch (e) { }
 }
 els.pickerClose.addEventListener('click', function () { flushPickerQty(); hideSheets(); });
+/* [R24-B] 添加物品弹窗缺装填入口：加完物品只能先「完成」收起面板、再回首页点底部 AI 装填，
+   两步还容易漏。这里给面板底部一个「装填 →」，一点就关面板并直达装填结果。 */
+function pickerPackNow() {
+ try { flushPickerQty(); } catch (e) {}
+ if (totalQty() <= 0) { try { toast('先加几件物品再装填'); } catch (e2) {} return; }
+ try { fxLight('packing'); } catch (e3) {}
+ hideSheets();
+ setTimeout(function () { try { doPack(); } catch (e4) {} }, 360);
+}
+els.pickerPack.addEventListener('click', function (e) { e.preventDefault(); pickerPackNow(); });
 els.mask.addEventListener('click', function () { flushPickerQty(); hideSheets(); });
 els.cartBtn.addEventListener('click', function (e) {
  e.preventDefault();
