@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v94</b> · 202611172020</div>
+<div id="verTag"><b>v95</b> · 202611172335</div>
 
 <div id="tripBadge"></div>
 
@@ -1027,7 +1027,83 @@ function partsHit(parts, org, placed, cell) {
  return false;
 }
 
-function packCore(bin, items, topPenalty, orderMode) {
+/* [R27-C 202611172335] 悬空审计：只用「整块件 AABB」判据，语义与 contact 的贴顶面一致。
+   下方存在 parts 件（桌面/车架这类）时本判据不可靠（净空是设计出来的，不是悬空），整件豁免。
+   返回 rows（逐件支撑率）与 bad（悬空件列表）。 */
+function floatAudit(placed) {
+ const rows = [], bad = [];
+ for (const b of placed) {
+  if (b.z <= 0.5) { rows.push({ name: b.name, z: b.z, sup: 1, skip: false }); continue; }
+  let skip = false;
+  for (const q of placed) {
+   if (q === b || !q._parts) continue;
+   if (q.z + q.h > b.z + 0.5) { skip = true; break; }
+  }
+  if (skip) { rows.push({ name: b.name, z: b.z, sup: null, skip: true }); continue; }
+  const ba = Math.max(1e-6, b.l * b.w);
+  let cover = 0;
+  for (const q of placed) {
+   if (q === b) continue;
+   if (q.z + q.h > b.z + 0.5) continue;
+   if (q.z >= b.z + b.h - 0.01) continue;
+   const ox = Math.min(b.x + b.l, q.x + q.l) - Math.max(b.x, q.x);
+   const oy = Math.min(b.y + b.w, q.y + q.w) - Math.max(b.y, q.y);
+   if (ox > 0.5 && oy > 0.5) cover += ox * oy;
+  }
+  const sup = cover / ba;
+  rows.push({ name: b.name, z: b.z, sup: +sup.toFixed(3), skip: false });
+  /* [R27-F 202611172335] 判据从 SUP_MIN(0.6) 提到 0.85：0.6 只保证「能站住」，剩下 40% 悬在空中的件
+     在画面上就是用户反复投诉的「悬空」。85% 覆盖是「悬挑 ≤15%」的实用线。 */
+  if (sup < 0.85 - 1e-9) bad.push(b);
+ }
+ return { rows: rows, bad: bad, floating: bad.length };
+}
+
+/* [R27-F 202611172335] 地面占用（cm2）：z≈0 件的水平投影并集，10cm 网格计数。
+   take() 用它做「件数与体积都相同时」的第三判据：地面占用更少的那份胜出（= 箱子叠起来了）。 */
+/* [R27-H 202611172335] 出口级堆叠校验：可堆叠族（搬家箱/收纳箱）z>0 时必须被「同族、底面积不小于自己」的件托住，
+   覆盖 >= SUP_MIN。packCore 内的打分门槛只管「挑候选点」，而 pack() 的精确搜索兜底是包内独立的排布代码，
+   产出的条目没有 _stack 标记（已实证 _stack undefined），规则会被整条绕过；所以必须有一道与算法路无关的校验。 */
+function _isStackName(n) { return /搬家箱|收纳箱|纸箱|标准箱/.test(String(n || '')); }
+function stackCoverM(box, list) {
+ const ba = Math.max(1e-6, box.l * box.w);
+ let cover = 0;
+ for (let i = 0; i < list.length; i++) {
+  const q = list[i];
+  if (!q._stack && !_isStackName(q.name)) continue;
+  if (Math.abs(box.z - (q.z + q.h)) > 0.6) continue;
+  if (q.l * q.w < ba * 0.99) continue;
+  const ox = Math.min(box.x + box.l, q.x + q.l) - Math.max(box.x, q.x);
+  const oy = Math.min(box.y + box.w, q.y + q.w) - Math.max(box.y, q.y);
+  if (ox > 0.5 && oy > 0.5) cover += Math.min(1, (ox * oy) / ba);
+ }
+ return Math.min(1, cover);
+}
+function stackAudit(placed) {
+ const bad = [];
+ for (let i = 0; i < placed.length; i++) {
+  const b = placed[i];
+  if (b.z <= 0.5) continue;
+  if (!b._stack && !_isStackName(b.name)) continue;
+  if (stackCoverM(b, placed) < SUP_MIN) bad.push(b);
+ }
+ return { bad: bad, ok: placed.length - bad.length };
+}
+function groundArea(placed) {
+ const cell = 10, g = {};
+ let area = 0;
+ for (const b of placed) {
+  if (b.z > 0.5) continue;
+  for (let x = b.x; x < b.x + b.l - 1e-6; x += cell)
+   for (let y = b.y; y < b.y + b.w - 1e-6; y += cell) {
+    const k = Math.floor(x / cell) + '_' + Math.floor(y / cell);
+    if (!g[k]) { g[k] = 1; area += cell * cell; }
+   }
+ }
+ return area;
+}
+
+function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
  const cell = VOX_CELL;
  /* P0-C2：仓壁安全量改为仓内尺寸内缩；物品之间零间隙 */
  const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
@@ -1043,6 +1119,17 @@ function packCore(bin, items, topPenalty, orderMode) {
   if (_seen.has(k)) return;
   _seen.add(k);
   points.push({ x: x, y: y, z: z });
+ }
+ /* [R27-F 202611172335] 地面网格候选点（仅堆叠路）：贪心原来只沿「已放件边界」加点，大片空地中心
+    永远没有候选点，箱子只能挤在一列里往上长、其余箱子只能 failed。铺一层 24cm 地面网格后，
+    箱子既能往上叠、也能横着铺满地面，「叠起来腾地面」和「装完件数」不再互相牺牲。 */
+ if (dense) {
+  const _st = 24;
+  for (let gx = 0; gx < W - 0.5; gx += _st) {
+   for (let gy = 0; gy < D - 0.5; gy += _st) {
+    if (gx > 0.5 || gy > 0.5) addPoint(gx, gy, 0);
+   }
+  }
  }
  /* 平台表：parts 件的悬空块（如桌面）顶面。高度场是单值的，表达不了「同一列底下空、上面有板」，
    所以悬空块顶面单独记一份，支撑判定时按水平覆盖率认平台（≥SUP_MIN 才算托住）。 */
@@ -1064,7 +1151,10 @@ function packCore(bin, items, topPenalty, orderMode) {
  }
 
  let sorted = items.map(it => ({
-  ...it, _d: effDims(it), _v: it.l * it.w * it.h
+  /* [R27-I 202611172335] _stack 加名字兜底：任何调用方（packOnly/外部探针/旧入口）漏传 stack 标记时，
+     搬家箱/收纳箱仍能被识别为可堆叠族，否则「不侧放」硬锁与 stackCover 门槛会被静默跳过。 */
+  ...it, _d: effDims(it), _v: it.l * it.w * it.h,
+  _stack: !!(it.stack || it.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(it.name || '')))
  })).sort((a, b) => b._v - a._v);
  /* [FIX-CLIP-03] 顺序扰动：硬约束后贪心只按体积降序排，高件（书架 180 高）常被后放、
     落地面积已被平铺大件（床垫）吃光。这里给出按高度/底面积/最长边降序的额外顺序，
@@ -1073,6 +1163,34 @@ function packCore(bin, items, topPenalty, orderMode) {
  else if (orderMode === 2) sorted = sorted.slice().sort((a, b) => (b._d.l * b._d.w) - (a._d.l * a._d.w) || b._v - a._v);
  else if (orderMode === 3) sorted = sorted.slice().sort((a, b) =>
   Math.max(b._d.l, b._d.w, b._d.h) - Math.max(a._d.l, a._d.w, a._d.h) || b._v - a._v);
+ /* [R27-B 202611172335] 堆叠优先档：可堆叠族（搬家箱/收纳箱）排在不可堆叠大件之后，
+    族内按底面积降序、再按高度降序 —— 用户规则「从下到上、从大到小」的落位顺序实现。
+    大件（沙发/床垫/衣柜）先落地占位，箱子后放自然往上叠，不去抢地面。 */
+ if (stackBoost) {
+  const _ns = sorted.filter(x => !x._stack);
+  const _st = sorted.filter(x => x._stack)
+   .sort((a, b) => (b._d.l * b._d.w - a._d.l * a._d.w) || (b._d.h - a._d.h) || (b._v - a._v));
+  sorted = _ns.concat(_st);
+ }
+
+ /* [R27-B 202611172335] 叠放支撑覆盖：本件底面有多少比例压在「可堆叠族」的下方件顶面上。
+    ①只认顶面与本件底面高度差 ≤0.6 的下方件（与 contact 同一条 0.5 容差）；
+    ②只认底面积 ≥ 自身的下方件 —— 大底托小，禁止「小箱托大箱」这种看着就不稳的堆法；
+    ③返回 0~1，乘权重后作为叠放加分。 */
+ function stackCover(box, list) {
+  const ba = Math.max(1e-6, box.l * box.w);
+  let cover = 0;
+  for (let i = 0; i < list.length; i++) {
+   const q = list[i];
+   if (!q._stack) continue;
+   if (Math.abs(box.z - (q.z + q.h)) > 0.6) continue;
+   if (q.l * q.w < ba * 0.99) continue;
+   const ox = Math.min(box.x + box.l, q.x + q.l) - Math.max(box.x, q.x);
+   const oy = Math.min(box.y + box.w, q.y + q.w) - Math.max(box.y, q.y);
+   if (ox > 0.5 && oy > 0.5) cover += Math.min(1, (ox * oy) / ba);
+  }
+  return Math.min(1, cover);
+ }
 
  function stamp(b, vox) {
   for (let gy = 0; gy < vox.ny; gy++) {
@@ -1115,10 +1233,15 @@ function packCore(bin, items, topPenalty, orderMode) {
    /* 立柱高 ≤ 仓内净高 由下面的 c > H 过滤保证；放不下自然回落到其余朝向（躺倒兜底） */
    upBonus = (upC - s3[2]) * (topPenalty || 0) + 41;
   } else if (it.noSide) {
-   /* noSide = 不可侧放（纸箱/收纳箱），语义是「原始高那个方向别倒」，不是「最长边立起来」。
-     这里只把原始高竖直的朝向排前面，不加分——纸箱只会保持 40 高，不会被立成 60 高。 */
+   /* noSide = 不可侧放（纸箱/收纳箱），语义是「原始高那个方向别倒」，不是「最长边立起来」。 */
    const keepH = ors.filter(o => Math.abs(o[2] - it._d.h) < 0.01);
-   if (keepH.length && keepH.length < ors.length) {
+   /* [R27-G 202611172335] 可堆叠族（搬家箱/收纳箱）在「不可侧放」时硬锁朝向 = 原始高竖直。
+      旧逻辑只是把该朝向排前面，打分照样能选到 40×40×60「立起来」的箱子：底面积更小、
+      贴地分被 R27-B 削弱后「占地面积小」反而占便宜，结果箱子竖着摞、不再是从大到小叠。
+      硬锁后箱子永远是 60×40×40 平放，叠放只会沿高度方向发生，符合用户规则。 */
+   if (it._stack && keepH.length) {
+    ors = keepH;
+   } else if (keepH.length && keepH.length < ors.length) {
     ors = keepH.concat(ors.filter(o => Math.abs(o[2] - it._d.h) >= 0.01));
    }
   }
@@ -1233,8 +1356,24 @@ function packCore(bin, items, topPenalty, orderMode) {
     }
     if (hit) continue;
     const box = { x: p.x, y: p.y, z: p.z, l: a, w: b, h: c, name: it.name, orig: [it.l, it.w, it.h] };
-    const score = contact(box, placed, W, D, H, topPenalty) + sr.ratio * 40
-           - p.z * 0.001 - (p.z + c) * (topPenalty || 0)
+    /* [R27-B 202611172335] 可堆叠族三项改造：①贴地分削弱 65%（不抢地面）；
+       ②高度惩罚降到 12%（原 60 分/厘米是「箱子必然平铺」的真凶）；
+       ③按下方同族件的水平覆盖比例加分（覆盖 100% 即满额 stackBoost）。
+       实测 v94：L01 第二个箱子平铺点 ≈4040 分、叠放点 ≈40 分 → 算法必然平铺；
+       改后叠放点稳定压过平铺点，箱子才真的往上叠、把地面让给不可堆叠大件。
+       另加一条硬规矩：箱子「悬空候选」（p.z>0.5）必须被同族箱体托住 ≥SUP_MIN 才允许，
+       否则只能落地 —— 禁止箱子压在自行车/椅子/沙发顶面（那些件不可承压，用户不要这种堆法）。 */
+    let _ct = contact(box, placed, W, D, H, topPenalty), _sc = 0, _tp = (topPenalty || 0);
+    if (it._stack) {
+     if (p.z > 0.5) {
+      _sc = stackCover(box, placed);
+      if (_sc < 0.85) continue;   /* [R27-F] 与 floatAudit 同一条线：叠放覆盖不足 85%% 直接不允许落位 */
+     }
+     if (p.z < 0.5) _ct -= 0.65 * (a * b);
+     _tp = _tp * 0.12;
+    }
+    const score = _ct + sr.ratio * 40
+           - p.z * 0.001 - (p.z + c) * _tp + (stackBoost ? stackBoost * _sc : 0)
            + (upBonus && Math.abs(c - upC) < 0.01 ? upBonus : 0);
     if (!best || score > best.score) best = { box, score, oi, vox };
    }
@@ -1247,6 +1386,7 @@ function packCore(bin, items, topPenalty, orderMode) {
    const b = best.box;
    b._oi = best.oi;
    b._src = it;
+   b._stack = !!it._stack;   /* [R27-B] 下方件是否可堆叠族（stackCover 用） */
    if (best.parts) {
     /* parts 件：只有触底块写高度场（腿间列保持 0，后面的东西才塞得进去）；
       所有块的顶面都登记为平台（桌面顶面要能放东西）。 */
@@ -1304,10 +1444,22 @@ function packCore(bin, items, topPenalty, orderMode) {
   }
  }
 
+ /* [R27-C 202611172335] 悬空兜底（与落位评分无关的第二道闸）：逐件用「完全位于下方的整块件
+    水平交叠 / 自身底面积」重算支撑率，<SUP_MIN 的直接移出 placed 转 failed ——
+    宁可不装，也不给悬空件。用户反馈过多次的「物品悬空」从此不再依赖评分是否写对。 */
+ const _fa = floatAudit(placed);
+ if (_fa.bad.length) {
+  for (const _fb of _fa.bad) {
+   const _ix = placed.indexOf(_fb);
+   if (_ix >= 0) placed.splice(_ix, 1);
+   failed.push(_fb.name);
+  }
+ }
  const vol = placed.reduce((s, b) => s + b.l * b.w * b.h, 0);
  const cap = W * D * H;
  return { placed, failed, count: placed.length, total: items.length,
-      util: vol / cap, vol: vol / 1e6, cap: cap / 1e6 };
+      util: vol / cap, vol: vol / 1e6, cap: cap / 1e6, floatFix: _fa.bad.length,
+      ground: groundArea(placed) };
 }
 
 /* 失败兜底：小规模精确搜索（极点候选 + 体素碰撞 + 支撑率）
@@ -1425,15 +1577,58 @@ function pack(bin, items) {
  const _binCap = (bin.l - 2 * BIN_PAD) * (bin.w - 2 * BIN_PAD) * (bin.h - 2 * BIN_PAD);
  let best = null;
  function take(c) {
-  if (!best || c.count > best.count || (c.count === best.count && c.util > best.util)) best = c;
+  /* [R27-F 202611172335] 第三判据：件数与体积都打平时，选「地面占用更少」那份 —— 全装下时 util 恒定
+     相同，旧逻辑会保留先跑的那一路（堆叠路），但堆叠路也可能因碎片化反而多吃地面。
+     加上 ground 比较后，各条路里真正把箱子叠起来、把地面腾出来的那份才会被采纳。 */
+  if (!best || c.count > best.count) best = c;
+  else if (c.count === best.count) {
+   if (c.util > best.util + 1e-9) best = c;
+   else if (Math.abs(c.util - best.util) <= 1e-9 && c.ground < best.ground - 1) best = c;
+  }
+  return best.count === items.length;
   return best.count === items.length;
  }
- function tryOne(tp, om, its) {
-  return take(packCore(bin, its || items, tp, om));
+ const STACK_BOOST = 3000;
+ /* [R27-H 202611172335] 统一出口：任何一路（含精确搜索兜底）的结果在参与比较前，先过 floatAudit + stackAudit，
+    违规件移出转 failed 并重算 count/util/vol/ground。这样不管规则加在哪一路，旁路都拦得住。 */
+ function finalize(c) {
+  if (!c) return c;
+  const pl = c.placed || [];
+  const fa = floatAudit(pl);
+  const sa = stackAudit(pl);
+  const badAll = fa.bad.concat(sa.bad);
+  if (badAll.length) {
+   for (let i = 0; i < badAll.length; i++) {
+    const ix = pl.indexOf(badAll[i]);
+    if (ix >= 0) { pl.splice(ix, 1); if (c.failed) c.failed.push(badAll[i].name); }
+   }
+   const pad3 = (bin.l - 2 * BIN_PAD) * (bin.w - 2 * BIN_PAD) * (bin.h - 2 * BIN_PAD);
+   let vol3 = 0;
+   for (let i = 0; i < pl.length; i++) { const b = pl[i]; vol3 += b.l * b.w * b.h; }
+   c.count = pl.length; c.util = vol3 / pad3; c.vol = vol3 / 1e6;
+   c.floatFix = (c.floatFix || 0) + fa.bad.length;
+   c.stackFix = (c.stackFix || 0) + sa.bad.length;
+   c.ground = groundArea(pl);
+  }
+  if (c.ground == null) c.ground = groundArea(pl);
+  return c;
+ }
+ function tryOne(tp, om, its, sb, dense) {
+  return take(finalize(packCore(bin, its || items, tp, om, sb, dense)));
  }
  /* 1. 顺序四路。体积和超过净容积 95% 的必装不下场景只跑一路，不浪费前 4 路的时间 */
  const _hopeless = (n > 30 && _volSum > _binCap * 0.95);
  const roads = _hopeless ? [[60, 0]] : [[60, 0], [0, 0], [0, 3], [60, 1]];
+ /* [R27-B 202611172335] 第 0 路：堆叠优先。可堆叠族（搬家箱/收纳箱）按「大在下、小在上」竖向叠放，
+    把地面让给自行车/沙发/床垫这类不可堆叠件。take() 的取舍是 count 优先、util 次优先，
+    所以堆叠路若少装一件会被后面的常规四路替回来，不会因为「爱叠」而装得更少。 */
+ const _hasStack = items.some(function (it) { return !!(it.stack || it.box); });
+ if (_hasStack) {
+  /* [R27-F 202611172335] 这里不能像其它路那样「装完全部就 return」：堆叠路先跑，若直接返回，
+     后面常规路就算地面占用更省也没机会比。take() 内部已经做了 count/util/ground 三重比较，
+     所以堆叠路跑完不短路，交给常规四路比一轮，最后由 take 选出「件数一样、地面更省」那份。 */
+  tryOne(60, 0, null, STACK_BOOST, true);
+ }
  for (let r = 0; r < roads.length; r++) {
   if (tryOne(roads[r][0], roads[r][1])) return best;
  }
@@ -1465,17 +1660,17 @@ function pack(bin, items) {
  }
  /* 4. 精确搜索兜底：≤4 件不限时；5~14 件给 120 ms anytime（超时自动放弃，不阻塞界面） */
  if (n <= 4) {
-  const e = exactPack(bin, items);
+  const e = finalize(exactPack(bin, items));
   if (e && e.count > best.count) return e;
  } else if (n <= 14) {
-  const e = exactPack(bin, items, 120);
+  const e = finalize(exactPack(bin, items, 120));
   if (e && e.count > best.count) return e;
  }
- return best;
+ return finalize(best);
 }
 
 if (typeof module !== 'undefined') module.exports = {
- pack, packCore, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN,
+ pack, packCore, floatAudit, stackAudit, groundArea, orientations, effDims, gapOf, VOX_CELL, BIN_PAD, SUP_MIN,
  voxelize, voxelizeBox, voxHit, supportRatio, GAP_HARD, GAP_SOFT
 };
 //</script>
@@ -1518,7 +1713,7 @@ var CATALOG = [
  { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true },
  { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true },
  { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c },
- { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63, side:false },
+ { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63, side:false, stack:true },
  { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true },
  { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355 },
  { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47 },
@@ -5784,26 +5979,49 @@ function renderPreview() {
   var c = cart[i];
   for (var q = 0; q < c.qty; q++) inst.push(c);
  }
- /* [R25-C] 待装件原来从 bin.l+55 起排（离仓壁太远，把构图整体推偏），收到 +26 */
- var px = bin.l + 26, pz = 0, py = 0, rowH = 0;
- var maxZ = Math.max(bin.w, 110);
- var maxY = Math.max(bin.h, 90) * 1.8;
- for (var k = 0; k < inst.length; k++) {
-  var cat = inst[k];
-  /* [R25-F6] 原来每行摞满就 px += 110 开新列，5 件待装件排出 3 列、最右件到画面 167% 处彻底出画。
-     改成：本行摞满先向上叠一层，竖向也满（bin.h×1.8）才向右开新列。 */
-  if (pz + cat.w > maxZ) {
-   pz = 0;
-   py += (rowH || cat.h) + 14;
-   rowH = 0;
-   if (py + cat.h > maxY) { py = 0; px += cat.l + 26; }
+ /* [R27-A 202611172335] 待装件排布 = 地面托盘 + 同族合法堆叠，彻底禁止「向空中叠层」。
+    R25-F6 为了不出画把「本行摞满」改成「向上叠一层」，结果 5 件待装件里第 3/4 件被抬到
+    54cm、第 5 件 122cm 的空中 —— 手机端看到的就是「两个箱子悬在左上方」（用户已多次反馈）。
+    现在：①按底面积降序（大件先落，符合「从大到小」）；②可堆叠族（搬家箱/收纳箱）优先
+    叠进已有列，列底一律落地、每件底面 = 列顶高度，绝不悬空；③不可堆叠件各占一列落地；
+    ④列与列沿地面 x 方向排开，交给 fitCamera 自动取景。 */
+ var _pvOrder = inst.slice().sort(function (a, b) {
+  return (b.l * b.w - a.l * a.w) || (b.h - a.h);
+ });
+ var px = bin.l + 26;
+ /* [R27-I 202611172335] 列高上限 = 仓高（原来写 max(bin.h,120)*2 = 240，S 仓 102 高时 4 只箱子被叠到 160，
+    远看就是「一摞箱子顶出仓外」）。待装件排布必须保证「能装进仓」，所以上限就是仓高：
+    S 仓 102 高 → 40 高的箱子只叠 2 层（80），第 3 只另开一列落地，肉眼即「从下往上叠、地面还留着」。 */
+ var maxColH = bin.h;
+ var cols = [];
+ for (var k = 0; k < _pvOrder.length; k++) {
+  var cat = _pvOrder[k];
+  var canStack = !!(cat.box || cat.stack);
+  var pickC = null;
+  if (canStack) {
+   for (var ci = 0; ci < cols.length; ci++) {
+    var cc = cols[ci];
+    if (!cc.stack) continue;
+    var fitA = (cc.footL >= cat.l - 0.01 && cc.footW >= cat.w - 0.01);
+    var fitB = (cc.footL >= cat.w - 0.01 && cc.footW >= cat.l - 0.01);
+    if (!fitA && !fitB) continue;
+    if (cc.top + cat.h > maxColH) continue;
+    if (!pickC || cc.top < pickC.top) pickC = cc;
+   }
+  }
+  if (!pickC) {
+   pickC = { x: px, z: 0, top: 0, footL: cat.l, footW: cat.w, stack: canStack };
+   cols.push(pickC);
+   px += (canStack ? Math.max(cat.l, 90) : cat.l) + 20;
   }
   var o = makeObj(cat);
-  o.position.set(px + cat.l / 2, py + cat.h / 2, pz + cat.w / 2);
+  /* y = 列顶高度 + 本件半高 → 底面正好坐在列顶（第一层就是地面），不存在空中悬停 */
+  o.position.set(pickC.x + pickC.footL / 2, pickC.top + cat.h / 2, pickC.z + pickC.footW / 2);
   o.userData.target = o.position.clone();
+  o.userData.pvBase = pickC.top;
+  o.userData.pvH = cat.h;
   placedGroup.add(o);
-  pz += cat.w + 14;
-  if (cat.h > rowH) rowH = cat.h;
+  pickC.top += cat.h;
  }
  /* [R25-C] keepCenter：仓体保持画面中心 */
  fitCamera(true, true);
@@ -5886,6 +6104,8 @@ function doPack() {
    inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft,
          upright: !!c.upright, _poses: posesFor(c.id, c.pose),
          noSide: c.side === undefined ? false : !c.side,
+         /* [R27-B 202611172335] 可堆叠族标记：搬家箱全族（box）与收纳箱（stack） */
+         stack: !!(c.box || c.stack),
          _vox: voxFor(c) });
   }
  }
@@ -5900,27 +6120,32 @@ function doPack() {
 
  clearPlaced();
 
- /* 装不下的堆在仓外侧，按物品实际尺寸错开，避免压到仓体 */
- var outsideX = bin.l + 40, oy = 0, colW = 0;
+ /* 装不下的摆在仓外侧地面：按物品实际尺寸在地面 2D 错开，避免压到仓体 */
+ /* [R27-A 202611172335] 旧实现沿高度轴 oy += cat.h + 6 累加，件一多就被抬到空中 ——
+    「物品悬空」的第二个来源。现在一律落地：y 恒 = 半高，沿 z 排满换 x 列。 */
+ var outsideX = bin.l + 40, outsideZ = 0, colW = 0;
  var oversizeN = 0, oversizeNames = [];
  for (var a = 0; a < r.failed.length; a++) {
   var cat = idMap[r.failed[a]];
   if (!cat) continue;
-  if (oy + cat.h > Math.max(bin.h, 120)) { outsideX += colW + 30; oy = 0; colW = 0; }
+  if (outsideZ + cat.w > Math.max(bin.w, 110)) { outsideZ = 0; outsideX += colW + 30; colW = 0; }
   var cx = outsideX + cat.l / 2;
-  var cy = oy + cat.h / 2;
+  var cz = outsideZ + cat.w / 2;
+  var cy = cat.h / 2;
   colW = Math.max(colW, cat.l);
   /* P0-2：与落位分支同一个入口、同一份 (长, 高, 深)；P0-3：parts 件按段画 */
   var o = buildObj(cat, { l: cat.l, h: cat.h, w: cat.w }, { poseParts: cat.poseParts });
   /* P0-1③：尺寸本身就超仓的件，必须在画面上显式标「装不下」，不能静默摆到仓外 */
   var ov = oversizeOf(cat);
   if (ov) { oversizeN++; oversizeNames.push(cat.name); markOversize(o, cat, ov); }
-  o.userData.target = new T.Vector3(cx, cy, 0);
-  o.position.set(cx + 500, cy, 0);
+  o.userData.target = new T.Vector3(cx, cy, cz);
+  o.position.set(cx + 500, cy, cz);
+  o.userData.pvBase = 0;
+  o.userData.pvH = cat.h;
   o.userData.appearAt = nowMs() + (r.placed.length * 190) + (a * 140);
   o.visible = false;
   placedGroup.add(o);
-  oy += cat.h + 6;
+  outsideZ += cat.w + 8;
  }
 
  /* 装下的按坐标放：用 placed 的实际占位尺寸重建，避免旋转/压缩导致穿模 */
@@ -7422,6 +7647,7 @@ window.__API__ = {
    var o = list[i];
    var it = { name: o.name || ('item' + i), l: o.l, w: o.w, h: o.h,
          soft: !!o.soft, upright: !!o.upright, noSide: !!o.noSide,
+         stack: !!(o.stack || o.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(o.name || ''))),
          _poses: o.solid ? null : (o.poses || posesOf(o.id)) };
    if (hasMesh(o.mesh) && !GREYBOX_ON()) {
     var v = voxFor({ mesh: o.mesh, l: o.l, w: o.w, h: o.h });
@@ -7999,6 +8225,25 @@ window.__API__ = {
   }
   return { supMin: SUP_MIN, cell: VOX_CELL, binPad: BIN_PAD, rows: rows,
        bad: rows.filter(function (r) { return r.ratio != null && r.ratio < SUP_MIN - 1e-9; }).length };
+ },
+ /* [R27] 悬空审计出口：placed 各件「底面被下方整块件托住的比例」，<0.6 即悬空。
+    与 audit() 的体素支撑率互补（这个只认整块 AABB，parts 件豁免）。 */
+ floatAudit: function () {
+  if (!lastPack) return null;
+  return floatAudit(lastPack.placed);
+ },
+ /* [R27] 待装件落位审计：gap = y - (pvBase + pvH/2) 必须为 0，否则就是空中悬停 */
+ previewAudit: function () {
+  var out = [];
+  placedGroup.children.forEach(function (o) {
+   if (!o.userData || o.userData.isShadowPatch) return;
+   var h = o.userData.pvH, base = o.userData.pvBase;
+   if (h == null) { out.push({ name: o.name || "?", y: +o.position.y.toFixed(2), h: null }); return; }
+   out.push({ name: o.name || "?", y: +o.position.y.toFixed(2), h: h, base: base,
+         gap: +(o.position.y - (base + h / 2)).toFixed(2) });
+  });
+  var floating = out.filter(function (r) { return r.h != null && Math.abs(r.gap) > 0.01; }).length;
+  return { n: out.length, floating: floating, list: out };
  },
  lastPackCached: function () { return lastPack; },
  /* P0-R5 浏览器可运行性证明用：真实 WebGL 上下文 / 场景对象数 / 相机角度
