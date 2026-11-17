@@ -588,7 +588,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v91</b> · 202611171210</div>
+<div id="verTag"><b>v91</b> · 202611171250</div>
 
 <div id="tripBadge"></div>
 
@@ -2851,8 +2851,11 @@ function hasMesh(key) { return !!(key && (MESH_DATA[key] || PROC_KEYS[key])); }
 /* 箱体当前该用哪套模型：材质选项 → 模型（这是「不同选择对应不同模型」的唯一口径） */
 function boxMeshOf(cat) {
  if (!cat) return null;
- var m = cat.mat;
- if (!m && cat.box) { var o = boxOptOf(cat); m = o && o.mat; }
+ /* [R23-FIX] 用户选的材质（boxOpt）优先于 CATALOG 里的默认 mat：
+    否则 cat.mat='cardboard' 会永远遮蔽 boxOpt，切换塑料后仍出 p_carton（实测）。 */
+ var m = null;
+ if (cat.box) { var o = boxOptOf(cat); m = o && o.mat; }
+ if (!m) m = cat.mat;
  if (m === 'plastic') return 'p_plastic';
  if (m === 'cardboard') return 'p_carton';
  return cat.mesh || null;
@@ -7080,6 +7083,25 @@ window.__API__ = {
   renderer.render(scene, camera);
   return renderer.domElement.toDataURL('image/png');
  },
+ /* R23p：确定性地把 WebGL 帧读成 PNG（render→readPixels→2D canvas，绕开 toDataURL 取旧帧） */
+ snapPixels: function (maxW) {
+  renderer.render(scene, camera);
+  var gl = renderer.getContext(), w = canvas.width, h = canvas.height;
+  var buf = new Uint8Array(w * h * 4);
+  gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  var c2 = document.createElement('canvas'); c2.width = w; c2.height = h;
+  var x2 = c2.getContext('2d'); var img = x2.createImageData(w, h);
+  var row = w * 4, y, i;
+  for (y = 0; y < h; y++) { var src = (h - 1 - y) * row, dst = y * row;
+    for (i = 0; i < row; i++) img.data[dst + i] = buf[src + i]; }
+  x2.putImageData(img, 0, 0);
+  if (maxW && w > maxW) {
+   var c3 = document.createElement('canvas'); c3.width = maxW; c3.height = Math.round(h * maxW / w);
+   c3.getContext('2d').drawImage(c2, 0, 0, c3.width, c3.height);
+   return c3.toDataURL('image/png');
+  }
+  return c2.toDataURL('image/png');
+ },
  settle: function () {
   var n = 0;
   placedGroup.children.forEach(function (o) {
@@ -7211,6 +7233,19 @@ window.__API__ = {
  setBoxMat: function (id, mat) {
   for (var i = 0; i < BOX_LIST.length; i++) if (BOX_LIST[i].id === id) { setBoxMat(BOX_LIST[i], mat); return true; }
   return false;
+ },
+ /* R23：按 CATALOG 品类切换材质（纸箱/塑料两选项走这里，BOX_LIST 只有货架规格） */
+ setCatMat: function (id, mat) {
+  for (var i = 0; i < CATALOG.length; i++) {
+   if (CATALOG[i].id === id || CATALOG[i].name === id) { setBoxMat(CATALOG[i], mat); return true; }
+  }
+  return false;
+ },
+ catMesh: function (id) {
+  for (var i = 0; i < CATALOG.length; i++) {
+   if (CATALOG[i].id === id || CATALOG[i].name === id) return boxMeshOf(CATALOG[i]);
+  }
+  return null;
  },
  setTapered: function (id, val) {
   for (var i = 0; i < BOX_LIST.length; i++) if (BOX_LIST[i].id === id) { setTapered(BOX_LIST[i], val); return true; }
