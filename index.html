@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📦</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;overflow:hidden;background:#11151c;
+html,body{width:100%;height:100%;height:100dvh;overflow:hidden;background:#11151c;
  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#e8eef7}
 /* [v73] 舞台渐晕：四角沉、中心亮，配合射灯才有舞台感。pointer-events:none 不挡任何点击 */
 #vig{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:1;
@@ -35,7 +35,7 @@ header h1 em{font-style:normal;color:#4da3ff}
 .binbtn #binLabel{display:block;text-align:right;line-height:1.25}
 .binbtn #binMain{display:block;font-weight:700}
 .binbtn #binDoor{display:block;font-style:normal;font-size:11px;font-weight:600;color:#8fb2d8;margin-top:1px}
-footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18px;
+footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:8px 14px calc(10px + env(safe-area-inset-bottom));
  background:linear-gradient(0deg,rgba(17,21,28,.98),rgba(17,21,28,0));
  display:flex;flex-direction:column;gap:8px}
 .acts{display:flex;gap:8px}
@@ -100,7 +100,7 @@ footer{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:10px 14px 18
  color:#9fb0c6;font-size:22px;line-height:32px;padding:0;font-family:inherit;touch-action:manipulation}
 .sheet .uxx:active{color:#fff;background:rgba(255,255,255,.08);border-radius:17px}
 /* [UX-PACK-01 202611161135] 装填引导：toast 胶囊 + 装填按钮脉冲 */
-.uxtoast{position:fixed;left:50%;bottom:104px;z-index:60;max-width:86vw;text-align:center;
+.uxtoast{position:fixed;left:50%;bottom:86px;z-index:60;max-width:86vw;text-align:center;
  display:flex;align-items:center;gap:8px;padding:11px 18px;border-radius:22px;
  background:rgba(24,32,44,.96);border:1px solid rgba(245,197,66,.75);
  color:#ffd766;font-size:14px;line-height:1.2;text-align:center;
@@ -463,7 +463,7 @@ body.shotmode{background:#11151c}
 /* ========== 操作栏：5 列等宽 ========== */
 .acts{display:flex;gap:6px}
 .acts > .btn{flex:1 1 0}
-.btn{padding:14px 4px;font-size:14px}
+.btn{padding:11px 4px;font-size:14px}
 .acts .add{min-width:0}
 .acts .ghost{flex:1 1 0}
 
@@ -588,7 +588,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v90</b> · 202611170720</div>
+<div id="verTag"><b>v91</b> · 202611171210</div>
 
 <div id="tripBadge"></div>
 
@@ -1482,8 +1482,9 @@ if (typeof window !== 'undefined' && !window.__ERRLOG__) {
 
 /* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
 var CATALOG = [
- { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55, side:false },
- { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'suitcase', color:0x3f5b78 },
+ { id:'carton',   name:'纸箱',    l:60,  w:40,  h:40,  mesh:'box',      color:0xb98a55, side:false,
+  box:true, mat:'cardboard', tapered:false, vol:96000, std:1.2 },
+ { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78 },
  { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b },
  { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true },
  { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true },
@@ -1625,17 +1626,32 @@ function setBoxMat(cat, mat) {
 /* 遍历已摆放物件，把同一品类、且是箱体的那几件的材质色改掉 */
 function repaintBoxes(catId, col) {
  if (!placedGroup) return 0;
- var n = 0;
+ var list = [];
  placedGroup.children.forEach(function (o) {
   if (!o.userData || !o.userData.isBox || o.userData.catId !== catId) return;
-  o.traverse(function (k) {
-   if (k.isMesh && k.material && k.material.color) {
-    k.material.color.setHex(col);
-    if (k.material.emissive) k.material.emissive.setHex(col);
-   }
-  });
-  n++;
+  list.push(o);
  });
+ var n = 0;
+ for (var i = 0; i < list.length; i++) {
+  var o = list[i], ud = o.userData;
+  /* [R23] 纸板 / 塑料 = 两套不同的程序化模型，切换材质必须整件重建；
+     旧版只改 material.color（对顶点色材质等于整箱染成单色），所以两种材质一直长得一样。 */
+  if (ud.cat && ud.dims && ud.meshKey && ud.meshKey !== boxMeshOf(ud.cat)) {
+   var fresh = makeObjSized(ud.cat, ud.dims[0], ud.dims[1], ud.dims[2], ud.placed || null);
+   fresh.position.copy(o.position);
+   if (ud.target) fresh.userData.target = ud.target.clone();
+   placedGroup.add(fresh);
+   placedGroup.remove(o);
+  } else {
+   o.traverse(function (k) {
+    if (k.isMesh && k.material && k.material.color && !k.material.vertexColors) {
+     k.material.color.setHex(col);
+     if (k.material.emissive) k.material.emissive.setHex(col);
+    }
+   });
+  }
+  n++;
+ }
  return n;
 }
 function setTapered(cat, val) {
@@ -2408,6 +2424,25 @@ function voxFor(cat) {
  return voxCache[k];
 }
 
+/* [R23] 底栏被浏览器地址栏裁掉：CSS 的 100% / 100dvh 在部分微信 WebView 里仍按
+   layout viewport 算高度，footer 掉到地址栏后面且 overflow:hidden 无法滚动露出来。
+   这里用 visualViewport 的真实可视高度直接钉住 html/body 高度，双保险。 */
+(function () {
+ function fitVP() {
+  try {
+   var vv = window.visualViewport;
+   var h = window.innerHeight;
+   if (vv && vv.height && vv.height > 100 && vv.height > window.innerHeight * 0.75) h = vv.height;
+   h = Math.round(h);
+   document.documentElement.style.height = h + 'px';
+   document.body.style.height = h + 'px';
+  } catch (e) {}
+ }
+ fitVP();
+ window.addEventListener('resize', fitVP, { passive: true });
+ window.addEventListener('orientationchange', function () { setTimeout(fitVP, 260); }, { passive: true });
+ if (window.visualViewport) window.visualViewport.addEventListener('resize', fitVP, { passive: true });
+})();
 var SAT_BOOST = 1.45;   /* v59：ACES 失色补偿系数 */
 /* v59 贴片接触阴影：径向渐变黑面，贴在物品底面外扩 18%，开关直接控制 visible */
 var _csTex = null;
@@ -2578,7 +2613,254 @@ function snapGeo(geo, key) {
  return moved;
 }
 
+/* ========== [R23] 程序化搬家箱家族（纸箱 / 塑料搬家箱 / 行李箱） ==========
+   三条硬指标来自实测反馈：
+   ① 箱子纵向边必须与仓边严格平行、表面平整（对标 Grok 的光面收纳箱）。既有 MESH_DATA
+      的 'box' 是 AI 重建的瓦楞纸箱 —— 棱被建成圆角过渡带（meshEdgeAudit 恒 n=0）、
+      表面带翻边折痕（Hough 短斜线段全部落在这些翻边上），拿不到「方正 + 平整」；
+   ② 纸箱要照 Grok 的图有侧面把手孔洞 + 对开箱盖；
+   ③ 塑料搬家箱照商品图（中空板、椭圆把手孔 + 白色包边、对开翻盖，无独立开盖）；
+      行李箱正面/背面不得出现把手（把手只许在顶面与两端）。
+   解法：全部程序化几何 —— BoxGeometry 拼板 + ExtrudeGeometry 挖孔，所有面严格轴对齐、
+   棱是真实硬棱，孔与箱盖是真几何不是贴图。顶点色逐部件编码（单材质一模型），
+   与既有渲染链（makeObjSized 非等比铺满）完全兼容，模型 AABB 归一化到 ±0.5。 */
+var PROC_KEYS = { p_carton: 1, p_plastic: 1, p_suit: 1 };
+var PROC_MAT = {
+ /* [R23-EMI 20261117] 纸箱加一点自身暖色自发光：场景补光是冷蓝(0x9dc0ff/0xc8d8ff)+半球光，
+    纯漫反射的牛皮纸在这种冷光场里会被洗成中性灰（实测 base 暖色占比仅 0.6%）。
+    emissive 不吃方向光，相当于给箱体垫一层保底色，冷光再强也压不掉暖调；
+    强度 0.30 + 深棕 0x3A2410，不改变明暗层次。塑料箱/行李箱不加（它们本来就是冷色系）。 */
+ p_carton:  { rough: 0.94, metal: 0.00, emi: 0x3A2410, emiI: 0.30 },
+ p_plastic: { rough: 0.32, metal: 0.04 },
+ p_suit:    { rough: 0.50, metal: 0.07 }
+};
+var procCache = {}, procMats = {};
+
+/* 十六进制色 → 顶点色（走与顶点色模型同一条 ACES 失色补偿，否则会比既有模型灰一档） */
+function pCol(hex) {
+ var r = ((hex >> 16) & 255) / 255, g = ((hex >> 8) & 255) / 255, b = (hex & 255) / 255;
+ var l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+ r = l + (r - l) * SAT_BOOST; g = l + (g - l) * SAT_BOOST; b = l + (b - l) * SAT_BOOST;
+ return [Math.min(1, Math.max(0, r)), Math.min(1, Math.max(0, g)), Math.min(1, Math.max(0, b))];
+}
+
+/* 部件合并：每件 {g: BufferGeometry, c: 0xRRGGBB}，统一展开成非索引大几何 + 逐顶点色 */
+function pMerge(parts) {
+ var pos = [], nor = [], col = [], idx = [], off = 0, pi, i, k, metaList = [];
+ for (pi = 0; pi < parts.length; pi++) {
+  var it = parts[pi], g = it.g;
+  /* R23c：零件包围盒留档（审计用，不影响几何） */
+  if (it.n) {
+   g.computeBoundingBox();
+   var mb = g.boundingBox;
+   metaList.push({ n: it.n, c: it.c,
+    bb: [+mb.min.x.toFixed(3), +mb.min.y.toFixed(3), +mb.min.z.toFixed(3),
+         +mb.max.x.toFixed(3), +mb.max.y.toFixed(3), +mb.max.z.toFixed(3)] });
+  }
+  if (!g.getAttribute('normal')) g.computeVertexNormals();
+  var pa = g.getAttribute('position'), na = g.getAttribute('normal'), ia = g.index;
+  var c = pCol(it.c);
+  for (i = 0; i < pa.count; i++) {
+   pos.push(pa.getX(i), pa.getY(i), pa.getZ(i));
+   nor.push(na.getX(i), na.getY(i), na.getZ(i));
+   col.push(c[0], c[1], c[2]);
+  }
+  if (ia) { for (k = 0; k < ia.count; k++) idx.push(ia.getX(k) + off); }
+  else { for (k = 0; k < pa.count; k++) idx.push(k + off); }
+  off += pa.count;
+  g.dispose();
+ }
+ var geo = new T.BufferGeometry();
+ geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+ geo.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
+ geo.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+ geo.setIndex(idx);
+ geo.computeBoundingBox();
+ geo.computeBoundingSphere();
+ geo.userData.partList = metaList;
+ return geo;
+}
+
+function pBoxG(sx, sy, sz, px, py, pz) {
+ var g = new T.BoxGeometry(sx, sy, sz);
+ g.translate(px || 0, py || 0, pz || 0);
+ return g;
+}
+
+/* 板：外矩形 w×h，可选一个孔（rect 圆角矩形 / ellip 椭圆），厚 t，板心在原点 */
+function pPlateG(w, h, t, hole) {
+ var sh = new T.Shape();
+ sh.moveTo(-w / 2, -h / 2); sh.lineTo(w / 2, -h / 2);
+ sh.lineTo(w / 2, h / 2); sh.lineTo(-w / 2, h / 2); sh.closePath();
+ if (hole) {
+  var hp = new T.Path(), u = hole.u, v = hole.v, ru = hole.ru, rv = hole.rv;
+  if (hole.t === 'ellip') {
+   hp.absellipse(u, v, ru, rv, 0, Math.PI * 2, false, 0);
+  } else {
+   var r = hole.r || 0.025;
+   hp.moveTo(u - ru + r, v - rv);
+   hp.lineTo(u + ru - r, v - rv); hp.quadraticCurveTo(u + ru, v - rv, u + ru, v - rv + r);
+   hp.lineTo(u + ru, v + rv - r); hp.quadraticCurveTo(u + ru, v + rv, u + ru - r, v + rv);
+   hp.lineTo(u - ru + r, v + rv); hp.quadraticCurveTo(u - ru, v + rv, u - ru, v + rv - r);
+   hp.lineTo(u - ru, v - rv + r); hp.quadraticCurveTo(u - ru, v - rv, u - ru + r, v - rv);
+  }
+  sh.holes.push(hp);
+ }
+ var g = new T.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false, steps: 1, curveSegments: 10 });
+ g.translate(0, 0, -t / 2);
+ return g;
+}
+
+/* 椭圆环（塑料箱把手孔的白色包边） */
+function pRingG(ru, rv, dra, drb, t) {
+ var sh = new T.Shape();
+ sh.absellipse(0, 0, ru + dra, rv + drb, 0, Math.PI * 2, false, 0);
+ var hp = new T.Path();
+ hp.absellipse(0, 0, ru, rv, 0, Math.PI * 2, false, 0);
+ sh.holes.push(hp);
+ var g = new T.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false, steps: 1, curveSegments: 10 });
+ g.translate(0, 0, -t / 2);
+ return g;
+}
+
+/* 搬家箱：plastic=false 瓦楞纸（方孔 + 蝴蝶盖），true 中空塑料（椭圆孔 + 白包边 + 折痕缝） */
+function pCartonGeo(plastic) {
+ var parts = [], i, sign;
+ var TH = plastic ? 0.018 : 0.020;
+ var H0 = -0.025;                       /* 箱体 y ∈ [-0.5, 0.45] */
+ var WX = 1.0;                          /* x 全宽 */
+ var DZ = 1.0 - 2 * TH;                 /* z 内宽：端板夹在两侧板之间，角部不共面 */
+ /* [R23-COLOR 20261117] 纸箱原色 0xC49A63 / 0xD2AC74 在场景里被冷蓝补光(0x9dc0ff/0xc8d8ff) +
+   半球光洗成中性灰（实测件内像素 mean=[99,102,99]、暖色占比 0.6%、主色 #707070 占 43%），
+   肉眼看到的是一只白盒子而不是牛皮纸箱。把非塑料分支整体往暖/饱和方向推，
+   实测增益 R×1.30 G×1.00 B×0.72 只到 25.7%，R×1.60 B×0.55 才到 77.3%，
+   所以直接把源色提到 0xE89B3C 一系（等效 R↑ B↓），塑料分支不动（件内 blue 已 78.9%）。 */
+ var cBody = plastic ? 0x2E6FBE : 0xFF7A10;
+ var cLid  = plastic ? 0x3B83D4 : 0xFF9E36;
+ var cIn   = plastic ? 0x16395F : 0x5E3A16;
+ var cTrim = plastic ? 0xEAF2FB : 0xD07E28;
+ var cBot  = plastic ? 0x2A649F : 0xD07E28;
+ var lidT = 0.05, lidY = 0.475, lidD = (1.0 - 0.04) / 2;
+
+ /* 内衬：让把手孔与箱盖中缝透出深色 = 内凹深孔观感，同时挡住空箱内壁 */
+ parts.push({ g: pBoxG(DZ - 0.02, 0.88, DZ - 0.02, 0, -0.04, 0), c: cIn, n: 'liner' });
+ /* 底板 */
+ parts.push({ g: pBoxG(DZ, TH, DZ, 0, -0.5 + TH / 2, 0), c: cBot, n: 'bottom' });
+
+ /* 侧板（z = ±(0.5-TH/2)）：纸箱整块开方孔；塑料分上下两段，中间留 0.02 折痕缝 */
+ for (sign = -1; sign <= 1; sign += 2) {
+  var zl = [];
+  if (plastic) {
+   zl.push({ w: WX, h: 0.42, cy: 0.24, hole: { t: 'ellip', u: 0, v: -0.08, ru: 0.16, rv: 0.048 } });
+   zl.push({ w: WX, h: 0.51, cy: -0.245, hole: null });
+  } else {
+   zl.push({ w: WX, h: 0.95, cy: H0, hole: { t: 'rect', u: 0, v: 0.185, ru: 0.17, rv: 0.05, r: 0.032 } });
+  }
+  for (i = 0; i < zl.length; i++) {
+   var gz = pPlateG(zl[i].w, zl[i].h, TH, zl[i].hole);
+   gz.translate(0, zl[i].cy, sign * (0.5 - TH / 2));
+   parts.push({ g: gz, c: cBody, n: (plastic ? (i === 0 ? 'sideU' : 'sideD') : 'sideAll') + (sign > 0 ? '+z' : '-z') });
+  }
+ }
+ /* 端板（x = ±(0.5-TH/2)） */
+ for (sign = -1; sign <= 1; sign += 2) {
+  var xl = [];
+  if (plastic) {
+   xl.push({ w: DZ, h: 0.42, cy: 0.24, hole: { t: 'ellip', u: 0, v: -0.08, ru: 0.13, rv: 0.048 } });
+   xl.push({ w: DZ, h: 0.51, cy: -0.245, hole: null });
+  } else {
+   xl.push({ w: DZ, h: 0.95, cy: H0, hole: { t: 'rect', u: 0, v: 0.185, ru: 0.15, rv: 0.05, r: 0.03 } });
+  }
+  for (i = 0; i < xl.length; i++) {
+   var gx = pPlateG(xl[i].w, xl[i].h, TH, xl[i].hole);
+   gx.rotateY(Math.PI / 2);
+   gx.translate(sign * (0.5 - TH / 2), xl[i].cy, 0);
+   parts.push({ g: gx, c: cBody, n: (plastic ? (i === 0 ? 'endU' : 'endD') : 'endAll') + (sign > 0 ? '+x' : '-x') });
+  }
+ }
+ /* 对开箱盖：两片，中缝 0.04（缝下是内衬深色，形成分层） */
+ parts.push({ g: pBoxG(WX, lidT, lidD, 0, lidY, -0.02 - lidD / 2), c: cLid, n: 'lidA' });
+ parts.push({ g: pBoxG(WX, lidT, lidD, 0, lidY,  0.02 + lidD / 2), c: cLid, n: 'lidB' });
+ /* 塑料箱把手孔白色包边（贴在板面外侧，与孔同轴） */
+ if (plastic) {
+  for (sign = -1; sign <= 1; sign += 2) {
+   var rz = pRingG(0.16, 0.048, 0.022, 0.014, 0.009);
+   rz.translate(0, 0.16, sign * (0.5045));
+   parts.push({ g: rz, c: cTrim, n: 'ringZ' + (sign > 0 ? '+' : '-') });
+  }
+  for (sign = -1; sign <= 1; sign += 2) {
+   var rx = pRingG(0.13, 0.048, 0.020, 0.014, 0.009);
+   rx.rotateY(Math.PI / 2);
+   rx.translate(sign * 0.5045, 0.16, 0);
+   parts.push({ g: rx, c: cTrim, n: 'ringX' + (sign > 0 ? '+' : '-') });
+  }
+ }
+ return pMerge(parts);
+}
+
+/* 行李箱：把手只在顶面（提手）与两端（侧提手），正面/背面只有装饰条 */
+function pSuitGeo() {
+ var parts = [], i;
+ var cBody = 0x3F5B78, cTrim = 0x4E6E8E, cDark = 0x232F3F, cWheel = 0x1B2430;
+ /* 主体 x ∈ [-0.492,0.492]（两端留 0.008 给侧提手），y ∈ [-0.46,0.46]，z ∈ [-0.49,0.49] */
+ parts.push({ g: pBoxG(0.984, 0.92, 0.98, 0, 0, 0), c: cBody, n: 'body' });
+ /* 顶面提手（横条 + 两端立柱） */
+ parts.push({ g: pBoxG(0.34, 0.045, 0.082, 0, 0.476, 0), c: cDark, n: 'handleBarTop' });
+ parts.push({ g: pBoxG(0.05, 0.05, 0.082, -0.17, 0.47, 0), c: cDark, n: 'handlePostL' });
+ parts.push({ g: pBoxG(0.05, 0.05, 0.082,  0.17, 0.47, 0), c: cDark, n: 'handlePostR' });
+ /* 拉链线：绕箱体一圈的细亮条（x/z 各凸出 0.003，避开共面） */
+ parts.push({ g: pBoxG(0.99, 0.014, 0.986, 0, 0.443, 0), c: cTrim, n: 'zipper' });
+ /* 两端侧提手（x = ±，只在这两个窄面） */
+ parts.push({ g: pBoxG(0.012, 0.10, 0.20,  0.494, 0.16, 0), c: cDark, n: 'handleEndR' });
+ parts.push({ g: pBoxG(0.012, 0.10, 0.20, -0.494, 0.16, 0), c: cDark, n: 'handleEndL' });
+ /* 正面/背面（z = ±）只有装饰条，无任何把手 */
+ for (i = 0; i < 3; i++) {
+  var yy = [-0.26, 0, 0.26][i];
+  parts.push({ g: pBoxG(0.984, 0.026, 0.012, 0, yy,  0.494), c: cTrim, n: 'deco' + (i + 1) + '+z' });
+  parts.push({ g: pBoxG(0.984, 0.026, 0.012, 0, yy, -0.494), c: cTrim, n: 'deco' + (i + 1) + '-z' });
+ }
+ /* 四轮：轴沿 z，轮底 y = -0.5 */
+ for (i = 0; i < 4; i++) {
+  var wx = (i < 2 ? -0.36 : 0.36), wz = (i % 2 ? 0.32 : -0.32);
+  var gw = new T.CylinderGeometry(0.046, 0.046, 0.056, 12);
+  gw.rotateX(Math.PI / 2);
+  gw.translate(wx, -0.454, wz);
+  parts.push({ g: gw, c: cWheel, n: 'wheel' + (i + 1) });
+ }
+ return pMerge(parts);
+}
+
+function buildProcMesh(key) {
+ if (!procCache[key]) procCache[key] = (key === 'p_suit') ? pSuitGeo() : pCartonGeo(key === 'p_plastic');
+ if (!procMats[key]) {
+  var pm = PROC_MAT[key] || { rough: 0.7, metal: 0.0 };
+  procMats[key] = new T.MeshStandardMaterial({
+   color: 0xffffff, vertexColors: true,
+   roughness: pm.rough, metalness: pm.metal,
+   side: T.FrontSide, emissive: pm.emi || 0x000000, emissiveIntensity: (pm.emiI == null ? 1 : pm.emiI)
+  });
+ }
+ var m = new T.Mesh(procCache[key], procMats[key]);
+ m.castShadow = true; m.receiveShadow = true;
+ m.userData.proc = key;
+ return m;
+}
+
+/* 某 key 是否有可用模型（MESH_DATA 内嵌 or 程序化） */
+function hasMesh(key) { return !!(key && (MESH_DATA[key] || PROC_KEYS[key])); }
+/* 箱体当前该用哪套模型：材质选项 → 模型（这是「不同选择对应不同模型」的唯一口径） */
+function boxMeshOf(cat) {
+ if (!cat) return null;
+ var m = cat.mat;
+ if (!m && cat.box) { var o = boxOptOf(cat); m = o && o.mat; }
+ if (m === 'plastic') return 'p_plastic';
+ if (m === 'cardboard') return 'p_carton';
+ return cat.mesh || null;
+}
+
 function buildRealMesh(key, fallbackColor) {
+ /* [R23] 程序化模型（纸箱/塑料箱/行李箱）：几何与材质自己带，不走 MESH_DATA 解码链 */
+ if (PROC_KEYS[key]) return buildProcMesh(key);
  if (meshCache[key]) return meshCache[key].clone(true);
  var d = MESH_DATA[key];
  if (!d) return null;
@@ -3182,19 +3464,21 @@ function makeObjSized(cat, pl, ph, pw, placed) {
    两个半透明灰盒子顶掉（实测 tri=24、颜色 2b2b2b），用户会以为"模型变成方块了"。
    这类品类保留真实模型，由下面的非等比铺满去贴合斜立的占位包络；只有本来就没有
    独立模型的品类，才用 parts 分段盒。 */
- var _hasReal = !!(cat.mesh && MESH_DATA[cat.mesh] && !GREYBOX_ON());
+ var _hasReal = !!(hasMesh(cat.mesh) && !GREYBOX_ON());
  if (_parts && !_hasReal) {
   g.add(makePartsBody(cat, _parts, pl, ph, pw));
   g.userData.catId = cat.id;
   g.userData.isBox = !!cat.box;
+  g.userData.cat = cat; g.userData.placed = placed || null;
+  g.userData.dims = [pl, ph, pw]; g.userData.meshKey = boxMeshOf(cat);
   g.userData.segs = _parts.length;
   g.userData.partsDims = _parts.map(function (q) { return [+q.l.toFixed(1), +q.h.toFixed(1), +q.w.toFixed(1)]; });
   g.add(makeShadowPatch(pl, ph, pw));
   return g;
  }
  var body = null;
- if (cat.mesh && MESH_DATA[cat.mesh] && !GREYBOX_ON()) {
-  var real = buildRealMesh(cat.mesh, objColorOf(cat));
+ if (hasMesh(cat.mesh) && !GREYBOX_ON()) {
+  var real = buildRealMesh(boxMeshOf(cat), objColorOf(cat));
   if (real) {
    /* 算法若旋转过朝向，先把模型转到同一朝向，否则会被误压扁 */
    if (placed && placed.orig) {
@@ -3271,6 +3555,9 @@ function makeObjSized(cat, pl, ph, pw, placed) {
  g.add(makeShadowPatch(pl, ph, pw));
  g.userData.catId = cat.id;
  g.userData.isBox = !!cat.box;
+ /* [R23] 材质切换要换模型，这里把重建所需的最小元数据挂上（尺寸 / 品类 / 当前 mesh） */
+ g.userData.cat = cat; g.userData.placed = placed || null;
+ g.userData.dims = [pl, ph, pw]; g.userData.meshKey = boxMeshOf(cat);
  return g;
 }
 
@@ -3387,7 +3674,7 @@ function refreshCartUI() {
    var c = cart[i];
    h += '<div class="crow">' +
     '<div class="cinfo">' +
-     '<div class="cname">' + c.name + (c.mesh && MESH_DATA[c.mesh] ? '<span class="mk real">真实模型</span>' : '') +
+     '<div class="cname">' + c.name + (hasMesh(c.mesh) ? '<span class="mk real">真实模型</span>' : '') +
       (c.warn ? '<span class="mk bad">比例失真</span>' : '') + '</div>' +
      '<div class="cdim">' + c.l + '×' + c.w + '×' + c.h + ' cm' +
       ' <a class="clink" data-act="edit" data-i="' + i + '">改尺寸</a></div>' +
@@ -3657,7 +3944,7 @@ function renderPicker() {
    poseLine += '</div>';
   }
   h += '<div class="pitem' + rank + (q ? ' hasqty' : '') + '" data-i="' + ci + '">' +
-   '<div class="pname">' + c.name + sideMark + tag + (c.mesh && MESH_DATA[c.mesh] ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
+   '<div class="pname">' + c.name + sideMark + tag + (hasMesh(c.mesh) ? '<span class="mk real">真实模型</span>' : '') + '</div>' +
    '<div class="pdim">' + (function () {
     /* [v40] 尺寸要跟着当前选的姿态走。原来恒显示 CATALOG 原尺寸，
       点了「平放」「车把转向」下面的 175×60×105 纹丝不动，看不出选了什么。 */
@@ -6632,11 +6919,119 @@ els.status.textContent = '先添加你要搬的物品 · 共 0 件';
 window.__READY__ = true;
 window.__API__ = {
  addToCart: addToCart, doPack: doPack, cart: function () { return cart; },
+ /* R23 验收出口：程序化几何审计（只读，不改业务）。
+    面法线轴归属：逐三角算叉积，|n| 最大分量决定归属轴；pct 越高说明形体越方正。
+    bbox 单位是归一化 ±0.5（proc 模型在 makeObjSized 里被非等比铺满占位）。 */
+ procAudit: function (key) {
+  var m = buildProcMesh(key);
+  if (!m) return null;
+  var g = m.geometry, pa = g.getAttribute('position'), nv = pa.count;
+  g.computeBoundingBox();
+  var bb = g.boundingBox, idx = g.index, nt = idx ? idx.count / 3 : nv / 3;
+  var area = { x: 0, y: 0, z: 0 }, axPct = {}, tot = 0;
+  var va = new T.Vector3(), vb = new T.Vector3(), vc = new T.Vector3();
+  var e1 = new T.Vector3(), e2 = new T.Vector3(), nn = new T.Vector3();
+  for (var t = 0; t < nt; t++) {
+   var i0 = idx ? idx.getX(t * 3) : t * 3, i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+   va.fromBufferAttribute(pa, i0); vb.fromBufferAttribute(pa, i1); vc.fromBufferAttribute(pa, i2);
+   e1.subVectors(vb, va); e2.subVectors(vc, va); nn.crossVectors(e1, e2);
+   var a = nn.length() / 2; tot += a;
+   var ax = Math.abs(nn.x), ay = Math.abs(nn.y), az = Math.abs(nn.z);
+   var which = (ax >= ay && ax >= az) ? 'x' : (ay >= az ? 'y' : 'z');
+   area[which] += a; axPct[which] = (axPct[which] || 0) + 1;
+  }
+  for (var k in axPct) axPct[k] = +(axPct[k] / nt * 100).toFixed(2);
+  var col = g.getAttribute('color');
+  /* 顶点色主色统计（去重取多数，只看 3 位有效）*/
+  var cSet = {};
+  if (col) { for (var q = 0; q < nv; q += 7) { var hx = '#' + [col.getX(q), col.getY(q), col.getZ(q)].map(function (v) { return ('0' + Math.round(v * 255).toString(16)).slice(-2); }).join(''); cSet[hx] = (cSet[hx] || 0) + 1; } }
+  return { key: key, nVert: nv, nTri: nt, hasColor: !!col,
+   bbox: { min: [+bb.min.x.toFixed(4), +bb.min.y.toFixed(4), +bb.min.z.toFixed(4)], max: [+bb.max.x.toFixed(4), +bb.max.y.toFixed(4), +bb.max.z.toFixed(4)] },
+   areaPct: { x: +(area.x / tot * 100).toFixed(2), y: +(area.y / tot * 100).toFixed(2), z: +(area.z / tot * 100).toFixed(2) },
+   triAxPct: axPct, colors: cSet,
+   parts: ((g.userData && g.userData.partList) ? g.userData.partList : []) };
+ },
+ /* 场景第 i 件的「面凸出」审计：顶点按 AABB 归一化到 ±1，
+    逐面（|u_ax|>0.90 视为该面归属）统计 max|u| 与该面顶点数。
+    max|u_ax| ≤1.02 = 该面平整无凸起物（把手/提手会明显 >1.1）。*/
+ itemAudit: function (i) {
+  var o = placedGroup.children[i];
+  if (!o) return null;
+  var bb = new T.Box3(), tmp = new T.Box3(), has = false;
+  o.traverse(function (n) {
+   if (!n.isMesh || (n.material && n.material.isMeshBasicMaterial)) return;
+   if (n.userData && n.userData.isShadowPatch) return;
+   tmp.setFromObject(n);
+   if (!has) { bb.copy(tmp); has = true; } else bb.union(tmp);
+  });
+  if (!has) return null;
+  var sz = new T.Vector3(), ct = new T.Vector3(); bb.getSize(sz); bb.getCenter(ct);
+  var half = { x: sz.x / 2, y: sz.y / 2, z: sz.z / 2 };
+  var face = { 'x+': [], 'x-': [], 'y+': [], 'y-': [], 'z+': [], 'z-': [] };
+  var vp = new T.Vector3();
+  var tot = 0, umax = { x: 0, y: 0, z: 0 };
+  o.traverse(function (n) {
+   if (!n.isMesh || (n.material && n.material.isMeshBasicMaterial)) return;
+   if (n.userData && n.userData.isShadowPatch) return;
+   var pa = n.geometry.getAttribute('position');
+   if (!pa) return;
+   n.updateWorldMatrix(true, false);
+   for (var k = 0; k < pa.count; k++) {
+    vp.fromBufferAttribute(pa, k).applyMatrix4(n.matrixWorld);
+    var u = { x: (vp.x - ct.x) / (half.x || 1), y: (vp.y - ct.y) / (half.y || 1), z: (vp.z - ct.z) / (half.z || 1) };
+    tot++;
+    ['x', 'y', 'z'].forEach(function (ax) { if (Math.abs(u[ax]) > umax[ax]) umax[ax] = Math.abs(u[ax]); });
+    ['x', 'y', 'z'].forEach(function (ax) {
+     if (Math.abs(u[ax]) > 0.90) {
+      var key = ax + (u[ax] > 0 ? '+' : '-');
+      face[key].push(+((ax === 'x' ? u.y : (ax === 'y' ? u.x : u.x)) ).toFixed(3));
+     }
+    });
+   }
+  });
+  var out = { i: i, catId: o.userData.catId || null, meshKey: o.userData.meshKey || null,
+   size: [+sz.x.toFixed(2), +sz.y.toFixed(2), +sz.z.toFixed(2)], nVert: tot,
+   umax: { x: +umax.x.toFixed(3), y: +umax.y.toFixed(3), z: +umax.z.toFixed(3) } };
+  ['x+', 'x-', 'y+', 'y-', 'z+', 'z-'].forEach(function (k) {
+   var arr = face[k];
+   out[k] = { n: arr.length, umaxOfFace: arr.length ? +Math.max.apply(null, arr.map(Math.abs)).toFixed(3) : null };
+  });
+  /* 结论判据：正/背面(z±) 若有把手，必有顶点 |u_z| 明显 > 1（凸出）；
+     顶面(y+) 有提手，同理。带 1.06 容差（侧提手 x± 不计入）。 */
+  out.verdict = {
+   zNoHandle: (umax.z <= 1.02),
+   topHasHandle: (umax.y > 1.02 ? 'protruding' : 'flush'),
+   sideHasHandle: (umax.x > 1.02 ? 'protruding' : 'flush')
+  };
+  return out;
+ },
  /* [MERGE-v78] 仓位口径三函数挂到调试接口，验收脚本直接调同一实现，不另写一套判据 */
  capM3Of: capM3Of, nextSceneForMinCap: nextSceneForMinCap, smallerSceneForItems: smallerSceneForItems,
  /* P0-2/P0-3 验收（第7轮）+ FIX-GAP-01（20261114）：逐个算 placedGroup 子对象的世界包围盒。
    口径已改：X/Z = 占位 - 0.5cm，Y = 占位（上下堆叠零缝隙）。
    用 Box3().setFromObject 走真实几何对账，不靠读参数推断画了多大 */
+ /* R23f：逐件网格/材质清单（排查「程序化纸箱渲染成灰」用，只读） */
+ itemMatInfo: function (i) {
+  var o = placedGroup.children[i]; if (!o) return [];
+  var out = [];
+  o.traverse(function (n) {
+   if (!n.isMesh) return;
+   out.push({
+    name: n.name || '-', proc: n.userData.proc || null,
+    type: (n.material && n.material.type) || '?',
+    vc: n.material ? !!n.material.vertexColors : null,
+    col: (n.material && n.material.color) ? n.material.color.getHexString() : null,
+    hasColAttr: !!(n.geometry.attributes && n.geometry.attributes.color),
+    colCount: n.geometry.attributes.color ? n.geometry.attributes.color.count : 0,
+    posCount: n.geometry.attributes.position.count,
+    tris: (n.geometry.index ? n.geometry.index.count : n.geometry.attributes.position.count) / 3,
+    basic: !!(n.material && n.material.isMeshBasicMaterial),
+    shadowPatch: !!(n.userData && n.userData.isShadowPatch),
+    visible: n.visible
+   });
+  });
+  return out;
+ },
  objBoxes: function () {
   var out = [];
   /* 只统计实体网格（Mesh）：角标 Sprite 与红色描边线不算「形体」，
@@ -6767,7 +7162,7 @@ window.__API__ = {
    var it = { name: o.name || ('item' + i), l: o.l, w: o.w, h: o.h,
          soft: !!o.soft, upright: !!o.upright, noSide: !!o.noSide,
          _poses: o.solid ? null : (o.poses || posesOf(o.id)) };
-   if (o.mesh && MESH_DATA[o.mesh] && !GREYBOX_ON()) {
+   if (hasMesh(o.mesh) && !GREYBOX_ON()) {
     var v = voxFor({ mesh: o.mesh, l: o.l, w: o.w, h: o.h });
     if (v) it._vox = v;
    }
@@ -7374,6 +7769,53 @@ window.__API__ = {
  /* [R14-A2] 逐件像素差分（页面内 gl.readPixels，绕开合成层）：
     全显帧 F vs 只隐藏第 i 件的 H，三通道和 >18 的像素数 = 该件在画面上的可见面积。
     返回 px=0 表示该件被前件彻底遮死（那是用户真实看不到，不是接口问题）。 */
+ /* R23e：单件配色量化（全隐帧 vs 仅显第 i 件帧差分）。
+   必须走 gl.readPixels：three.js 默认 preserveDrawingBuffer=false，
+   canvas.toDataURL / snap 在下一任务周期取到的是旧帧或空帧（已实测差 332px 而真值 3.8 万 px）。 */
+ pixItemColor: function (i) {
+  var r = renderer, gl = (r.getContext ? r.getContext() : null);
+  if (!gl) return { err: 'no gl' };
+  var w = r.domElement.width, h = r.domElement.height, n = w * h;
+  var kids = placedGroup.children, vis = kids.map(function (o) { return o.visible; });
+  function grab() {
+   r.render(scene, camera);
+   var buf = new Uint8Array(n * 4);
+   gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+   return buf;
+  }
+  kids.forEach(function (o) { o.visible = false; });
+  var E = grab();
+  kids.forEach(function (o, j) { o.visible = (j === i) ? true : false; });
+  var F = grab();
+  kids.forEach(function (o, j) { o.visible = vis[j]; });
+  r.render(scene, camera);
+  var cnt = 0, sr = 0, sg = 0, sb = 0, warm = 0, blue = 0, dark = 0, hi = 0;
+  var buckets = {};
+  for (var k = 0; k < n; k++) {
+   var o = k * 4;
+   if (Math.abs(F[o] - E[o]) + Math.abs(F[o + 1] - E[o + 1]) + Math.abs(F[o + 2] - E[o + 2]) <= 18) continue;
+   var R = F[o], G = F[o + 1], B = F[o + 2];
+   cnt++; sr += R; sg += G; sb += B;
+   if (R > G + 6 && G >= B && R > 65) warm++;
+   if (B > R + 25 && B > 85) blue++;
+   if (R + G + B < 120) dark++;
+   if (R + G + B > 600) hi++;
+   var b = (Math.floor(R / 16) * 16) + ',' + (Math.floor(G / 16) * 16) + ',' + (Math.floor(B / 16) * 16);
+   buckets[b] = (buckets[b] || 0) + 1;
+  }
+  var top = Object.keys(buckets).sort(function (a, b2) { return buckets[b2] - buckets[a]; }).slice(0, 6)
+   .map(function (k2) { return k2 + ':' + +(buckets[k2] / Math.max(1, cnt) * 100).toFixed(1); });
+  return {
+   i: i, catId: kids[i] ? kids[i].userData.catId : null, meshKey: kids[i] ? kids[i].userData.meshKey : null,
+   px: cnt, pct: +(cnt / n * 100).toFixed(3),
+   meanRGB: cnt ? [Math.round(sr / cnt), Math.round(sg / cnt), Math.round(sb / cnt)] : null,
+   warmPct: cnt ? +(warm / cnt * 100).toFixed(1) : 0,
+   bluePct: cnt ? +(blue / cnt * 100).toFixed(1) : 0,
+   darkPct: cnt ? +(dark / cnt * 100).toFixed(1) : 0,
+   hiPct: cnt ? +(hi / cnt * 100).toFixed(1) : 0,
+   top: top
+  };
+ },
  pixItemDiff: function (i) {
   var r = renderer, gl = (r.getContext ? r.getContext() : null);
   if (!gl) return { err: 'no gl' };
