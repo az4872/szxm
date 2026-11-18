@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v95</b> · 202611172335</div>
+<div id="verTag"><b>v96</b> · 202611180801</div>
 
 <div id="tripBadge"></div>
 
@@ -1166,6 +1166,47 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
  /* [R27-B 202611172335] 堆叠优先档：可堆叠族（搬家箱/收纳箱）排在不可堆叠大件之后，
     族内按底面积降序、再按高度降序 —— 用户规则「从下到上、从大到小」的落位顺序实现。
     大件（沙发/床垫/衣柜）先落地占位，箱子后放自然往上叠，不去抢地面。 */
+ /* [R28-D 202611180754] 同规格可堆叠族「逐层铺满」配额：N 件 + 可叠层数 L=floor(H/件高)
+    → 每层目标 q=min(ceil(N/L), 层内面积上限)。层内已达 q 件就不再往该层放（最高层除外），
+    逼着算法一层铺满再上一层 —— 用户规则「搬家箱优先垂直堆叠、纵向从低到高逐层」的字面实现。
+    只在「全部物品都是同尺寸可堆叠族」时启用：混尺寸/含大件时不启用，避免抢地面导致大件放不进。
+    同时该场景不再削贴地分（R27-B 的 -0.65*底面积 是为把地面让给大件设计的，纯箱场景反而导致
+    「下层只铺 5 件就往上叠、三层错落」）。 */
+ let _lq = 0, _lz = 0;
+ if (sorted.length > 1 && sorted.every(function (x) { return x._stack; })) {
+  var _f0 = sorted[0];
+  var _same = sorted.every(function (x) { return Math.abs(x.l - _f0.l) < 0.01 && Math.abs(x.w - _f0.w) < 0.01 && Math.abs(x.h - _f0.h) < 0.01; });
+  if (_same) {
+   var _L = Math.max(1, Math.floor(H / _f0.h + 1e-6));
+   var _cap = Math.floor((W * D) / Math.max(1, _f0.l * _f0.w));
+   _lq = Math.min(Math.max(1, Math.ceil(sorted.length / _L)), Math.max(1, _cap));
+   _lz = (_L - 1) * _f0.h;
+   if (_L <= 1) { _lq = 0; _lz = 0; }
+  }
+ }
+ /* [R28-E 202611180754] 分族逐层配额（通用版）：每个「同尺寸可堆叠族」各自算层数 L=floor(H/族件高)
+    与每层人头 q=min(ceil(族件数/L), 层内面积上限)。任何场景（含混合清单）都优先把低层铺满
+    再往上一层 —— 用户规则「垂直堆叠、纵向从低到高逐层」的通用实现，也是「混合大仓装填率」
+    的真正瓶颈：地面被不同规格箱子零散占满后，上层再也找不到 85% 覆盖位，只能装一半。 */
+ var _qmap = null;
+ if (sorted.length > 1) {
+  var _fq = {}, _fk = null;
+  for (var _ia = 0; _ia < sorted.length; _ia++) {
+   if (!sorted[_ia]._stack) continue;
+   _fk = Math.round(sorted[_ia]._d.l) + '|' + Math.round(sorted[_ia]._d.w) + '|' + Math.round(sorted[_ia]._d.h);
+   _fq[_fk] = (_fq[_fk] || 0) + 1;
+  }
+  if (_fq && Object.keys(_fq).length) {
+   _qmap = {};
+   for (var _kb in _fq) {
+    var _kv = _kb.split('|'), _kl = +_kv[0], _kw = +_kv[1], _kh = +_kv[2];
+    var _kL = Math.max(1, Math.floor(H / _kh + 1e-6));
+    var _kC = Math.floor((W * D) / Math.max(1, _kl * _kw));
+    _qmap[_kb] = { q: Math.min(Math.max(1, Math.ceil(_fq[_kb] / _kL)), Math.max(1, _kC)),
+           lz: (_kL - 1) * _kh, L: _kL };
+   }
+  }
+ }
  if (stackBoost) {
   const _ns = sorted.filter(x => !x._stack);
   const _st = sorted.filter(x => x._stack)
@@ -1233,6 +1274,8 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
    /* 立柱高 ≤ 仓内净高 由下面的 c > H 过滤保证；放不下自然回落到其余朝向（躺倒兜底） */
    upBonus = (upC - s3[2]) * (topPenalty || 0) + 41;
   } else if (it.noSide) {
+   /* [R28-C 202611180754] 条件从 it.noSide 放宽为 (it.noSide || it._stack)：任何调用方漏传 noSide
+      （探针、旧入口、第三方 packOnly 调用）时，_stack 仍然独立锁死朝向，不会静默侧放。 */
    /* noSide = 不可侧放（纸箱/收纳箱），语义是「原始高那个方向别倒」，不是「最长边立起来」。 */
    const keepH = ors.filter(o => Math.abs(o[2] - it._d.h) < 0.01);
    /* [R27-G 202611172335] 可堆叠族（搬家箱/收纳箱）在「不可侧放」时硬锁朝向 = 原始高竖直。
@@ -1336,6 +1379,30 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
     if (p.x + a > W + 0.5 || p.y + b > D + 0.5 || p.z + c > H + 0.5) continue;
     const sr = { ratio: supportAt({ x: p.x, y: p.y, z: p.z, l: a, w: b, h: c }, p, vox, null) };
     if (sr.ratio < SUP_MIN) continue;
+    /* [R28-D 202611180754] 逐层配额：本层已放满 q 件就不再往这一层塞（最高层不受限，避免装不下时僵死） */
+    if (_lq && p.z < _lz - 0.5) {
+     let _ln = 0;
+     for (let _i2 = 0; _i2 < placed.length; _i2++) if (Math.abs(placed[_i2].z - p.z) < 0.5) _ln++;
+     if (_ln >= _lq) continue;
+    }
+    /* [R28-E 202611180754] 族配额（软）：该层本族已够数 → 降分，优先往上一层；未铺满 → 加分，优先铺满低层。
+       不用硬闸的原因：混合清单里若「上层实际叠不上去」（同族顶面拿不到 85% 覆盖），硬闸会把地面
+       容量白白浪费掉——实测货车关 L06 由 52 件掉到 33 件。软偏好既有「逐层」秩序，又不掐死装填率。 */
+    var _qp = 0;
+    if (_qmap) {
+     var _kk = Math.round(it._d.l) + '|' + Math.round(it._d.w) + '|' + Math.round(it._d.h);
+     var _mq = _qmap[_kk];
+     if (_mq && _mq.lz > 0.5 && p.z < _mq.lz - 0.5) {
+      var _fc = 0;
+      for (var _jc = 0; _jc < placed.length; _jc++) {
+       var _o3 = placed[_jc];
+       if (Math.abs(_o3.z - p.z) > 0.5) continue;
+       var _rg = _o3.orig || [_o3.l, _o3.w, _o3.h];
+       if (Math.abs(_rg[0] - it._d.l) < 0.01 && Math.abs(_rg[1] - it._d.w) < 0.01 && Math.abs(_rg[2] - it._d.h) < 0.01) _fc++;
+      }
+      _qp = (_fc >= _mq.q) ? -0.35 : 0.35;
+     }
+    }
     let hit = false;
     for (let i = 0; i < placed.length; i++) {
      const q = placed[i];
@@ -1369,10 +1436,16 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
       _sc = stackCover(box, placed);
       if (_sc < 0.85) continue;   /* [R27-F] 与 floatAudit 同一条线：叠放覆盖不足 85%% 直接不允许落位 */
      }
-     if (p.z < 0.5) _ct -= 0.65 * (a * b);
+     /* [R28-D 202611180754] 纯同规格箱场景不削贴地分（否则下层没铺满就往上叠） */
+     if (p.z < 0.5 && !_lq) _ct -= 0.65 * (a * b);
      _tp = _tp * 0.12;
     }
-    const score = _ct + sr.ratio * 40
+    /* [R28-E 202611180754] 族配额软偏好进入打分（每档 40 分）：⊕低层未铺满、⊖该层本族已够数，促「从低到高逐层」 */
+    /* [R28-G 202611180801] 可堆叠族直立加分：原始高竖直的朝向 +260 分。不用硬锁（R27-G/P25）的原因：
+       硬锁在混合大仓里会把「箱子不能侧放」变成「装不进去」——实测货车关 L06 52 件掉到 33 件、
+       镜子关 L07 24 件掉到 13 件。软加分让空间够时优先立着摞、空间不够时仍能侧放兜底。 */
+    const _upAdd = (it._stack && Math.abs(c - it._d.h) < 0.01) ? 260 : 0;
+    const score = _ct + sr.ratio * 40 + _qp * 40 + _upAdd
            - p.z * 0.001 - (p.z + c) * _tp + (stackBoost ? stackBoost * _sc : 0)
            + (upBonus && Math.abs(c - upC) < 0.01 ? upBonus : 0);
     if (!best || score > best.score) best = { box, score, oi, vox };
@@ -2664,6 +2737,18 @@ var voxCache = {};
 var lastPack = null;     /* 最近一次装填结果（体素审计用） */
 function voxFor(cat) {
  if (!cat || !cat.mesh || GREYBOX_ON() || typeof voxelize !== 'function') return null;
+ /* [R28-B 202611180754] 可堆叠族（搬家箱/收纳箱/标准箱）一律走包围盒体素，不走真实模型体素。
+    原因：v95 实测 M 仓 152x152x132 + 15 件 60x40x40 平放，真实模型体素的箱盖缝、把手孔、
+    圆角翻边让顶面 zmax 出现洼坑（支撑率 < SUP_MIN=0.6 直接判「叠不上去」）、横截面外扩又让
+    相邻箱 voxHit 冲突 → 只装 7 件、零叠层、util 0.23；改包围盒体素后 15/15 全装、
+    3 层 {0:6,40:5,80:4}、util 0.492。箱子是规整方体，「按尺寸从大到小叠」才是用户规则，
+    模型盖缝/把手孔属渲染细节，不该参与装填判定。 */
+ if ((cat.box || cat.stack) && typeof voxelizeBox === 'function') {
+  var kb = 'SOLID|' + cat.l + ',' + cat.w + ',' + cat.h;
+  if (voxCache[kb] !== undefined) return voxCache[kb];
+  voxCache[kb] = voxelizeBox({ l: cat.l, w: cat.w, h: cat.h }, VOX_CELL);
+  return voxCache[kb];
+ }
  var k = cat.mesh + '|' + cat.l + ',' + cat.w + ',' + cat.h;
  if (voxCache[k] !== undefined) return voxCache[k];
  var d = MESH_DATA[cat.mesh];
@@ -5654,7 +5739,11 @@ function finishManual() {
    idMap[nm2] = cart[ci];
    inst.push({ name: nm2, l: cart[ci].l, w: cart[ci].w, h: cart[ci].h, soft: !!cart[ci].soft,
          upright: !!cart[ci].upright, _poses: posesFor(cart[ci].id, cart[ci].pose),
-         noSide: cart[ci].side === undefined ? false : !cart[ci].side,
+         /* [R28-A 202611180754] 默认值必须回落到品类语义：cart 条目只有用户显式点过「可侧放」
+            才有 side 字段，写成 side===undefined?false 等于把 CATALOG 的 side:false 丢掉，
+            搬家箱被立成 40x40x60（R28 真凶之一）。可堆叠族默认不可侧放。 */
+         noSide: cart[ci].side !== undefined ? !cart[ci].side : (sideFreeNow() ? false : !!(cart[ci].box || cart[ci].stack)),
+         stack: !!(cart[ci].box || cart[ci].stack),
          _vox: voxFor(cart[ci]) });
   }
  }
@@ -5736,16 +5825,21 @@ var LEVELS = [
   items:[['床垫',1],['书架',2],['椅子',2],['洗衣机',1]], minCap:capM3Of('L'), limit:0 },
  { id:'L05', name:'那个拐角', hint:'全都装进去了，不等于搬得进去', bin:'XL',
   items:[['床垫',2],['书架',2],['沙发',1],['跑步机',1]], minCap:capM3Of('XL'), limit:0, corner:true },
- { id:'L06', name:'限时装车', hint:'60 秒，看你能装多少', bin:'truck',
-  items:[['搬家箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60 },
+ { id:'L06', name:'限时装车', hint:'60 秒，看你能装多少（装车现场，箱体可侧放）', bin:'truck',
+  items:[['搬家箱',24],['收纳箱',16],['行李箱',6],['椅子',6]], minCap:0, limit:60, sideFree:true },
  /* [FIX-L07 20261115] 第 7 关：薄板件（落地镜 160×40×5）。镜子平放要占 1.6×0.4 一片地面，
     真实搬运平放还容易压碎玻璃 —— 立起来靠墙几乎不占地。M 仓内高 130cm 立不起来（镜高 160），
     L 仓内高 175cm 才立得住，所以教育点是「薄板件要立」，不是「换更大的仓」。 */
  { id:'L07', name:'镜子怎么进门', hint:'薄板件立起来靠墙，平躺占地还容易压碎', bin:'L',
-  items:[['落地镜',1],['搬家箱',14],['收纳箱',7],['椅子',2]], minCap:5.95, limit:0, mirrorStand:true }
+  items:[['落地镜',1],['搬家箱',14],['收纳箱',7],['椅子',2]], minCap:5.95, limit:0, mirrorStand:true, sideFree:true }
 ];
 
 var curLevel = -1;
+ /* [R28-H] 关卡侧放设定：货车装车/大件关属现场装车，箱体可侧放（关卡对象里 sideFree:true）。
+    自由模式永远走 sideFreeNow()=false 分支 → 搬家箱/收纳箱默认不可侧放（R25 规则）。 */
+function sideFreeNow() {
+ return curLevel >= 0 && LEVELS[curLevel] ? !!LEVELS[curLevel].sideFree : false;
+}
 var binBeforeLevel = null;   /* P0-D：进关前的自由仓位，退出时还原 */
 var routeCornerCheck = true;   /* 自由模式默认查拐角；关卡只有 L05 查 */
 var levelStartMs = 0;
@@ -5902,7 +5996,9 @@ function playTrips() {
   for (var q = 0; q < c.qty; q++) {
    cartInst.push({ name: c.name + '@' + i + '#' + q, l: c.l, w: c.w, h: c.h, soft: !!c.soft, cat: c,
            upright: !!c.upright, _poses: posesFor(c.id, c.pose),
-           noSide: c.side === undefined ? false : !c.side,
+           /* [R28-A 202611180754] 同 P23a：分趟入口与主装填必须同口径，否则「分趟能装、一次装不下」 */
+           noSide: c.side !== undefined ? !c.side : (sideFreeNow() ? false : !!(c.box || c.stack)),
+           stack: !!(c.box || c.stack),
            _vox: voxFor(c) });
   }
  }
@@ -6103,7 +6199,8 @@ function doPack() {
    idMap[nm] = c;
    inst.push({ name: nm, l: c.l, w: c.w, h: c.h, soft: !!c.soft,
          upright: !!c.upright, _poses: posesFor(c.id, c.pose),
-         noSide: c.side === undefined ? false : !c.side,
+         /* [R28-A 202611180754] 同 P23a/P23b：主入口默认值回落到品类语义（搬家箱不可侧放） */
+         noSide: c.side !== undefined ? !c.side : (sideFreeNow() ? false : !!(c.box || c.stack)),
          /* [R27-B 202611172335] 可堆叠族标记：搬家箱全族（box）与收纳箱（stack） */
          stack: !!(c.box || c.stack),
          _vox: voxFor(c) });
