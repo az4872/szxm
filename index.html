@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v98</b> · 202611182042</div>
+<div id="verTag"><b>v98</b> · 202611182055</div>
 
 <div id="tripBadge"></div>
 
@@ -3959,7 +3959,7 @@ function makeOutsidePad(x0, x1, z0, z1, n) {
  var b4 = new T.Mesh(new T.BoxGeometry(bw, bt, d), bar); b4.position.set(cx + w / 2, 1.0, cz);
  g.add(b1); g.add(b2); g.add(b3); g.add(b4);
  var sp = makeTagSprite('装不下 ' + n + ' 件 · 换更大仓或分趟', 40);
- sp.position.set(cx, 80, cz + d / 2 + 6);
+ sp.position.set(cx, 80, cz - d / 2 - 6);
  g.add(sp);
  g.userData.pad = true;
  return g;
@@ -6345,17 +6345,21 @@ function doPack() {
  /* 装不下的摆在仓外侧地面：按物品实际尺寸在地面 2D 错开，避免压到仓体 */
  /* [R27-A 202611172335] 旧实现沿高度轴 oy += cat.h + 6 累加，件一多就被抬到空中 ——
     「物品悬空」的第二个来源。现在一律落地：y 恒 = 半高，沿 z 排满换 x 列。 */
- var outsideX = bin.l + 40, outsideZ = 0, colW = 0;
- var padX0 = outsideX, padX1 = outsideX, padZ0 = 0, padZ1 = 0;
+ /* [R30-E 202611182052] 仓外件摆到仓体前方（-z 侧）而不是右侧（+x）：
+    右侧摆放会把 union 包围盒拉宽近一倍，相机按 union 中心取景 → 仓体被推到画面左侧，
+    实测仓体中心 cx=-0.8（归一化，即贴到画面 10% 处）、左半边被屏幕裁掉。
+    摆在仓前地面后 union 只沿 z 延伸，仓体保持居中；仓外件落在近景，红框更醒目。 */
+ var outsideX = 0, outsideZ = -40, colW = 0;
+ var padX0 = 0, padX1 = 0, padZ0 = outsideZ, padZ1 = 0;
  var oversizeN = 0, oversizeNames = [];
  for (var a = 0; a < r.failed.length; a++) {
   var cat = idMap[r.failed[a]];
   if (!cat) continue;
-  if (outsideZ + cat.w > Math.max(bin.w, 110)) { outsideZ = 0; outsideX += colW + 30; colW = 0; }
+  if (outsideX + cat.l > Math.max(bin.l, 110)) { outsideX = 0; outsideZ -= colW + 30; colW = 0; }
   var cx = outsideX + cat.l / 2;
-  var cz = outsideZ + cat.w / 2;
+  var cz = outsideZ - cat.w / 2;
   var cy = cat.h / 2;
-  colW = Math.max(colW, cat.l);
+  colW = Math.max(colW, cat.w);
   /* P0-2：与落位分支同一个入口、同一份 (长, 高, 深)；P0-3：parts 件按段画 */
   var o = buildObj(cat, { l: cat.l, h: cat.h, w: cat.w }, { poseParts: cat.poseParts });
   /* [R30-A] 三类装不下原因都必须在画面上标出来，不能静默摆到仓外：
@@ -6373,6 +6377,8 @@ function doPack() {
   markRedBox(o, cat, unfitTxt);
   try { o.add(makeGroundBlot(cat.l, cat.w)); } catch (eG) {}
   if (cx + cat.l / 2 + 30 > padX1) padX1 = cx + cat.l / 2 + 30;
+  if (cx - cat.l / 2 - 30 < padX0) padX0 = cx - cat.l / 2 - 30;
+  if (cz - cat.w / 2 - 30 < padZ0) padZ0 = cz - cat.w / 2 - 30;
   if (cz + cat.w / 2 + 30 > padZ1) padZ1 = cz + cat.w / 2 + 30;
   o.userData.target = new T.Vector3(cx, cy, cz);
   o.position.set(cx + 500, cy, cz);
@@ -6381,7 +6387,7 @@ function doPack() {
   o.userData.appearAt = nowMs() + (r.placed.length * 190) + (a * 140);
   o.visible = false;
   placedGroup.add(o);
-  outsideZ += cat.w + 8;
+  outsideX += cat.l + 8;
  }
  if (r.failed.length) {
   try { placedGroup.add(makeOutsidePad(padX0 - 14, padX1, padZ0 - 14, padZ1, r.failed.length)); } catch (e0) {}
