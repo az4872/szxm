@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v96</b> · 202611180801</div>
+<div id="verTag"><b>v97</b> · 202611181825</div>
 
 <div id="tripBadge"></div>
 
@@ -1154,7 +1154,8 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
   /* [R27-I 202611172335] _stack 加名字兜底：任何调用方（packOnly/外部探针/旧入口）漏传 stack 标记时，
      搬家箱/收纳箱仍能被识别为可堆叠族，否则「不侧放」硬锁与 stackCover 门槛会被静默跳过。 */
   ...it, _d: effDims(it), _v: it.l * it.w * it.h,
-  _stack: !!(it.stack || it.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(it.name || '')))
+  /* [R29-C] 显式 stackable 优先：用户勾了「不可堆叠」的搬家箱也必须老实落地，不能被名字正则推翻 */
+  _stack: (it.stack === undefined ? !!(it.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(it.name || ''))) : !!it.stack)
  })).sort((a, b) => b._v - a._v);
  /* [FIX-CLIP-03] 顺序扰动：硬约束后贪心只按体积降序排，高件（书架 180 高）常被后放、
     落地面积已被平铺大件（床垫）吃光。这里给出按高度/底面积/最长边降序的额外顺序，
@@ -1233,6 +1234,25 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
   return Math.min(1, cover);
  }
 
+ /* [R29-B 202611181810] 顶面承压覆盖：本件底面有多少比例压在「可堆叠件或顶面可承压件」的顶面上。
+    与 stackCover 的差别只在准入集合 —— stackCover 只认可堆叠族（箱子摞箱子），
+    capCover 还认桌面 / 洗衣机顶 / 冰箱顶 / 柜顶这类平面，用于「椅子、沙发、自行车不许悬空，
+    但箱子可以放到桌上」的判据。①高度差 ≤0.6；②下方底面积 ≥ 自身（小不托大）。 */
+ function capCover(box, list) {
+  const ba = Math.max(1e-6, box.l * box.w);
+  let cover = 0;
+  for (let i = 0; i < list.length; i++) {
+   const q = list[i];
+   if (!(q._stack || q._cap)) continue;
+   if (Math.abs(box.z - (q.z + q.h)) > 0.6) continue;
+   if (q.l * q.w < ba * 0.99) continue;
+   const ox = Math.min(box.x + box.l, q.x + q.l) - Math.max(box.x, q.x);
+   const oy = Math.min(box.y + box.w, q.y + q.w) - Math.max(box.y, q.y);
+   if (ox > 0.5 && oy > 0.5) cover += Math.min(1, (ox * oy) / ba);
+  }
+  return Math.min(1, cover);
+ }
+
  function stamp(b, vox) {
   for (let gy = 0; gy < vox.ny; gy++) {
    for (let gx = 0; gx < vox.nx; gx++) {
@@ -1273,7 +1293,7 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
    }
    /* 立柱高 ≤ 仓内净高 由下面的 c > H 过滤保证；放不下自然回落到其余朝向（躺倒兜底） */
    upBonus = (upC - s3[2]) * (topPenalty || 0) + 41;
-  } else if (it.noSide) {
+  } else if (it.noSide || it._legs) {
    /* [R28-C 202611180754] 条件从 it.noSide 放宽为 (it.noSide || it._stack)：任何调用方漏传 noSide
       （探针、旧入口、第三方 packOnly 调用）时，_stack 仍然独立锁死朝向，不会静默侧放。 */
    /* noSide = 不可侧放（纸箱/收纳箱），语义是「原始高那个方向别倒」，不是「最长边立起来」。 */
@@ -1282,7 +1302,7 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
       旧逻辑只是把该朝向排前面，打分照样能选到 40×40×60「立起来」的箱子：底面积更小、
       贴地分被 R27-B 削弱后「占地面积小」反而占便宜，结果箱子竖着摞、不再是从大到小叠。
       硬锁后箱子永远是 60×40×40 平放，叠放只会沿高度方向发生，符合用户规则。 */
-   if (it._stack && keepH.length) {
+   if ((it._stack || it._legs) && keepH.length) {
     ors = keepH;
    } else if (keepH.length && keepH.length < ors.length) {
     ors = keepH.concat(ors.filter(o => Math.abs(o[2] - it._d.h) >= 0.01));
@@ -1431,11 +1451,16 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
        另加一条硬规矩：箱子「悬空候选」（p.z>0.5）必须被同族箱体托住 ≥SUP_MIN 才允许，
        否则只能落地 —— 禁止箱子压在自行车/椅子/沙发顶面（那些件不可承压，用户不要这种堆法）。 */
     let _ct = contact(box, placed, W, D, H, topPenalty), _sc = 0, _tp = (topPenalty || 0);
+    /* [R29-B 202611181810] 悬空准入统一出口（原来只有 _stack 族校验下方覆盖，
+       不可堆叠件只要不碰撞就能悬在椅背/自行车上，这就是「椅子被压、东西悬空」的根）：
+       ①不可堆叠件一律不许悬空（p.z > 0.5 直接跳过候选）——地面还有空位时必须落地；
+       ②可堆叠件悬空也要求 85% 以上底面积落在「可堆叠件或顶面可承压件」上。 */
+    if (p.z > 0.5) {
+     if (!it._stack) continue;
+     _sc = capCover(box, placed);
+     if (_sc < 0.85) continue;
+    }
     if (it._stack) {
-     if (p.z > 0.5) {
-      _sc = stackCover(box, placed);
-      if (_sc < 0.85) continue;   /* [R27-F] 与 floatAudit 同一条线：叠放覆盖不足 85%% 直接不允许落位 */
-     }
      /* [R28-D 202611180754] 纯同规格箱场景不削贴地分（否则下层没铺满就往上叠） */
      if (p.z < 0.5 && !_lq) _ct -= 0.65 * (a * b);
      _tp = _tp * 0.12;
@@ -1445,7 +1470,9 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
        硬锁在混合大仓里会把「箱子不能侧放」变成「装不进去」——实测货车关 L06 52 件掉到 33 件、
        镜子关 L07 24 件掉到 13 件。软加分让空间够时优先立着摞、空间不够时仍能侧放兜底。 */
     const _upAdd = (it._stack && Math.abs(c - it._d.h) < 0.01) ? 260 : 0;
-    const score = _ct + sr.ratio * 40 + _qp * 40 + _upAdd
+    /* [R29-B] 带腿件落地强加权：地面还有空位时必须先贴地，不许往上摞 */
+    const _gdAdd = (it._legs && p.z < 0.5) ? 300 : 0;
+    const score = _ct + sr.ratio * 40 + _qp * 40 + _upAdd + _gdAdd
            - p.z * 0.001 - (p.z + c) * _tp + (stackBoost ? stackBoost * _sc : 0)
            + (upBonus && Math.abs(c - upC) < 0.01 ? upBonus : 0);
     if (!best || score > best.score) best = { box, score, oi, vox };
@@ -1460,6 +1487,7 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
    b._oi = best.oi;
    b._src = it;
    b._stack = !!it._stack;   /* [R27-B] 下方件是否可堆叠族（stackCover 用） */
+   b._cap = !!it._cap;       /* [R29-B] 下方件顶面是否可承压（桌子/家电顶/柜顶） */
    if (best.parts) {
     /* parts 件：只有触底块写高度场（腿间列保持 0，后面的东西才塞得进去）；
       所有块的顶面都登记为平台（桌面顶面要能放东西）。 */
@@ -1775,22 +1803,22 @@ if (typeof window !== 'undefined' && !window.__ERRLOG__) {
 /* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
 var CATALOG = [
  { id:'carton',   name:'搬家箱',  l:60,  w:40,  h:40,  boxSet:true,     mesh:'box',      color:0xb98a55, side:false,
-  box:true, mat:'cardboard', tapered:false, vol:96000, std:1.2 },
- { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78 },
- { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b },
- { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true },
- { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true },
- { id:'desk',     name:'折叠桌',  l:120, w:60,  h:75,  mesh:'foldingtable', color:0x9c7b52 },
- { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   mesh:'mirror',   color:0xa9c4cf },
- { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  mesh:'washer',   color:0xe8e8e8, upright:true },
- { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true },
- { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true },
- { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c },
- { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63, side:false, stack:true },
- { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true },
- { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355 },
- { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47 },
- { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, mesh:'wardrobe', color:0x7d6247, upright:true }
+  box:true, mat:'cardboard', tapered:false, vol:96000, std:1.2, stackable:true, legs:false, cap:true },
+ { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78, stackable:true, cap:true },
+ { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b, stackable:false, cap:false },
+ { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true, stackable:false, legs:true, cap:false },
+ { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true, stackable:true, cap:true },
+ { id:'desk',     name:'折叠桌',  l:120, w:60,  h:75,  mesh:'foldingtable', color:0x9c7b52, stackable:false, legs:true, cap:true },
+ { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   mesh:'mirror',   color:0xa9c4cf, stackable:false, cap:false },
+ { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  mesh:'washer',   color:0xe8e8e8, upright:true, stackable:false, cap:true },
+ { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true, stackable:false, cap:true },
+ { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true, stackable:false, cap:true },
+ { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c, stackable:false, legs:true, cap:true },
+ { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63, side:false, stack:true, stackable:true, cap:true },
+ { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true, stackable:false, cap:false },
+ { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355, stackable:false, legs:true, cap:true },
+ { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47, stackable:false, cap:false },
+ { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, mesh:'wardrobe', color:0x7d6247, upright:true, stackable:false, cap:true }
 ];
 
 /* ---------- T-04 / T-05 显式姿态表（可带 parts 复合占位） ----------
@@ -2012,6 +2040,22 @@ function setSide(cat, val) {
  if (cat.box) { var bo = boxOptOf(cat); if (bo) bo.side = !!val; return; }
  if (cat.side === undefined) return;
  sidePref[cat.id] = !!val;
+}
+/* [R29-C 202611181810] 可堆叠：与侧放同一套思路 —— 用户按品类勾选，默认取 CATALOG.stackable
+   （搬家箱/收纳箱/行李箱/床垫默认可堆叠；椅子/沙发/自行车/电视/镜子/跑步机默认不可堆叠）。
+   箱子全族共用一个开关（boxStackPref），否则切规格 S/M/L 后按钮状态会各存一份。 */
+var stackPref = {};
+var boxStackPref = null;
+function stackOf(cat) {
+ if (cat && (cat.boxSet || cat.box)) return boxStackPref === null ? (cat.stackable !== false) : boxStackPref;
+ if (!cat) return false;
+ var v = stackPref[cat.id];
+ return v !== undefined ? v : !!cat.stackable;
+}
+function setStack(cat, val) {
+ if (cat && (cat.boxSet || cat.box)) { boxStackPref = !!val; return; }
+ if (!cat) return;
+ stackPref[cat.id] = !!val;
 }
 /* P1（第7轮）：默认仓位不在这里硬写数字 —— 原先写 {200,150,120,'迷你仓 M'}，
   而 SCENES 里 M 实际是 152×152×132，用户点一下列表里的 M，仓位就从 3.6m³ 缩到 3.05m³。
@@ -3952,11 +3996,16 @@ function makeObjSized(cat, pl, ph, pw, placed) {
       避免 3cm 的抽屉盒被压扁 5%。底面始终与占位盒底面齐平：不下沉穿地、也不悬空。
       （旧版用「整体下移」实现同样效果，会让底部比占位底面低 0.15cm 嵌进地板，已弃用。） */
    var CAP_EPS = capEps(ph);   /* [FIX-CAP-06] 统一口径 */
-   wrap.scale.set(
-    (szXZ(pl) + OVL_XZ * 2) / (size.x || 1),
-    Math.max(0.01, ph - CAP_EPS) / (size.y || 1),
-    (szXZ(pw) + OVL_XZ * 2) / (size.z || 1)
-   );
+   /* [R29-A 202611181810] 非箱类造型件改等比缩放（三轴同一个 k）。
+      此前三轴各自铺满占位盒：模型原比例一旦被算法摆成别的姿态（椅子 45x45x90 被躺成 45x90x45），
+      渲染就沿轴独立拉伸，用户看到的就是「同一个椅子车厢里被拉长、12 方仓里正常」。
+      等比后模型保持自身比例，只按最紧的那一轴缩放进占位盒；空出的余量由下面的
+      X/Z 居中 + Y 底面坐实吸收。箱类本身方正，仍走铺满以贴合占位盒。 */
+   var _kx = (szXZ(pl) + OVL_XZ * 2) / (size.x || 1);
+   var _ky = Math.max(0.01, ph - CAP_EPS) / (size.y || 1);
+   var _kz = (szXZ(pw) + OVL_XZ * 2) / (size.z || 1);
+   if (!cat.box) { var _kEq = Math.min(_kx, _ky, _kz); _kx = _ky = _kz = _kEq; }
+   wrap.scale.set(_kx, _ky, _kz);
    var b2 = new T.Box3().setFromObject(wrap);
    var c2 = new T.Vector3(); b2.getCenter(c2);
    /* X/Z 居中，Y 底部坐实到占位盒底面（防止模型悬浮在盒中间） */
@@ -4304,17 +4353,18 @@ var lastOrder = null;   /* 拍照后按轮廓比例排好的品类顺序 */
    规则：POSE_MERGE 内的品类，姿态不进匹配键 → 同品类合并为一条、数量累加；
    已有那一条的姿态不被后来者覆盖（先加的是哪种就按哪种装，改姿态请用面板重选）。 */
 var POSE_MERGE = { table: 1 };
-function cartKey(id, pose, mat, tapered, side) {
+function cartKey(id, pose, mat, tapered, side, stack) {
  /* [R25-F1] 侧放维度必须并进 key：原来 cartKey 只含 id/pose/mat/tapered，
     用户在「可侧放 / 不可侧放」之间切换后加件，会被当成同一行累加 qty，
     新件沿用了旧件的 side —— 选项等于没生效（实测「可侧放 ✓」后加件 side 仍 false）。 */
- return id + '|' + (POSE_MERGE[id] ? '-' : (pose || '-')) + '|' + (mat || '-') + '|' + (tapered ? 1 : 0) + '|' + (side ? 'S' : 'N');
+ return id + '|' + (POSE_MERGE[id] ? '-' : (pose || '-')) + '|' + (mat || '-') + '|' + (tapered ? 1 : 0) + '|' + (side ? 'S' : 'N') +
+  '|' + (stack === undefined ? '-' : (stack ? 'T' : 'F'));   /* [R29-C] 可堆叠并入 key，切开关后不会并回旧行 */
 }
-function itemKey(it) { return cartKey(it.id, it.pose || null, it.mat || null, !!it.tapered, !!it.side); }
+function itemKey(it) { return cartKey(it.id, it.pose || null, it.mat || null, !!it.tapered, !!it.side, it.stackable === undefined ? undefined : !!it.stackable); }
 function catKey(cat) {
  var ps = (POSE_SEL[cat.id] !== undefined) ? POSE_SEL[cat.id] : null;
  var bo = cat.box ? boxOptOf(cat) : null;
- return cartKey(cat.id, ps, bo ? bo.mat : null, bo ? !!bo.tapered : false, bo ? !!bo.side : false);
+ return cartKey(cat.id, ps, bo ? bo.mat : null, bo ? !!bo.tapered : false, bo ? !!bo.side : false, stackOf(cat));
 }
 
 function pickerQtyOf(cat) {
@@ -4361,6 +4411,10 @@ function renderPicker() {
   var sideBtn = (!c.boxSet && c.side === undefined) ? '' :
    '<button class="pside' + (sv ? ' on' : '') + '" data-act="side">' +
    (sv ? '可侧放 ✓' : '不可侧放') + '</button>';
+  /* [R29-C 202611181810] 可堆叠开关：每个品类卡片都常驻一个（箱子族走 fstack 全家统一切） */
+  var stv = stackOf(fc);
+  var stackBtn = '<button class="pside' + (stv ? ' on' : '') + '" data-act="' +
+   (c.boxSet ? 'fstack' : 'stack') + '">' + (stv ? '可堆叠 ✓' : '不可堆叠') + '</button>';
   /* P1 箱子专属：材质切换 + 插口箱 + 标准箱折算 */
   var boxLine = '';
   if (c.boxSet) {
@@ -4423,7 +4477,7 @@ function renderPicker() {
     if (c.boxSet) return fc.l + '×' + fc.w + '×' + fc.h + ' cm';
     return c.l + '×' + c.w + '×' + c.h + ' cm';
    })() + '</div>' +
-   poseLine + sideBtn + boxLine +
+   poseLine + sideBtn + stackBtn + boxLine +
    /* [R11-KB-02 202611161756] 件数框常驻：q=0 的行也直接给出「− 件数 ＋」，
       用户不必先点一次「加入清单」才能改件数；点数字框即弹数字键盘、可直接键入任意件数。 */
    '<div class="pqrow"><button class="pminus" data-act="minus" aria-label="减一件">−</button>' +
@@ -4444,16 +4498,18 @@ function renderPicker() {
     /* [R24-B] 搬家箱卡片里加/减的是「当前选中规格」这一件；类型/规格按钮只改选项不加件 */
     var cat = cat0.boxSet ? boxSelCat() : cat0;
     /* 点到条目上的「−」= 减 1，其余位置 = 加 1；两种情况都留在面板里，可连续点 */
-    var t = ev && ev.target, dec = false, sideToggle = false, act2 = '', posePick = '', fPick = '';
+    var t = ev && ev.target, dec = false, sideToggle = false, stackToggle = false, act2 = '', posePick = '', fPick = '';
     while (t && t !== el) {
      var act = t.getAttribute && t.getAttribute('data-act');
      if (act === 'side') { sideToggle = true; break; }
+     if (act === 'stack') { stackToggle = true; break; }
      if (act === 'pose') { posePick = t.getAttribute('data-pose'); break; }
      if (act === 'mat' || act === 'taper') { act2 = act; break; }
      if (act === 'fmat') { act2 = 'fmat'; fPick = t.getAttribute('data-mat'); break; }
      if (act === 'ftaper') { act2 = 'ftaper'; break; }
      if (act === 'fsize') { act2 = 'fsize'; fPick = t.getAttribute('data-size'); break; }
      if (act === 'fside') { act2 = 'fside'; break; }
+     if (act === 'fstack') { act2 = 'fstack'; break; }
      if (act === 'qty') { return; }   /* [R11] 点件数框 = 编辑件数，不能被当成「加一件」 */
      if (act === 'minus') { dec = true; break; }
      t = t.parentNode;
@@ -4482,6 +4538,13 @@ function renderPicker() {
      /* [R25-B] 可侧放 / 不可侧放：只切选项，已加件不变（固化在加入那一刻） */
      try { var _bs = boxSelCat(); setSide(_bs, !sideOf(_bs)); } catch (e) {}
      renderPicker();
+     els.pickerList.scrollTop = keepScroll;
+     return;
+    }
+    if (act2 === 'fstack') {
+     /* [R29-C] 箱子全家「可堆叠 / 不可堆叠」统一切 */
+     try { setStack(boxSelCat(), !stackOf(boxSelCat())); } catch (e) {}
+     renderPicker(); refreshCartUI(); afterChange();
      els.pickerList.scrollTop = keepScroll;
      return;
     }
@@ -4529,6 +4592,13 @@ function renderPicker() {
       }
       refreshCartUI(); bindCartEvents(); afterChange();
      } catch (e) {}
+     renderPicker();
+     els.pickerList.scrollTop = keepScroll;
+     return;
+    }
+    if (stackToggle) {
+     /* [R29-C] 只切可堆叠开关，不加件、不关面板；已加件不受影响 */
+     try { setStack(cat, !stackOf(cat)); } catch (e) {}
      renderPicker();
      els.pickerList.scrollTop = keepScroll;
      return;
@@ -4700,6 +4770,8 @@ function addToCart(cat) {
   id: cat.id, name: cat.name, l: dm.l, w: dm.w, h: dm.h, qty: 1,
   soft: cat.soft, compress: cat.compress, color: col, mesh: cat.mesh, warn: cat.warn,
   side: sideOf(cat), pose: poseSel,
+  /* [R29-C] 可堆叠/带腿/顶面可承压：固化在加入那一刻，后续改选项不影响已加件 */
+  stackable: stackOf(cat), legs: !!cat.legs, cap: !!cat.cap,
   /* P0-1/P0-3：姿态的分段形状随 cart 项带出（局部坐标，原点在占位 AABB 左前下角），
     失败件要靠它在仓外也画出两段而不是一整块 */
   poseParts: (poseObj && poseObj.parts) ? poseObj.parts : null,
@@ -5743,7 +5815,8 @@ function finishManual() {
             才有 side 字段，写成 side===undefined?false 等于把 CATALOG 的 side:false 丢掉，
             搬家箱被立成 40x40x60（R28 真凶之一）。可堆叠族默认不可侧放。 */
          noSide: cart[ci].side !== undefined ? !cart[ci].side : (sideFreeNow() ? false : !!(cart[ci].box || cart[ci].stack)),
-         stack: !!(cart[ci].box || cart[ci].stack),
+         stack: (cart[ci].stackable !== undefined ? !!cart[ci].stackable : !!(cart[ci].box || cart[ci].stack)),
+         _legs: !!cart[ci].legs, _cap: !!cart[ci].cap,
          _vox: voxFor(cart[ci]) });
   }
  }
@@ -5998,7 +6071,8 @@ function playTrips() {
            upright: !!c.upright, _poses: posesFor(c.id, c.pose),
            /* [R28-A 202611180754] 同 P23a：分趟入口与主装填必须同口径，否则「分趟能装、一次装不下」 */
            noSide: c.side !== undefined ? !c.side : (sideFreeNow() ? false : !!(c.box || c.stack)),
-           stack: !!(c.box || c.stack),
+           stack: (c.stackable !== undefined ? !!c.stackable : !!(c.box || c.stack)),
+           _legs: !!c.legs, _cap: !!c.cap,
            _vox: voxFor(c) });
   }
  }
@@ -6201,8 +6275,9 @@ function doPack() {
          upright: !!c.upright, _poses: posesFor(c.id, c.pose),
          /* [R28-A 202611180754] 同 P23a/P23b：主入口默认值回落到品类语义（搬家箱不可侧放） */
          noSide: c.side !== undefined ? !c.side : (sideFreeNow() ? false : !!(c.box || c.stack)),
-         /* [R27-B 202611172335] 可堆叠族标记：搬家箱全族（box）与收纳箱（stack） */
-         stack: !!(c.box || c.stack),
+         /* [R29-C 202611181810] 可堆叠按清单条目固化的 stackable 走；未设时退回箱子/收纳箱默认 */
+         stack: (c.stackable !== undefined ? !!c.stackable : !!(c.box || c.stack)),
+         _legs: !!c.legs, _cap: !!c.cap,
          _vox: voxFor(c) });
   }
  }
@@ -7744,7 +7819,8 @@ window.__API__ = {
    var o = list[i];
    var it = { name: o.name || ('item' + i), l: o.l, w: o.w, h: o.h,
          soft: !!o.soft, upright: !!o.upright, noSide: !!o.noSide,
-         stack: !!(o.stack || o.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(o.name || ''))),
+         stack: (o.stack === undefined ? !!(o.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(o.name || ''))) : !!o.stack),
+         _legs: !!o.legs, _cap: !!o.cap,
          _poses: o.solid ? null : (o.poses || posesOf(o.id)) };
    if (hasMesh(o.mesh) && !GREYBOX_ON()) {
     var v = voxFor({ mesh: o.mesh, l: o.l, w: o.w, h: o.h });
@@ -7775,6 +7851,7 @@ window.__API__ = {
   for (var i = 0; i < CATALOG.length; i++) {
    out.push({ name: CATALOG[i].name, id: CATALOG[i].id, mesh: CATALOG[i].mesh || null,
          l: CATALOG[i].l, w: CATALOG[i].w, h: CATALOG[i].h,
+         stackable: stackOf(CATALOG[i]), legs: !!CATALOG[i].legs, cap: !!CATALOG[i].cap,
          soft: !!CATALOG[i].soft, upright: !!CATALOG[i].upright,
          box: !!CATALOG[i].box, std: CATALOG[i].std || null });
   }
