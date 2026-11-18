@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v98</b> · 202611182055</div>
+<div id="verTag"><b>v98</b> · 202611182120</div>
 
 <div id="tripBadge"></div>
 
@@ -3944,7 +3944,7 @@ function makeOutsidePad(x0, x1, z0, z1, n) {
  var cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
  var g = new T.Group();
  var pl = new T.Mesh(new T.PlaneGeometry(w, d), new T.MeshBasicMaterial({
-  color: 0x8a2020, transparent: true, opacity: 0.30, depthWrite: false
+  color: 0xd81818, transparent: true, opacity: 0.55, depthWrite: false
  }));
  pl.rotation.x = -Math.PI / 2;
  pl.position.set(cx, 0.12, cz);
