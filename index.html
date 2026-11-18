@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v98</b> · 202611182023</div>
+<div id="verTag"><b>v98</b> · 202611182042</div>
 
 <div id="tripBadge"></div>
 
@@ -3909,7 +3909,7 @@ function markRedBox(o, cat, text) {
  line.renderOrder = 999;
  o.add(line);
  var shell = new T.Mesh(geo, new T.MeshBasicMaterial({
-  color: 0xff3b3b, transparent: true, opacity: 0.13, depthWrite: false
+  color: 0xff3b3b, transparent: true, opacity: 0.10, depthWrite: false
  }));
  shell.renderOrder = 998;
  o.add(shell);
@@ -3926,6 +3926,19 @@ function markOversize(o, cat, ov) {
 /* [R30-B] 仓外堆放区：半透明地面 + 橙色边框 + 大标签。
    原来 failed 件直接摆在仓外侧地面上，3D 里没有地面参照、投影上又和仓体重叠，
    用户看上去就是「远处一排方块悬空」。垫板给出地面与边界，标签给出结论。 */
+/* [R30-D] 接地暗斑：仓外件的接触阴影受 LGT.shadow 开关控制，关灯时整件没有落影，
+   在深色地面上就是「浮着的一摞方块」。这里给仓外件单独叠一片恒亮的暗斑（不读 LGT），
+   件底与地面之间就有了「坐实」的视觉衔接。 */
+function makeGroundBlot(l, w) {
+ var m = new T.Mesh(new T.PlaneGeometry(l * 1.28, w * 1.28), new T.MeshBasicMaterial({
+  color: 0x000000, transparent: true, opacity: 0.30, depthWrite: false
+ }));
+ m.rotation.x = -Math.PI / 2;
+ m.position.set(-l * 0.10, 0.22, -w * 0.08);
+ m.renderOrder = 0;
+ m.userData.isGroundBlot = true;
+ return m;
+}
 function makeOutsidePad(x0, x1, z0, z1, n) {
  var w = Math.max(40, x1 - x0), d = Math.max(40, z1 - z0);
  var cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
@@ -3945,8 +3958,8 @@ function makeOutsidePad(x0, x1, z0, z1, n) {
  var b3 = new T.Mesh(new T.BoxGeometry(bw, bt, d), bar); b3.position.set(cx - w / 2, 1.0, cz);
  var b4 = new T.Mesh(new T.BoxGeometry(bw, bt, d), bar); b4.position.set(cx + w / 2, 1.0, cz);
  g.add(b1); g.add(b2); g.add(b3); g.add(b4);
- var sp = makeTagSprite('装不下 ' + n + ' 件 · 换更大仓或分趟', 26);
- sp.position.set(cx, 62, cz + d / 2 + 6);
+ var sp = makeTagSprite('装不下 ' + n + ' 件 · 换更大仓或分趟', 40);
+ sp.position.set(cx, 80, cz + d / 2 + 6);
  g.add(sp);
  g.userData.pad = true;
  return g;
@@ -6358,6 +6371,7 @@ function doPack() {
   }
   oversizeN++; oversizeNames.push(cat.name);
   markRedBox(o, cat, unfitTxt);
+  try { o.add(makeGroundBlot(cat.l, cat.w)); } catch (eG) {}
   if (cx + cat.l / 2 + 30 > padX1) padX1 = cx + cat.l / 2 + 30;
   if (cz + cat.w / 2 + 30 > padZ1) padZ1 = cz + cat.w / 2 + 30;
   o.userData.target = new T.Vector3(cx, cy, cz);
