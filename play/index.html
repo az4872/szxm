@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v105</b> · 202611191900</div>
+<div id="verTag"><b>v129</b> · 202611200030</div>
 
 <div id="tripBadge"></div>
 
@@ -1855,27 +1855,30 @@ if (typeof window !== 'undefined' && !window.__ERRLOG__) {
 
 /* ---------- 品类库（尺寸为品类标准值，可改） ---------- */
 var CATALOG = [
- { id:'carton',   name:'搬家箱',  l:60,  w:40,  h:40,  boxSet:true,     mesh:'box',      color:0xb98a55, side:false,
+ { id:'carton',   name:'搬家箱',  l:60,  w:40,  h:40,  boxSet:true,     mesh:'box',      color:0xb36f2c, side:false,
   box:true, mat:'cardboard', tapered:false, vol:96000, std:1.2, stackable:true, legs:false, cap:true },
  /* [R34 202611191755] 行李箱必须平放堆叠：显式 side:false → noSide=true → R27-G 硬锁「原始高竖直」= h=26 平放，
     且显式 side 字段不受 sideFree 关卡（L06 装车 / L07）放宽影响。竖立对叠重心高、一碰就倒，已写入装填手册规则。 */
- { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78, side:false, sideHard:true, stackable:true, cap:true },
- { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b, stackable:false, cap:false },
- { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true, stackable:false, legs:true, cap:false },
- { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true, stackable:true, cap:true },
- { id:'desk',     name:'折叠桌',  l:120, w:60,  h:75,  mesh:'foldingtable', color:0x9c7b52, stackable:false, legs:true, cap:true },
- { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   mesh:'mirror',   color:0xa9c4cf, stackable:false, cap:false },
- { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  mesh:'washer',   color:0xe8e8e8, upright:true, stackable:false, cap:true },
- { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true, stackable:false, cap:true },
- { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true, stackable:false, cap:true },
- { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c, stackable:false, legs:true, cap:true },
+ { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x427197, side:false, sideHard:true, stackable:true, cap:true },
+ { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x8c2a20, stackable:false, cap:false },
+ { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x496b4f, soft:true, compress:true, warn:true, stackable:false, legs:true, cap:false },
+ { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xe3c68c, soft:true, stackable:true, cap:true },
+ /* [R35 202611200045] 折叠桌改「折叠态」：桌腿收在桌面下方、桌面平铺，占位由 120×60×75 改 120×60×12。
+    用户明确要求「折叠桌要折叠起来把腿折叠起来」——搬运场景本就不该按展开的 75cm 高去占位；
+    折叠后才是一块可平叠的板件，legs 也随之为 false（无腿间空腔）。 */
+ { id:'desk',     name:'折叠桌',  l:120, w:60,  h:12,  mesh:'p_deskfold', color:0x66507a, stackable:true, legs:false, cap:true },
+ { id:'mirror',   name:'落地镜',  l:160, w:40,  h:5,   mesh:'p_mirror2', color:0xb6d3e8, stackable:false, cap:false },
+ { id:'washer',   name:'洗衣机',  l:60,  w:60,  h:85,  mesh:'p_washer', color:0xcedde2, upright:true, stackable:false, cap:true },
+ { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xe0c088, upright:true, stackable:false, cap:true },
+ { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0xd8b069, upright:true, stackable:false, cap:true },
+ { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'p_chair2', color:0x9a6873, stackable:false, legs:true, cap:true },
  /* [R34 202611191755] mesh 由真实模型 storagebox 改为程序化 p_crate：原资产是开盖+翘盖状态，
     顶面只有 z 中央一条达到最高点，其余低 1.5~2.4cm，上层件落位后视觉悬空、能从箱口看进内部。 */
- { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'p_crate',   color:0x5c7a63, side:false, stack:true, stackable:true, cap:true },
- { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true, stackable:false, cap:false },
- { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355, stackable:false, legs:true, cap:true },
- { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47, stackable:false, cap:false },
- { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, mesh:'wardrobe', color:0x7d6247, upright:true, stackable:false, cap:true }
+ { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'p_crate',   color:0x509792, side:false, stack:true, stackable:true, cap:true },
+ { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'p_tv2',    color:0x101d25, upright:true, stackable:false, cap:false },
+ { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'p_ctable', color:0x94604b, stackable:false, legs:true, cap:true },
+ { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'p_treadmill', color:0x3d3231, stackable:false, cap:false },
+ { id:'wardrobe', name:'衣柜',    l:120, w:60,  h:200, mesh:'p_wardrobe', color:0x5f4029, upright:true, stackable:false, cap:true }
 ];
 
 /* ---------- T-04 / T-05 显式姿态表（可带 parts 复合占位） ----------
@@ -2259,7 +2262,7 @@ renderer.shadowMap.type = T.PCFSoftShadowMap;
 /* v59：ACES 把 >1 的光压回可显示区间（高光滚降而非削顶）。实测默认档亮度 +5.9%%、
    对比度 164 vs 改造前 167、细节梯度 4.33 vs 4.24，三项均不劣于改造前。*/
 renderer.toneMapping = T.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.45;
+renderer.toneMappingExposure = 1.10;   /* [R35-M] 1.45->1.10：ACES 高光肩部压饱和，降档后 16 件平均色度 +1.0、ΔE<10 对数 13->11 */
 
 var scene = new T.Scene();
 /* [v73] 舞台空气感：指数雾把远处地板沉进背景，形成"打光空间"而不是无限延伸的网格。
@@ -2276,8 +2279,8 @@ var scene = new T.Scene();
 /* R5（异源审查第 5 条）：min 是"防止雾彻底消失、远方地板无限延伸"的地板值。
    0.00012 在 dist>6440cm 就会封顶，继续拉远仍会被雾吃掉；改成 0.00006（对应 dist≈11000cm），
    远超过人手缩放的可达范围，既保住地板不收尾，也不在可用区间内封顶。 */
-var FOGCFG = { target: 0.45, min: 0.00006, max: 0.0026, ref: 380 };
-scene.fog = new T.FogExp2(0x0b1420, 0.00115);
+var FOGCFG = { target: 0.15, min: 0.00006, max: 0.0026, ref: 380 };
+scene.fog = new T.FogExp2(0x1a1e24, 0.00115);
 function tuneFog(dist) {
  if (!scene.fog || !scene.fog.isFogExp2) return;
  var d = Math.max(60, dist || camDist || FOGCFG.ref);
@@ -2328,13 +2331,13 @@ function applyOrtho() { applyProj(); }
    旧版是逐轮「修发黑/剪影」的补光补丁（六向同时补 → 亮度趋同 → 观感上"没有光"）。
    新版把 10 颗灯归到 KEY/RIM/FILL/BIN 四个通道，靠通道间比例做明暗层次，
    并以预设 + 滑杆对外暴露，互动事件再对通道做动态变化。 */
-var hemi = new T.HemisphereLight(0xffffff, 0x36404f, 0.62);
+var hemi = new T.HemisphereLight(0xf7f3ea, 0x5c5a56, 0.72);   /* [R35-K] 天空暖中性/地面中性灰，去蓝 */
 scene.add(hemi); // 依赖 scene.children[0] 的代码需要先找到半球光。
-var amb = new T.AmbientLight(0xcfe0ff, 0.34); scene.add(amb);
+var amb = new T.AmbientLight(0xf5f0e6, 0.40); scene.add(amb);   /* [R35-K] 0xe6ebf1 冷蓝 -> 暖中性 */  /* [R35-F] 0xcfe0ff→中性：冷蓝环境光把一切刷成灰蓝 */
 var d1 = new T.DirectionalLight(0xffffff, 1.03); d1.position.set(300, 600, 400); scene.add(d1);
-var d2 = new T.DirectionalLight(0x9dc0ff, 1.05); d2.position.set(-400, 300, -300); scene.add(d2);
-var fillFront = new T.DirectionalLight(0xfff4e2, 0.82); scene.add(fillFront);
-var fillBack = new T.DirectionalLight(0xc8d8ff, 0.74); scene.add(fillBack);
+var d2 = new T.DirectionalLight(0xd9dee2, 1.05);  /* [R35-F] 0x9dc0ff→冷白：蓝光占比过大导致饱和度归零 */ d2.position.set(-400, 300, -300); scene.add(d2);
+var fillFront = new T.DirectionalLight(0xf3f1ec, 0.62); scene.add(fillFront);
+var fillBack = new T.DirectionalLight(0xeae8e4, 0.58);   /* [R35-K] 再降冷补光 */  /* [R35-F] 0xc8d8ff→中性 */ scene.add(fillBack);
 var fillBottom = new T.DirectionalLight(0xffffff, 0.55); fillBottom.position.set(20, -400, 160); scene.add(fillBottom);
 var fillLeft = new T.DirectionalLight(0xffffff, 0.46); fillLeft.position.set(-700, 120, 60); scene.add(fillLeft);
 var fillRight = new T.DirectionalLight(0xffffff, 0.46); fillRight.position.set(700, 120, 60); scene.add(fillRight);
@@ -2375,8 +2378,8 @@ var LIGHT_NODES = {
 };
 var LGT = {
   preset:'day',
-  coef:{ key:1.63, fill:1.67, rim:1.36, bin:0.54, stage:1.15 },
-  keyHex:0xfff2e0, groundHex:0x36404f, shadow:true,
+  coef:{ key:2.10, fill:0.85, rim:0.72, bin:0.54, stage:1.15 },   /* [R35-K] 与 PRESETS.day 同源 */
+  keyHex:0xfaf6ef, groundHex:0x5c5a56, shadow:true,   /* [R35-F] 地面反光 0x36404f 深蓝→中性灰 */
   follow:true   /* v73：主光绑定相机方位，转镜头时光影跟着扫 */
 };
 /* 舞台光参数与光池引用必须与 LGT 同处声明：灯光面板的 IIFE 在启动时就会读 STAGE.follow，
@@ -2395,7 +2398,7 @@ var _poolTex = null;
 var _stageTex = null;
 var stageFloor = null;
 var PRESETS = {
-  day:     { key:1.63, fill:1.67, rim:1.36, bin:0.54, stage:1.15, keyHex:0xfff2e0, groundHex:0x36404f },
+  day:     { key:2.10, fill:0.85, rim:0.72, bin:0.54, stage:1.15, keyHex:0xfaf6ef, groundHex:0x5c5a56 },  /* [R35-K] key 2.10 主导 / fill 0.85 / rim 0.72：补光压过主光是渲染色失彩的真凶 */  /* [R35-F] fill+ 补光转中性、rim- 减冷蓝轮廓 */
   dusk:    { key:0.85, fill:0.55, rim:1.20, bin:0.55, stage:1.45, keyHex:0xffb877, groundHex:0x2a2233 },
   night:   { key:0.45, fill:0.25, rim:0.55, bin:1.00, stage:1.75, keyHex:0x9fc4ff, groundHex:0x121a26 },
   inspect: { key:1.60, fill:0.30, rim:0.50, bin:0.15, stage:0.16, keyHex:0xffffff, groundHex:0x1a1a1a }
@@ -2836,6 +2839,32 @@ var texLoader = new T.TextureLoader();
   灰盒模式 / 无模型数据返回 null，pack 内部自动退化成立方体体素。 */
 var voxCache = {};
 var lastPack = null;     /* 最近一次装填结果（体素审计用） */
+/* [R35-D] 程序化几何 → 体素输入：归一化到 ±0.5 的顶点 + 三角索引（与 makeObjSized 铺满口径一致） */
+function stackDataOfProc(key) {
+ var g = procCache[key];
+ if (!g) { try { g = buildProcMesh(key).geometry; } catch (e) { return null; } }
+ if (!g || !g.attributes || !g.attributes.position || !g.index) return null;
+ var pa = g.attributes.position.array, ia = g.index.array;
+ var nv = pa.length / 3;
+ if (!nv) return null;
+ var mnx = 1e9, mny = 1e9, mnz = 1e9, mxx = -1e9, mxy = -1e9, mxz = -1e9;
+ for (var i = 0; i < nv; i++) {
+  var x = pa[i * 3], y = pa[i * 3 + 1], z = pa[i * 3 + 2];
+  if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+  if (y < mny) mny = y; if (y > mxy) mxy = y;
+  if (z < mnz) mnz = z; if (z > mxz) mxz = z;
+ }
+ var hx = Math.max(1e-6, (mxx - mnx) / 2), hy = Math.max(1e-6, (mxy - mny) / 2), hz = Math.max(1e-6, (mxz - mnz) / 2);
+ var v = new Float32Array(nv * 3), cx = (mnx + mxx) / 2, cy = (mny + mxy) / 2, cz = (mnz + mxz) / 2;
+ for (var j = 0; j < nv; j++) {
+  v[j * 3] = (pa[j * 3] - cx) / hx * 0.5;
+  v[j * 3 + 1] = (pa[j * 3 + 1] - cy) / hy * 0.5;
+  v[j * 3 + 2] = (pa[j * 3 + 2] - cz) / hz * 0.5;
+ }
+ var f = (ia instanceof Uint16Array || ia instanceof Uint32Array) ? ia : new Uint32Array(ia);
+ return { v: v, f: f, nv: nv, nt: f.length / 3 };
+}
+
 function voxFor(cat) {
  if (!cat || !cat.mesh || GREYBOX_ON() || typeof voxelize !== 'function') return null;
  /* [R28-B 202611180754] 可堆叠族（搬家箱/收纳箱/标准箱）一律走包围盒体素，不走真实模型体素。
@@ -2853,7 +2882,20 @@ function voxFor(cat) {
  var k = cat.mesh + '|' + cat.l + ',' + cat.w + ',' + cat.h;
  if (voxCache[k] !== undefined) return voxCache[k];
  var d = MESH_DATA[cat.mesh];
- if (!d || !d.qscale) { voxCache[k] = null; return null; }
+ /* [R35-D 202611200115] 程序化几何（p_washer/p_wardrobe/... 8 个重建模型）不在 MESH_DATA 里，
+    旧实现此处直接 return null → 算法退回「实心包围盒」，椅子腿间、桌下、柜内空腔被虚占，
+    实测 L06 由 52/52 掉到 47/52。改为从 procCache 取 BufferGeometry，按 AABB 归一化到 ±0.5
+    （与 makeObjSized 铺满占位盒同源）后喂 voxelize，体素与真实形状一致。 */
+ if (!d || !d.qscale) {
+  if (PROC_KEYS[cat.mesh] && typeof stackDataOfProc === 'function') {
+   var pv = stackDataOfProc(cat.mesh);
+   if (pv) {
+    try { voxCache[k] = voxelize(pv.v, pv.f, { l: cat.l, w: cat.w, h: cat.h }, VOX_CELL); return voxCache[k]; }
+    catch (e2) { voxCache[k] = null; return null; }
+   }
+  }
+  voxCache[k] = null; return null;
+ }
  try {
   var qi = b64i16(d.pos), fv = new Float32Array(qi.length), qs = d.qscale;
   for (var i = 0; i < qi.length; i++) fv[i] = qi[i] * qs;
@@ -2948,7 +2990,7 @@ function voxFor(cat) {
   bars().forEach(function (b) { if (b) { try { ro.observe(b); } catch (e) {} } });
  }
 })();
-var SAT_BOOST = 1.45;   /* v59：ACES 失色补偿系数 */
+var SAT_BOOST = 1.72;   /* v59 引入 / [R35-K] 1.45->1.72：补偿 ACES + 冷光的双重压饱和 */
 /* v59 贴片接触阴影：径向渐变黑面，贴在物品底面外扩 18%，开关直接控制 visible */
 var _csTex = null;
 function csTex() {
@@ -3129,17 +3171,79 @@ function snapGeo(geo, key) {
    解法：全部程序化几何 —— BoxGeometry 拼板 + ExtrudeGeometry 挖孔，所有面严格轴对齐、
    棱是真实硬棱，孔与箱盖是真几何不是贴图。顶点色逐部件编码（单材质一模型），
    与既有渲染链（makeObjSized 非等比铺满）完全兼容，模型 AABB 归一化到 ±0.5。 */
-var PROC_KEYS = { p_carton: 1, p_plastic: 1, p_suit: 1, p_crate: 1 };
+var PROC_KEYS = { p_carton: 1, p_plastic: 1, p_suit: 1, p_crate: 1,
+ /* [R35 202611200045] 八个「减面到 12000 面撞顶」的残骸模型全部程序化重建：
+    静态解码实测 openE（只被 1 个三角使用的边）4332~9343 条、连通碎块 190~1471 个，
+    即用户看到的「碎面拼接 + 孔洞」。程序化几何每个部件自带封闭包面，openE 恒 0。 */
+ p_washer: 1, p_wardrobe: 1, p_treadmill: 1, p_deskfold: 1,
+ p_chair2: 1, p_ctable: 1, p_tv2: 1, p_mirror2: 1 };
 var PROC_MAT = {
  /* [R23-EMI 20261117] 纸箱加一点自身暖色自发光：场景补光是冷蓝(0x9dc0ff/0xc8d8ff)+半球光，
     纯漫反射的牛皮纸在这种冷光场里会被洗成中性灰（实测 base 暖色占比仅 0.6%）。
     emissive 不吃方向光，相当于给箱体垫一层保底色，冷光再强也压不掉暖调；
     强度 0.30 + 深棕 0x3A2410，不改变明暗层次。塑料箱/行李箱不加（它们本来就是冷色系）。 */
  p_carton:  { rough: 0.94, metal: 0.00, emi: 0x3A2410, emiI: 0.30 },
- p_plastic: { rough: 0.32, metal: 0.04 },
- p_suit:    { rough: 0.50, metal: 0.07 },
+ p_plastic: { rough: 0.32, metal: 0.04, emi: 0x2a3a48, emiI: 0.10 },   /* [R35-F] */
+ p_suit:    { rough: 0.50, metal: 0.07, emi: 0x427197, emiI: 0.24 },   /* [R35-M] 青蓝保底 */
  /* [R34] 收纳箱：塑料件，磨砂半亮，不加自发光 */
- p_crate:   { rough: 0.62, metal: 0.02 }
+ p_crate:   { rough: 0.66, metal: 0.02, emi: 0x509792, emiI: 0.24 },   /* [R35-M] 青绿 */
+ /* [R35] 材质分级：每类一个 rough/metal 组合，观感上「白电=半亮、木作=哑光、
+    金属器械=中高光、镜面=强反射」，与顶点色一起构成品类辨识。 */
+ /* [R35-F] 每类加「本色自发光」：实测冷蓝补光把顶点色洗成中性灰（16 件里 12 对 ΔE<10、
+    多数件的色度分量归零），emissive 不吃方向光，等于给本色垫底，冷光压不掉色相。
+    强度 ≤0.24，只在暗部补色，不摊平明暗层次。 */
+ p_washer:   { rough: 0.42, metal: 0.08, emi: 0xcedde2, emiI: 0.30 },   /* [R35-M] 烤漆钢板：metal 0.16->0.08 去金属感 */
+ p_wardrobe: { rough: 0.62, metal: 0.02, emi: 0x5f4029, emiI: 0.34 },   /* [R35-M] 木作哑光 */
+ p_treadmill:{ rough: 0.48, metal: 0.10, emi: 0x3d3231, emiI: 0.18 },   /* [R35-M] 器械：metal 0.24->0.10，无环境贴图下高金属=黑面 */
+ p_deskfold: { rough: 0.52, metal: 0.05, emi: 0x66507a, emiI: 0.20 },   /* [R35-S] 深紫灰木面 */
+ p_chair2:   { rough: 0.66, metal: 0.03, emi: 0x9a6873, emiI: 0.24 },   /* [R35-N] 深藕粉织物 */
+ p_ctable:   { rough: 0.58, metal: 0.04, emi: 0x94604b, emiI: 0.26 },   /* [R35-M] 浅红木 */
+ p_tv2:      { rough: 0.35, metal: 0.12, emi: 0x101d25, emiI: 0.14 },   /* [R35-M] 熄屏黑：metal 0.30->0.12 防无 env 假黑 */
+ p_mirror2:  { rough: 0.12, metal: 0.34, emi: 0x8C9BA3, emiI: 0.20 }    /* [R35-M] 镜面：metal 0.55->0.35，让漫反射保住底色 */
+};
+/* [R35] 程序化几何派发表（函数声明提升，可在此处引用） */
+/* [R35-E 202611200030] 材质色彩分级 + 真实资产顶点色重染（见 RECOLOR / recolorGeo） */
+var PROC_GEN = {
+ p_carton: function () { return pCartonGeo(false); },
+ p_plastic: function () { return pCartonGeo(true); },
+ p_suit: function () { return pSuitGeo(); },
+ p_crate: function () { return pCrateGeo(); },
+ p_washer: function () { return pWasherGeo(); },
+ p_wardrobe: function () { return pWardrobeGeo(); },
+ p_treadmill: function () { return pTreadmillGeo(); },
+ p_deskfold: function () { return pDeskFoldGeo(); },
+ p_chair2: function () { return pChairGeo(); },
+ p_ctable: function () { return pCoffeeTableGeo(); },
+ p_tv2: function () { return pTvGeo(); },
+ p_mirror2: function () { return pMirrorGeo(); }
+};
+/* [R35] 真实模型（几何健康：openE=0、comps=1，实测）材质分级表。
+    这些模型自带顶点色，形状已经辨识度足够，这里只按「材质常识」给 rough/metal，
+    让布艺/木作/白电/金属器械在光照下分得开（同一套灯光下不再全是同一种塑料感）。
+    覆盖 buildRealMesh 里 d.rough/d.metal 的默认推算。 */
+var REAL_MAT = {
+ bike:     { rough: 0.60, metal: 0.10 },  /* [R35-M] 车架金属 + 橡胶轮胎 */
+ sofa:     { rough: 0.90, metal: 0.02 },  /* 布艺亚光 */
+ mattress: { rough: 0.94, metal: 0.00 },  /* 针织面料全亚光 */
+ fridge:   { rough: 0.46, metal: 0.06 },  /* [R35-M] 白色家电烤漆（metal 降档保色相） */
+ shelf:    { rough: 0.62, metal: 0.03 },  /* 木作 */
+ suitcase: { rough: 0.48, metal: 0.05 },  /* 塑料硬壳 */
+ box:      { rough: 0.72, metal: 0.00 }   /* 纸箱 */
+};
+
+/* [R35-E] 真实资产顶点色重映射表。
+   背景：box/sofa/shelf 三个真实资产自带的顶点色分别是 (124,65,23)/(65,37,20)/(63,35,15)，
+   色相都在 25~32° 木棕、明度都在 0.16~0.36，同屏时靠颜色完全分不开（用户反馈「色彩区分不开」的根源之一）。
+   这里按品类给一个主色 hex，把顶点色重染到该主色上：保留逐顶点的相对明暗（rel 0.55~1.45），
+   局部暗部（rel<0.8，如自行车轮胎、书架背板影）只染 1/3，避免整件被刷成一个纯色。
+   s = 重染强度（0=原色, 1=全按主色）；k = 明度系数。 */
+var RECOLOR = {
+ box:      { hex: 0xc5823a, s: 0.90, k: 1.00 },  /* 搬家箱 牛皮纸棕黄 L60 C52 */
+ sofa:     { hex: 0x496b4f, s: 0.92, k: 1.00 },  /* 沙发 墨绿布艺 L42 C22 h148 */
+ shelf:    { hex: 0xd8b069, s: 0.88, k: 1.00 },  /* 书架 明枫黄 L74 C42 h82 */
+ mattress: { hex: 0xe3c68c, s: 0.90, k: 1.00 },  /* 床垫 暖米白 L82 C22 h80 */
+ fridge:   { hex: 0xe0c088, s: 0.88, k: 1.00 },  /* [R35-O] 小冰箱 亮金 L80 C25 h80 */
+ bike:     { hex: 0x8C2A20, s: 0.88, k: 0.98 }   /* 自行车 砖红车架 L36 C46 h30 */
 };
 var procCache = {}, procMats = {};
 
@@ -3237,7 +3341,7 @@ function pCartonGeo(plastic) {
  var H0 = -0.025;                       /* 箱体 y ∈ [-0.5, 0.45] */
  var WX = 1.0;                          /* x 全宽 */
  var DZ = 1.0 - 2 * TH;                 /* z 内宽：端板夹在两侧板之间，角部不共面 */
- /* [R23-COLOR 20261117] 纸箱原色 0xC49A63 / 0xD2AC74 在场景里被冷蓝补光(0x9dc0ff/0xc8d8ff) +
+ /* [R23-COLOR 20261117] 纸箱原色 0xB0702C / 0xC5823A 在场景里被冷蓝补光(0x9dc0ff/0xc8d8ff) +
    半球光洗成中性灰（实测件内像素 mean=[99,102,99]、暖色占比 0.6%、主色 #707070 占 43%），
    肉眼看到的是一只白盒子而不是牛皮纸箱。把非塑料分支整体往暖/饱和方向推，
    实测增益 R×1.30 G×1.00 B×0.72 只到 25.7%，R×1.60 B×0.55 才到 77.3%，
@@ -3308,7 +3412,7 @@ function pCartonGeo(plastic) {
 /* 行李箱：把手只在顶面（提手）与两端（侧提手），正面/背面只有装饰条 */
 function pSuitGeo() {
  var parts = [], i;
- var cBody = 0x3F5B78, cTrim = 0x4E6E8E, cDark = 0x232F3F, cWheel = 0x1B2430;
+ var cBody = 0x427197, cTrim = 0x527FAC, cDark = 0x28486B, cWheel = 0x1B2430;
  /* 主体 x ∈ [-0.492,0.492]（两端留 0.008 给侧提手），y ∈ [-0.46,0.46]，z ∈ [-0.49,0.49] */
  parts.push({ g: pBoxG(0.984, 0.92, 0.98, 0, 0, 0), c: cBody, n: 'body' });
  /* 顶面提手（横条 + 两端立柱） */
@@ -3347,8 +3451,8 @@ function pCrateGeo() {
  var parts = [], sign;
  var TH = 0.022;                       /* 侧板/端板厚 */
  var WX = 1.0, DZ = 1.0 - 2 * TH;      /* 端板夹在两侧板之间，角部不共面 */
- var cBodyU = 0x5C7A63, cBodyD = 0x49604F, cBot = 0x3E5647, cIn = 0x222D28;
- var cLid = 0x6C8C73, cSeam = 0x2C3A31;
+ var cBodyU = 0x509792, cBodyD = 0x437F7A, cBot = 0x366B67, cIn = 0x222D28;
+ var cLid = 0x63A79F, cSeam = 0x2C3A31;
  /* 内衬：挡住空腔，从把手孔看进去是深色槽而不是透视到背面 */
  parts.push({ g: pBoxG(DZ - 0.014, 0.86, DZ - 0.014, 0, -0.06, 0), c: cIn, n: 'liner' });
  /* 底板 */
@@ -3373,11 +3477,359 @@ function pCrateGeo() {
  return pMerge(parts);
 }
 
+
+/* ==================================================================
+   [R35 202611200045] 八个碎面模型程序化重建
+   背景：静态解码 window.MESH_DATA 实测这 8 个模型的三角数全部撞在 12000（减面上限），
+   焊接后「只被 1 个三角使用的边」4332~9343 条、连通碎块 190~1471 个 —— 这就是用户
+   看到的「表面碎面拼接、有孔洞」。减面算法把闭合壳打成了上千块开口面片，无法修补，
+   只能按原物形状用封闭图元重建。
+   统一口径：归一化坐标 [-0.5,0.5]，y 竖直；x=占位 l，y=占位 h，z=占位 w。
+   因为 makeObjSized 会把 AABB 非等比铺满占位盒，所以这里必须按占位盒比例设计数值，
+   正圆件要按 (l/h、w/h) 做椭圆补偿，铺满后才是物理正圆。
+   每个部件都是自带封闭外壳的 Box/Cylinder/Extrude，pMerge 后 openE 恒 0。
+   ================================================================== */
+
+/* 圆柱/盘：直接给三轴世界尺寸（铺满前），axis 指定轴向 */
+function pCylG(sx, sy, sz, axis, seg, px, py, pz) {
+ var g = new T.CylinderGeometry(1, 1, 1, seg || 20, 1, false);
+ if (axis === 'z') g.rotateX(Math.PI / 2);
+ else if (axis === 'x') g.rotateZ(Math.PI / 2);
+ g.scale(sx, sy, sz);
+ g.translate(px || 0, py || 0, pz || 0);
+ return g;
+}
+
+/* 洗衣机 60×60×85：白色机身 + 上前控制台 + 前脸不锈钢圆门（物理半径 18cm） */
+function pWasherGeo() {
+ var parts = [], i, sign;
+ var cBody = 0xE6F1F5, cPanel = 0xCEDDE2, cDoorRing = 0xB6BFC8, cGlass = 0x1B2126;   /* [R35-F] 机身更纯白，与冰箱不锈钢分开 */
+ var cBase = 0x3C434A, cKnob = 0x2A3138, cLed = 0x2FA8E0;
+ /* 机身：y -0.44..0.40（底部让位给机脚） */
+ parts.push({ g: pBoxG(1.0, 0.84, 1.0, 0, -0.02, 0), c: cBody, n: 'cabinet' });
+ /* 顶面控制台：y 0.40..0.50 */
+ parts.push({ g: pBoxG(1.0, 0.10, 1.0, 0, 0.45, 0), c: cPanel, n: 'topPanel' });
+ /* 控制条（深色）+ 旋钮 + 显示屏 */
+ parts.push({ g: pBoxG(0.62, 0.012, 0.34, -0.14, 0.494, 0.24), c: cKnob, n: 'ctrlStrip' });
+ parts.push({ g: pCylG(0.085, 0.012, 0.085, 'y', 20, -0.30, 0.494, 0.30), c: 0x8A939C, n: 'knob' });
+ parts.push({ g: pBoxG(0.26, 0.010, 0.10, 0.10, 0.495, 0.30), c: cLed, n: 'led' });
+ /* 前脸圆门：圆心 (0,-0.05)，物理半径 18cm。x:60 y:85 z:60
+    → rx=18/60=0.300, ry=18/85=0.212（铺满后为正圆） */
+ var RX = 0.300, RY = 0.212;
+ parts.push({ g: pCylG(RX, RY, 0.11, 'z', 28, 0, -0.05, 0.445), c: cDoorRing, n: 'doorRing' });
+ parts.push({ g: pCylG(RX * 0.84, RY * 0.84, 0.044, 'z', 26, 0, -0.05, 0.478), c: cGlass, n: 'doorGlass' });
+ /* 门内衬：挡住机腔透视（从玻璃看进去是深色实心） */
+ parts.push({ g: pCylG(RX * 0.90, RY * 0.90, 0.05, 'z', 24, 0, -0.05, 0.455), c: 0x2A3136, n: 'doorInner' });
+ /* 机脚 */
+ for (i = 0; i < 4; i++) {
+  parts.push({ g: pBoxG(0.11, 0.065, 0.11, (i < 2 ? -0.42 : 0.42), -0.4675, (i % 2 ? 0.42 : -0.42)), c: cBase, n: 'foot' + i });
+ }
+ /* 侧面分模线（浅灰细条，增加层次） */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.005, 0.80, 0.005, sign * 0.4975, -0.02, 0.4975), c: cDoorRing, n: 'seam' + sign });
+ }
+ return pMerge(parts);
+}
+
+/* 衣柜 120×60×200：木作柜体 + 双开门 + 中缝把手 + 楣板踢脚 */
+function pWardrobeGeo() {
+ var parts = [], sign;
+ var cBody = 0x5F4029, cDoor = 0x714E33, cDark = 0x452E1C, cHandle = 0x23271A, cFoot = 0x412C1B;
+ /* 柜体：y -0.46..0.48，x/z 略缩给门板留位 */
+ parts.push({ g: pBoxG(0.96, 0.90, 0.94, 0, 0.025, 0), c: cBody, n: 'cabinet' });
+ /* 楣板 + 踢脚 */
+ parts.push({ g: pBoxG(1.0, 0.10, 0.98, 0, 0.45, 0), c: cDark, n: 'cornice' });
+ parts.push({ g: pBoxG(1.0, 0.07, 0.98, 0, -0.465, 0), c: cDark, n: 'plinth' });
+ /* 双开门（前面 z=+0.5），各 0.47 宽，中缝 0.02 */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.47, 0.80, 0.028, sign * 0.245, 0.03, 0.478), c: cDoor, n: 'door' + (sign > 0 ? 'R' : 'L') });
+  /* 门板内凹装饰条 */
+  parts.push({ g: pBoxG(0.33, 0.62, 0.014, sign * 0.245, 0.05, 0.492), c: cBody, n: 'doorPanel' + sign });
+  /* 把手：中缝两侧竖条 */
+  parts.push({ g: pBoxG(0.016, 0.17, 0.022, sign * 0.055, 0.02, 0.489), c: cHandle, n: 'handle' + sign });
+ }
+ /* 柜脚 */
+ for (sign = -1; sign <= 1; sign += 2) {
+ }
+ return pMerge(parts);
+}
+
+/* 跑步机 170×80×130：跑台 + 碳黑跑带 + 前立柱 + 蓝色控制台 + 扶手 */
+function pTreadmillGeo() {
+ var parts = [], sign, i;
+ var cFrame = 0x24282C, cBelt = 0x101215, cEdge = 0x413B3C, cDeck = 0x1D2126;   /* [R35-F] 石墨压深，与落地镜/电视拉开明度档 */
+ var cCtrl = 0x3C444C, cScreen = 0x2FA8E0, cHandle = 0x453B38, cRoll = 0x534845, cBtn = 0x6A5E5A;
+ /* 坐标系：x=170cm 长轴（人站的方向），y=130cm 高，z=80cm 宽。
+    控制台是横跨 z 的横板（不是 x），扶手沿 x 伸展——首轮把两者轴搞反，控制台占了 102cm 长。 */
+ parts.push({ g: pBoxG(1.0, 0.16, 0.62, 0, -0.42, 0), c: cFrame, n: 'deck' });
+ parts.push({ g: pBoxG(0.94, 0.030, 0.44, 0, -0.320, 0), c: cBelt, n: 'belt' });
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.94, 0.055, 0.07, 0, -0.308, sign * 0.255), c: cEdge, n: 'edge' + sign });
+ }
+ /* 前后滚筒（轴沿 z 的金属圆柱） */
+ parts.push({ g: pCylG(0.095, 0.095, 0.44, 'z', 18, -0.398, -0.335, 0), c: cRoll, n: 'rollF' });
+ parts.push({ g: pCylG(0.095, 0.095, 0.44, 'z', 18, 0.398, -0.335, 0), c: cRoll, n: 'rollR' });
+ /* 前立柱两根（z 两侧） */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.065, 0.66, 0.065, -0.455, -0.01, sign * 0.255), c: cHandle, n: 'post' + sign });
+ }
+ /* 控制台：横跨 z 0.72（58cm），x 方向只 0.14（24cm）厚 */
+ parts.push({ g: pBoxG(0.14, 0.21, 0.72, -0.425, 0.395, 0), c: cCtrl, n: 'console' });
+ /* 屏幕朝跑者（+x 面） */
+ parts.push({ g: pBoxG(0.024, 0.145, 0.60, -0.346, 0.400, 0), c: cScreen, n: 'screen' });
+ parts.push({ g: pBoxG(0.030, 0.032, 0.50, -0.346, 0.275, 0), c: cBtn, n: 'btnBar' });
+ /* 两侧扶手：沿 x 从控制台伸向跑台后段 */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.62, 0.045, 0.045, -0.02, 0.235, sign * 0.305), c: cHandle, n: 'rail' + sign });
+  parts.push({ g: pBoxG(0.045, 0.16, 0.045, 0.29, 0.155, sign * 0.305), c: cHandle, n: 'railEnd' + sign });
+ }
+ /* 尾部护罩 */
+ parts.push({ g: pBoxG(0.10, 0.16, 0.62, 0.45, -0.40, 0), c: cDeck, n: 'tail' });
+ return pMerge(parts);
+}
+
+/* 折叠桌（折叠态）120×60×12：桌面平铺 + 桌腿收拢贴在桌面下方的钢管腿架 */
+function pDeskFoldGeo() {
+ var parts = [], sign, i;
+ var cTop = 0x66507A, cEdge = 0x4A3459, cLeg = 0x4A5158, cHinge = 0x2E343A, cPad = 0x606870;
+ /* [R35-Z3] 折叠态按真机形态做「双板夹腿架」：上桌板 + 收拢腿架 + 下桌板（占位总高 12cm）。
+    上一版（Z2）只有上桌板，腿架散在下层，腿与腿之间是空的，从侧面看整张桌子像悬空三成；
+    改成上下两块桌板把折叠腿夹在中间，底面即下桌板 = 贴地，且仍是「腿已折叠收进桌面里」的读法。 */
+ parts.push({ g: pBoxG(1.0, 0.31, 1.0, 0, 0.345, 0), c: cTop, n: 'top' });
+ parts.push({ g: pBoxG(0.985, 0.05, 0.985, 0, 0.155, 0), c: cEdge, n: 'topEdge' });
+ /* 折叠腿架上层：两条腿管沿 x 收拢（z=±0.22） */
+ for (i = 0; i < 2; i++) {
+  parts.push({ g: pBoxG(0.90, 0.17, 0.17, 0, 0.030, (i ? 0.22 : -0.22)), c: cLeg, n: 'legUpX' + i });
+  parts.push({ g: pBoxG(0.055, 0.15, 0.19, (i ? 0.44 : -0.44), 0.030, (i ? 0.22 : -0.22)), c: cPad, n: 'legCapX' + i });
+ }
+ /* 折叠腿架下层：两条腿管沿 z 收拢（与上层成十字） */
+ for (i = 0; i < 2; i++) {
+  parts.push({ g: pBoxG(0.17, 0.17, 0.86, (i ? 0.22 : -0.22), -0.130, 0), c: cLeg, n: 'legLoZ' + i });
+ }
+ /* 折叠铰链块：四条腿端头，仅在两块桌板之间的窄边外露 */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.060, 0.09, 0.13, sign * 0.443, 0.135, 0.22), c: cHinge, n: 'hingeX' + sign });
+  parts.push({ g: pBoxG(0.060, 0.09, 0.13, sign * 0.443, 0.135, -0.22), c: cHinge, n: 'hingeX2' + sign });
+  parts.push({ g: pBoxG(0.13, 0.09, 0.060, 0.22, 0.135, sign * 0.443), c: cHinge, n: 'hingeZ' + sign });
+  parts.push({ g: pBoxG(0.13, 0.09, 0.060, -0.22, 0.135, sign * 0.443), c: cHinge, n: 'hingeZ2' + sign });
+ }
+ /* 下桌板（折叠后与上桌板面对面合拢，兼作落地底面） */
+ parts.push({ g: pBoxG(1.0, 0.31, 1.0, 0, -0.345, 0), c: cTop, n: 'bottom' });
+ /* 侧边锁定卡扣 */
+ parts.push({ g: pBoxG(0.075, 0.030, 0.075, 0, -0.155, 0), c: cPad, n: 'lockBar' });
+ return pMerge(parts);
+}
+
+/* 椅子 45×45×90：织物座面 + 靠背 + 四条木腿（座面与靠背同色，腿另色便于辨认） */
+function pChairGeo() {
+ var parts = [], sign, i;
+ var cSeat = 0x9A6873, cBack = 0x9A6873, cWood = 0x5A4530, cWoodD = 0x453521;
+ /* 四腿 y -0.50..-0.02 */
+ for (i = 0; i < 4; i++) {
+  parts.push({ g: pBoxG(0.075, 0.48, 0.075, (i < 2 ? -0.42 : 0.42), -0.26, (i % 2 ? 0.42 : -0.42)), c: cWood, n: 'leg' + i });
+ }
+ /* 座面 y -0.02..0.08（含软垫厚 9cm 按比例） */
+ parts.push({ g: pBoxG(0.97, 0.10, 0.97, 0, 0.03, 0), c: cSeat, n: 'seat' });
+ /* 座面下木框 */
+ parts.push({ g: pBoxG(0.92, 0.045, 0.92, 0, -0.045, 0), c: cWoodD, n: 'seatFrame' });
+ /* 靠背立柱（后侧 z=-0.44） */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(0.07, 0.42, 0.07, sign * 0.42, 0.29, -0.44), c: cWood, n: 'backPost' + sign });
+ }
+ /* 靠背板 */
+ parts.push({ g: pBoxG(0.96, 0.32, 0.10, 0, 0.32, -0.44), c: cBack, n: 'backPanel' });
+ /* 靠背横撑（顶部圆头） */
+ parts.push({ g: pBoxG(0.96, 0.05, 0.055, 0, 0.475, -0.44), c: cWood, n: 'backCap' });
+ return pMerge(parts);
+}
+
+/* 茶几 100×55×45：橡木桌面 + 四条腿 + 下层搁板 */
+function pCoffeeTableGeo() {
+ var parts = [], i;
+ var cTop = 0x94604B, cEdge = 0x7A4C3A, cLeg = 0x2E2A24, cShelf = 0x855640;
+ /* 桌面 y 0.365..0.495 */
+ parts.push({ g: pBoxG(1.0, 0.13, 1.0, 0, 0.43, 0), c: cTop, n: 'top' });
+ parts.push({ g: pBoxG(0.96, 0.04, 0.96, 0, 0.345, 0), c: cEdge, n: 'topEdge' });
+ /* 四腿 y -0.50..0.30 */
+ for (i = 0; i < 4; i++) {
+  parts.push({ g: pBoxG(0.075, 0.80, 0.075, (i < 2 ? -0.44 : 0.44), -0.10, (i % 2 ? 0.44 : -0.44)), c: cLeg, n: 'leg' + i });
+ }
+ /* 下层搁板 y -0.28..-0.23 */
+ parts.push({ g: pBoxG(0.86, 0.05, 0.80, 0, -0.255, 0), c: cShelf, n: 'shelf' });
+ return pMerge(parts);
+}
+
+/* 电视 130×15×75：黑屏体 + 屏幕面 + 金属边框 + 底座 */
+function pTvGeo() {
+ var parts = [];
+ var cShell = 0x101D25, cScreen = 0x0E1216, cBezel = 0x2C3A44, cStand = 0x1C2830, cGlow = 0x1C3A55;
+ /* 屏体 y -0.32..0.50 */
+ parts.push({ g: pBoxG(1.0, 0.82, 0.24, 0, 0.09, 0), c: cShell, n: 'shell' });
+ /* 屏幕面（前 z=+）：略内缩，一条极暗的蓝灰渐变代表熄屏反光 */
+ parts.push({ g: pBoxG(0.94, 0.72, 0.022, 0, 0.09, 0.128), c: cScreen, n: 'screen' });
+ parts.push({ g: pBoxG(0.94, 0.10, 0.012, 0, -0.24, 0.142), c: cGlow, n: 'glow' });
+ /* 边框四条 */
+ parts.push({ g: pBoxG(1.0, 0.030, 0.030, 0, 0.478, 0.135), c: cBezel, n: 'bezelT' });
+ parts.push({ g: pBoxG(1.0, 0.030, 0.030, 0, -0.315, 0.135), c: cBezel, n: 'bezelB' });
+ parts.push({ g: pBoxG(0.030, 0.80, 0.030, -0.485, 0.09, 0.135), c: cBezel, n: 'bezelL' });
+ parts.push({ g: pBoxG(0.030, 0.80, 0.030, 0.485, 0.09, 0.135), c: cBezel, n: 'bezelR' });
+ /* 底座 + 支颈 */
+ parts.push({ g: pBoxG(0.10, 0.18, 0.14, 0, -0.41, 0), c: cStand, n: 'neck' });
+ parts.push({ g: pBoxG(0.46, 0.045, 0.70, 0, -0.4775, 0), c: cStand, n: 'stand' });
+ return pMerge(parts);
+}
+
+/* 落地镜（躺平）160×40×5：木框 + 双面镜面（上方为主视面） */
+function pMirrorGeo() {
+ var parts = [], i, sign;
+ var cFrame = 0x2B3138, cFrameD = 0x1E2328, cGlass = 0xB6D3E8;   /* [R35-W] mirror glass cooler */
+ /* 躺平姿态：厚度方向 = y。下半木框 + 上半镜面层，镜面顶面即 y=0.5，
+    镜面与框顶不同面（框顶 0.22，镜面 0.22~0.50），不会 z-fighting。 */
+ parts.push({ g: pBoxG(1.0, 0.72, 1.0, 0, -0.14, 0), c: cFrame, n: 'frame' });
+ parts.push({ g: pBoxG(0.94, 0.28, 0.90, 0, 0.36, 0), c: cGlass, n: 'mirrorTop' });
+ /* 四边包角条（深木，勾镜面边界；贴在镜面上表面） */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(1.0, 0.06, 0.06, 0, 0.47, sign * 0.47), c: cFrameD, n: 'edgeZ' + sign });
+  parts.push({ g: pBoxG(0.06, 0.06, 1.0, sign * 0.47, 0.47, 0), c: cFrameD, n: 'edgeX' + sign });
+ }
+ /* 背面防滑垫（在 -y 面，可见于底面视角） */
+ for (i = 0; i < 2; i++) {
+  parts.push({ g: pBoxG(0.70, 0.02, 0.10, 0, -0.49, (i ? 0.20 : -0.20)), c: 0x3A4046, n: 'pad' + i });
+ }
+ return pMerge(parts);
+}
+
+
+/* [R35] 表面完整性审计：焊接后开放边界边(openE) > 0 即有孔洞；
+   comps 远大于 parts（部件数）即被碎面拼接。
+/*   __API__.surfAudit('p_washer') 单查，或 __API__.surfAudit() 全扫 PROC 键。
+    [R35-D 202611200115] voxFor 支持程序化几何真实体素：stackDataOfProc(key) 取 procCache
+    几何、AABB 归一化 ±0.5 后喂 voxelize，与 makeObjSized 铺满口径同源（旧版程序化模型误走实心盒）。 */
+function surfAudit(key) {
+ var out = [], keys = key ? [key] : Object.keys(PROC_KEYS);
+ for (var ki = 0; ki < keys.length; ki++) {
+  var k = keys[ki], g = null;
+  if (PROC_KEYS[k]) { buildProcMesh(k); g = procCache[k]; }
+  else if (MESH_DATA[k]) { var rm = buildRealMesh(k, 0xffffff); g = rm.geometry || null; }
+  if (!g) { out.push({ key: k, err: 'no-geo' }); continue; }
+  var pos = g.getAttribute('position'), idx = g.getIndex(), pa = pos.array, nv = pos.count;
+  var map = {}, uq = 0, remap = new Int32Array(nv), v, qx, qy, qz, kk;
+  for (v = 0; v < nv; v++) {
+   qx = Math.round(pa[v * 3] * 1e5); qy = Math.round(pa[v * 3 + 1] * 1e5); qz = Math.round(pa[v * 3 + 2] * 1e5);
+   kk = qx + '_' + qy + '_' + qz;
+   if (map[kk] === undefined) map[kk] = uq++;
+   remap[v] = map[kk];
+  }
+  var ia = idx ? idx.array : null, nt = idx ? idx.count / 3 : nv / 3;
+  var em = {}, t, a, b, c, e1, e2, e3;
+  for (t = 0; t < nt; t++) {
+   a = remap[ia ? ia[t * 3] : t * 3]; b = remap[ia ? ia[t * 3 + 1] : t * 3 + 1]; c = remap[ia ? ia[t * 3 + 2] : t * 3 + 2];
+   e1 = a < b ? a + '_' + b : b + '_' + a;
+   e2 = b < c ? b + '_' + c : c + '_' + b;
+   e3 = c < a ? c + '_' + a : a + '_' + c;
+   em[e1] = (em[e1] || 0) + 1; em[e2] = (em[e2] || 0) + 1; em[e3] = (em[e3] || 0) + 1;
+  }
+  var openE = 0, nonMan = 0, ek;
+  for (ek in em) { if (em[ek] === 1) openE++; else if (em[ek] > 2) nonMan++; }
+  var par = new Int32Array(uq), u;
+  for (u = 0; u < uq; u++) par[u] = u;
+  var fd = function (x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  for (t = 0; t < nt; t++) {
+   var A = fd(remap[ia ? ia[t * 3] : t * 3]), B = fd(remap[ia ? ia[t * 3 + 1] : t * 3 + 1]), C = fd(remap[ia ? ia[t * 3 + 2] : t * 3 + 2]);
+   if (A !== B) par[B] = A;
+   A = fd(A); if (A !== C) par[C] = A;
+  }
+  var used = {}, comps = 0, rt;
+  for (t = 0; t < nt; t++) { rt = fd(remap[ia ? ia[t * 3] : t * 3]); if (!used[rt]) { used[rt] = 1; comps++; } }
+  var parts = (g.userData.partList) ? g.userData.partList.length : 0;
+  out.push({ key: k, nv: nv, nt: Math.round(nt), weldV: uq, openE: openE, nonMan: nonMan,
+   comps: comps, parts: parts, ok: (openE === 0 && comps <= Math.max(1, parts)) });
+ }
+ return out;
+}
+
+
+/* [R35-U] 实体性审计：异源审查指「openE=0 不足以排除视觉空洞」，
+   补三项机制判据——非流形边、退化三角、每连通分量的有向体积符号（负=法线整体朝内，
+   在 FrontSide 下被背面剔除，用户看到的就是"缺面/空洞"）。
+   用法 __API__.meshSolidAudit('p_washer') / meshSolidAudit() 全扫。 */
+function meshSolidAudit(key) {
+ var keys = key ? [key] : (Object.keys(PROC_KEYS).concat(['box','bike','sofa','mattress','fridge','shelf']));
+ var out = [];
+ for (var ki = 0; ki < keys.length; ki++) {
+  var k = keys[ki], m = null;
+  try { m = PROC_KEYS[k] ? buildProcMesh(k) : (MESH_DATA[k] ? buildRealMesh(k, 0xffffff) : null); } catch (e) { m = null; }
+  if (!m || !m.geometry) { out.push({ key: k, err: 'no-geo' }); continue; }
+  var g = m.geometry, pa = g.getAttribute('position'), idx = g.getIndex(), nv = pa.count;
+  var _ci2 = g.userData && g.userData.cleanInfo ? g.userData.cleanInfo : null;
+  var map = {}, uq = 0, remap = new Int32Array(nv), v, qx, qy, qz, kk, i;
+  for (v = 0; v < nv; v++) {
+   qx = Math.round(pa.getX(v) * 1e5); qy = Math.round(pa.getY(v) * 1e5); qz = Math.round(pa.getZ(v) * 1e5);
+   kk = qx + '_' + qy + '_' + qz;
+   if (map[kk] === undefined) map[kk] = uq++;
+   remap[v] = map[kk];
+  }
+  var ia = idx ? idx.array : null, nt = idx ? idx.count / 3 : nv / 3;
+  var px = new Float64Array(uq), py = new Float64Array(uq), pz = new Float64Array(uq);
+  for (v = 0; v < nv; v++) { px[remap[v]] = pa.getX(v); py[remap[v]] = pa.getY(v); pz[remap[v]] = pa.getZ(v); }
+  var em = {}, t, a, b, c, e1, e2, e3, ax, ay, az, bx, by, bz, cx2, cy2, cz2, nx2, ny2, nz2, len;
+  var openE = 0, nonMan = 0, degen = 0, tri = [], area, FK = {};
+  for (t = 0; t < nt; t++) {
+   a = remap[ia ? ia[t * 3] : t * 3]; b = remap[ia ? ia[t * 3 + 1] : t * 3 + 1]; c = remap[ia ? ia[t * 3 + 2] : t * 3 + 2];
+   ax = px[b] - px[a]; ay = py[b] - py[a]; az = pz[b] - pz[a];
+   bx = px[c] - px[a]; by = py[c] - py[a]; bz = pz[c] - pz[a];
+   nx2 = ay * bz - az * by; ny2 = az * bx - ax * bz; nz2 = ax * by - ay * bx;
+   len = Math.sqrt(nx2 * nx2 + ny2 * ny2 + nz2 * nz2);
+   if (len < 1e-9) degen++;
+   tri.push([a, b, c]);
+   var so = [a, b, c].sort(function (p1, p2) { return p1 - p2; });
+   FK[so[0] + '_' + so[1] + '_' + so[2]] = (FK[so[0] + '_' + so[1] + '_' + so[2]] || 0) + 1;
+   e1 = a < b ? a + '_' + b : b + '_' + a;
+   e2 = b < c ? b + '_' + c : c + '_' + b;
+   e3 = c < a ? c + '_' + a : a + '_' + c;
+   em[e1] = (em[e1] || 0) + 1; em[e2] = (em[e2] || 0) + 1; em[e3] = (em[e3] || 0) + 1;
+  }
+  for (var ek in em) { if (em[ek] === 1) openE++; else if (em[ek] > 2) nonMan++; }
+  var dupTri = 0; for (var fk in FK) { if (FK[fk] > 1) dupTri += FK[fk] - 1; }
+  var par = new Int32Array(uq), u;
+  for (u = 0; u < uq; u++) par[u] = u;
+  var fd = function (x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  for (t = 0; t < tri.length; t++) {
+   var A = fd(tri[t][0]), B = fd(tri[t][1]), C = fd(tri[t][2]);
+   if (A !== B) par[B] = A; A = fd(A); if (A !== C) par[C] = A;
+  }
+  var vol = {}, cnt = {}, compId;
+  for (t = 0; t < tri.length; t++) {
+   compId = fd(tri[t][0]);
+   a = tri[t][0]; b = tri[t][1]; c = tri[t][2];
+   var d = (px[a] * (py[b] * pz[c] - pz[b] * py[c]) - py[a] * (px[b] * pz[c] - pz[b] * px[c]) + pz[a] * (px[b] * py[c] - py[b] * px[c])) / 6;
+   vol[compId] = (vol[compId] || 0) + d; cnt[compId] = (cnt[compId] || 0) + 1;
+  }
+  var vols = [], neg = 0, comps = 0, minAbs = 0;
+  for (var ck in vol) {
+   comps++; vols.push(+vol[ck].toFixed(6));
+   if (vol[ck] < 0) neg++;
+   var av = Math.abs(vol[ck]); if (minAbs === 0 || av < minAbs) minAbs = av;
+  }
+  var mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+  for (v = 0; v < uq; v++) {
+   if (px[v] < mn[0]) mn[0] = px[v]; if (px[v] > mx[0]) mx[0] = px[v];
+   if (py[v] < mn[1]) mn[1] = py[v]; if (py[v] > mx[1]) mx[1] = py[v];
+   if (pz[v] < mn[2]) mn[2] = pz[v]; if (pz[v] > mx[2]) mx[2] = pz[v];
+  }
+  var bboxVol = (mx[0] - mn[0]) * (mx[1] - mn[1]) * (mx[2] - mn[2]);
+  out.push({ key: k, nv: nv, nt: Math.round(nt), clean: _ci2, weldV: uq, openE: openE, nonMan: nonMan, degen: degen, dupTri: dupTri,
+   comps: comps, negComps: neg, minAbsVol: +minAbs.toFixed(6), sumAbsVolPctBBox: +(Math.abs(vols.reduce(function (s2, q) { return s2 + Math.abs(q); }, 0)) / Math.max(1e-9, bboxVol) * 100).toFixed(2),
+   bbox: [+(mx[0] - mn[0]).toFixed(4), +(mx[1] - mn[1]).toFixed(4), +(mx[2] - mn[2]).toFixed(4)],
+   solid: (openE === 0 && nonMan === 0 && degen === 0 && neg === 0) });
+ }
+ return out;
+}
+
 function buildProcMesh(key) {
  if (!procCache[key]) {
-  procCache[key] = (key === 'p_suit') ? pSuitGeo()
-                 : (key === 'p_crate') ? pCrateGeo()
-                 : pCartonGeo(key === 'p_plastic');
+  procCache[key] = PROC_GEN[key] ? PROC_GEN[key]() : pCartonGeo(key === 'p_plastic');
+  procCache[key] = cleanGeo(procCache[key], key);   /* [R35-V] 程序化件同洗（p_plastic 有 48 退化面） */
  }
  if (!procMats[key]) {
   var pm = PROC_MAT[key] || { rough: 0.7, metal: 0.0 };
@@ -3414,6 +3866,67 @@ function boxMeshOf(cat) {
  return cat.mesh || null;
 }
 
+/* [R35-E] 真实资产顶点色重映射：把资产自带色拉到品类主色，同时保留局部明暗与暗部。
+   rel = 该顶点亮度 / 该模型平均亮度，夹在 [0.55, 1.45]；
+   rel < 0.8 的暗部（轮胎/背光面/缝隙影）重染强度降到 s*0.35，保住暗部不被刷平。 */
+/* [R35-V] 几何清洗（安全版）：只删「退化三角（面积≈0）」，且要求它的三条边在同网格里各另有 ≥2 个共边面，
+   删后这些边仍 ≥2 面 → 不会把水密壳开出洞。实测：box 拍平后 2481 个退化面里绝大多数边被 3~4 面共用，可安全删；
+   真实资产 bike/sofa/mattress/fridge/shelf 的 nonMan 主要来自「共面重叠补丁面」，删掉反而露出边界边（openE 0→223），
+   故重复面一律保留（它们完全共面同顶点，深度值相同，Three 用 LessEqual 深度测试不会闪）。 */
+function cleanGeo(geo, tag) {
+ var idx = geo.getIndex(), pa = geo ? geo.getAttribute('position') : null;
+ if (!idx || !pa) return geo;
+ var ia = idx.array, nt = idx.count / 3, i, a, b, c, ax, ay, az, bx, by, bz, nx2, ny2, nz2, ar2, em = {}, k1, k2, k3;
+ var ek = function (p1, p2) { return p1 < p2 ? p1 + '_' + p2 : p2 + '_' + p1; };
+ for (i = 0; i < nt; i++) {
+  a = ia[i * 3]; b = ia[i * 3 + 1]; c = ia[i * 3 + 2];
+  k1 = ek(a, b); k2 = ek(b, c); k3 = ek(c, a);
+  em[k1] = (em[k1] || 0) + 1; em[k2] = (em[k2] || 0) + 1; em[k3] = (em[k3] || 0) + 1;
+ }
+ var keep = [], delDeg = 0, delDupGuard = 0;
+ for (i = 0; i < nt; i++) {
+  a = ia[i * 3]; b = ia[i * 3 + 1]; c = ia[i * 3 + 2];
+  ax = pa.getX(b) - pa.getX(a); ay = pa.getY(b) - pa.getY(a); az = pa.getZ(b) - pa.getZ(a);
+  bx = pa.getX(c) - pa.getX(a); by = pa.getY(c) - pa.getY(a); bz = pa.getZ(c) - pa.getZ(a);
+  nx2 = ay * bz - az * by; ny2 = az * bx - ax * bz; nz2 = ax * by - ay * bx;
+  ar2 = nx2 * nx2 + ny2 * ny2 + nz2 * nz2;
+  if (ar2 < 1e-14) {
+   k1 = ek(a, b); k2 = ek(b, c); k3 = ek(c, a);
+   var ks = [k1, k2, k3], safe = true, uqk = {};
+   for (var t2 = 0; t2 < 3; t2++) { if (uqk[ks[t2]]) continue; uqk[ks[t2]] = 1; if ((em[ks[t2]] || 0) < 3) safe = false; }
+   if (safe) { delDeg++; continue; }
+  }
+  keep.push(a, b, c);
+ }
+ if (keep.length >= ia.length) { geo.userData.cleanInfo = { key: tag, oldT: Math.round(nt), newT: Math.round(nt), delDeg: 0, delDup: 0 }; return geo; }
+ geo.setIndex(keep);
+ geo.userData.cleanInfo = { key: tag, oldT: Math.round(nt), newT: Math.round(keep.length / 3), delDeg: delDeg, delDup: 0 };
+ return geo;
+}
+
+function recolorGeo(geo, info) {
+ var ca = geo.getAttribute('color').array, n = ca.length, i, sum = 0, cnt = 0;
+ for (i = 0; i < n; i += 3) { sum += 0.2126 * ca[i] + 0.7152 * ca[i + 1] + 0.0722 * ca[i + 2]; cnt++; }
+ var mL = cnt ? (sum / cnt) / 255 : 0.5;
+ if (mL < 0.02) mL = 0.02;
+ var t = pCol(info.hex), s = info.s, k = (info.k == null ? 1 : info.k);
+ for (i = 0; i < n; i += 3) {
+  var r = ca[i] / 255, g = ca[i + 1] / 255, b = ca[i + 2] / 255;
+  var l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  var rel = l / mL; if (rel > 1.45) rel = 1.45; if (rel < 0.55) rel = 0.55;
+  var ss = (rel < 0.8 ? s * 0.35 : s);
+  var tr = t[0] * rel * k, tg = t[1] * rel * k, tb = t[2] * rel * k;
+  /* [R35-M] 原来是 Math.min(1,tr) 单通道截到 1：某一通道先撞顶就把亮面刷成纯白，
+     淡色件（床垫/冰箱）渲出中性灰的成因之一。改为三通道同比例缩放，色相不变。 */
+  var tm = tr > tg ? tr : tg; if (tb > tm) tm = tb;
+  if (tm > 1) { tr /= tm; tg /= tm; tb /= tm; }
+  ca[i]     = Math.min(255, Math.max(0, (r * (1 - ss) + tr * ss) * 255));
+  ca[i + 1] = Math.min(255, Math.max(0, (g * (1 - ss) + tg * ss) * 255));
+  ca[i + 2] = Math.min(255, Math.max(0, (b * (1 - ss) + tb * ss) * 255));
+ }
+ geo.getAttribute('color').needsUpdate = true;
+}
+
 function buildRealMesh(key, fallbackColor) {
  /* [R23] 程序化模型（纸箱/塑料箱/行李箱）：几何与材质自己带，不走 MESH_DATA 解码链 */
  if (PROC_KEYS[key]) return buildProcMesh(key);
@@ -3436,6 +3949,7 @@ function buildRealMesh(key, fallbackColor) {
  /* [R22-ALIGN] 只对盒状件扶正：椅/沙发/跑步机本体就有斜面（靠背、把手、跑带），强扶会变形 */
  if (PROJCFG.align && ALIGN_KEYS[key]) unskewGeo(geo, key);
  if (PROJCFG.align && SNAP_KEYS[key]) snapGeo(geo, key);   /* [R22-SNAP] 见 snapGeo 注释 */
+ geo = cleanGeo(geo, key);   /* [R35-V] 必须在扶正/拍平之后：snapGeo 把斜边压平会制造大量零面积三角与共面重复面（实测 box 拍平后 2476 退化 + 463 重复）*/ 
  if (!d.nrm) geo.computeVertexNormals();
  /* 顶点色：打包时随模型一起写入 uint8 RGB（归一化），单材质一模型，不引贴图 */
  var useVC = !!d.col;
@@ -3453,10 +3967,12 @@ function buildRealMesh(key, fallbackColor) {
   }
   geo.getAttribute('color').needsUpdate = true;
  }
+ /* [R35-E] 真实资产按品类主色重染（须在 SAT_BOOST 之后，目标色 pCol 已含同一套饱和补偿） */
+ if (useVC && RECOLOR[key]) recolorGeo(geo, RECOLOR[key]);
  /* P0.5：深色物件最低亮度下限 —— 顶点色平均亮度 < 0.30 的模型（自行车/跑步机黑色件等），
    材质乘数抬到 1.35：等比提亮、不改色相、不压明暗关系，避免在暗环境里糊成剪影 */
  var darkBoost = 1.0;
- if (useVC) {
+ if (useVC && !RECOLOR[key]) {
   var cc = b64bytes(d.col), step = Math.max(3, Math.floor(cc.length / 9000) * 3), sum = 0, cnt = 0;
   for (var ci = 0; ci + 2 < cc.length; ci += step) {
    sum += 0.2126 * cc[ci] + 0.7152 * cc[ci + 1] + 0.0722 * cc[ci + 2]; cnt++;
@@ -3475,8 +3991,8 @@ function buildRealMesh(key, fallbackColor) {
   /* T-03（第6轮）B 判据：金属件 metalness 0.32 会让暗面几乎不参与漫反射（只剩镜面高光），
     单件最暗面/最亮面比只有 40% → 假黑。统一把高金属度件降为 0.16 并把 roughness 抬到 ≥0.62，
     让补光能真正落到暗面上；低金属度件参数不动。 */
-  roughness: (d.rough != null ? ((d.metal != null && d.metal > 0.2) ? Math.max(d.rough, 0.62) : d.rough) : 0.72),
-  metalness: (d.metal != null ? (d.metal > 0.2 ? 0.16 : d.metal) : 0.0),
+  roughness: (REAL_MAT[key] ? REAL_MAT[key].rough : (d.rough != null ? ((d.metal != null && d.metal > 0.2) ? Math.max(d.rough, 0.62) : d.rough) : 0.72)),
+  metalness: (REAL_MAT[key] ? REAL_MAT[key].metal : (d.metal != null ? (d.metal > 0.2 ? 0.16 : d.metal) : 0.0)),
   /* T-03（第6轮）B 判据根因：DoubleSide 下背面法线朝内、光照方向判反 → 内侧/背光面
     被算成纯黑（自行车最暗面只有最亮面 40%）。体素网格是闭合体，改 FrontSide 消除背面假黑，
     同时在深色件上加一点点自发光地板（emissive 0.06）兜住自遮挡缝隙。 */
@@ -3486,12 +4002,38 @@ function buildRealMesh(key, fallbackColor) {
   vertexColors: useVC
  });
  if (darkBoost > 1.2) mat.emissive = new T.Color(0xffffff).multiplyScalar(0.13);
+ /* [R35-H] 本色自发光必须与「重染后的顶点色」同源。此前取 fallbackColor，可预缓存那一路
+    传的是 0xffffff（见 buildRealMesh(k, 0xffffff)），于是所有真实件都被垫了一层灰白自发光，
+    色相被冲淡、白件之间更难分辨。改为按顶点色平均色生成，并沿等亮度方向放大 EMB 倍，
+    让色相在 ACES 与暖光下仍能显形。 */
+ if (useVC) {
+  var _ca2 = geo.getAttribute('color').array;
+  var _st2 = Math.max(3, Math.floor((_ca2.length / 3) / 2400) * 3);
+  var _sr = 0, _sg = 0, _sb = 0, _sn = 0;
+  for (var _ci2 = 0; _ci2 + 2 < _ca2.length; _ci2 += _st2) {
+   _sr += _ca2[_ci2]; _sg += _ca2[_ci2 + 1]; _sb += _ca2[_ci2 + 2]; _sn++;
+  }
+  if (_sn) {
+   var EMB = 1.75, EMR = 0.38;
+   _sr /= _sn * 255; _sg /= _sn * 255; _sb /= _sn * 255;
+   var _lum = 0.2126 * _sr + 0.7152 * _sg + 0.0722 * _sb;
+   var _er = (_lum + (_sr - _lum) * EMB) * EMR;
+   var _eg = (_lum + (_sg - _lum) * EMB) * EMR;
+   var _eb = (_lum + (_sb - _lum) * EMB) * EMR;
+   /* 亮度不够时按比例抬到最低可辨水平，避免纯黑件自发光被夹成 0 */
+   var _emax = Math.max(_er, _eg, _eb) || 1;
+   if (_emax < 0.10) { var _k2 = 0.10 / _emax; _er *= _k2; _eg *= _k2; _eb *= _k2; }
+   mat.emissive = new T.Color(Math.min(1, Math.max(mat.emissive.r, _er)),
+                              Math.min(1, Math.max(mat.emissive.g, _eg)),
+                              Math.min(1, Math.max(mat.emissive.b, _eb)));
+  }
+ }
  if (d.tex) {
   var tex = texLoader.load('data:image/jpeg;base64,' + d.tex);
   tex.flipY = false;
   mat.map = tex; mat.needsUpdate = true;
  }
- if (darkBoost > 1) mat.color.setScalar(darkBoost);   /* P0.5 深色件提亮 */
+ if (darkBoost > 1) mat.color.multiplyScalar(darkBoost);   /* P0.5 深色件提亮：必须 preserve 色相，setScalar 会抹成灰 */
  var m = new T.Mesh(geo, mat);
  /* v59：真实模型件以前从没设过 castShadow —— 满仓 6 件全走这条路径，
    所以 shadowMap 开着也一个影子都没有。clone() 会继承这两个标记。*/
@@ -7817,6 +8359,7 @@ window.__API__ = {
     max|u_ax| ≤1.02 = 该面平整无凸起物（把手/提手会明显 >1.1）。*/
  /* [R34 202611191820] 程序化几何原样导出（position/index/color），供离线光栅渲染取证：
     只在验收时用，不参与业务渲染。 */
+ surfAudit: surfAudit, meshSolidAudit: meshSolidAudit,
  rawProc: function (key) {
   var m = buildProcMesh(key);
   if (!m) return null;
@@ -7941,6 +8484,8 @@ window.__API__ = {
     posCount: n.geometry.attributes.position.count,
     tris: (n.geometry.index ? n.geometry.index.count : n.geometry.attributes.position.count) / 3,
     basic: !!(n.material && n.material.isMeshBasicMaterial),
+    emi: (n.material && n.material.emissive) ? n.material.emissive.getHexString() : null,
+    emiI: n.material ? n.material.emissiveIntensity : null,
     shadowPatch: !!(n.userData && n.userData.isShadowPatch),
     visible: n.visible
    });
@@ -8777,6 +9322,51 @@ window.__API__ = {
  /* R23e：单件配色量化（全隐帧 vs 仅显第 i 件帧差分）。
    必须走 gl.readPixels：three.js 默认 preserveDrawingBuffer=false，
    canvas.toDataURL / snap 在下一任务周期取到的是旧帧或空帧（已实测差 332px 而真值 3.8 万 px）。 */
+ /* [R35-Z] 体素化结果可视化审计（Q2）：给 catId 或 meshKey 与朝向序号，
+   返回 nx/ny/nz、顶面覆盖格数占比、顶面/底面 z 的极值与「底面被抬起」格占比。
+   用于判断「5cm 体素把 4cm 腿管吃掉 / 把薄件膨胀成实心板」这类几何偏差。 */
+ voxInfo: function (key, oi) {
+  var cat = null;
+  for (var i = 0; i < CATALOG.length; i++) {
+    if (CATALOG[i].id === key || CATALOG[i].mesh === key || CATALOG[i].name === key) { cat = CATALOG[i]; break; }
+  }
+  if (!cat) return { err: 'no-cat', key: key };
+  var vs = voxFor(cat);
+  if (!vs || !vs.length) return { err: 'no-vox', cat: cat.id, mesh: cat.mesh };
+  var sel = vs[oi == null ? 0 : oi]; if (!sel) return { err: 'no-oi', oi: oi, n: vs.length };
+  var tot = sel.nx * sel.ny, filled = 0, topSum = 0, topMin = 1e9, topMax = -1e9, botMin = 1e9, botMax = -1e9, raised = 0;
+  for (var k = 0; k < tot; k++) {
+   var zmx = sel.zmax[k], zmn = sel.zmin[k];
+   if (zmx > -1e8) { filled++; topSum += zmx; if (zmx < topMin) topMin = zmx; if (zmx > topMax) topMax = zmx; }
+   if (zmn < 1e8) { if (zmn < botMin) botMin = zmn; if (zmn > botMax) botMax = zmn; if (zmn > 0.5) raised++; }
+  }
+  return { cat: cat.id, mesh: cat.mesh, oi: oi == null ? 0 : oi, nOrs: vs.length, cell: VOX_CELL,
+   dims: [sel.a, sel.b, sel.c], grid: [sel.nx, sel.ny, sel.nz], cells: tot,
+   filledCells: filled, filledPct: +(filled / Math.max(1, tot) * 100).toFixed(2),
+   topMin: filled ? +topMin.toFixed(2) : null, topMax: filled ? +topMax.toFixed(2) : null,
+   topAvg: filled ? +(topSum / filled).toFixed(2) : null, botMin: botMin < 1e8 ? +botMin.toFixed(2) : null,
+   botMax: botMax > -1e8 ? +botMax.toFixed(2) : null, botRaisedPct: +(raised / Math.max(1, tot) * 100).toFixed(2),
+   bbox: [cat.l, cat.w, cat.h] };
+ },
+ /* [R35-Y] emissiveIntensity 全局缩放（A/B 实验用）：把当前场景每个非黑色 emissive 材质的
+   自发光强度设为「原始值 * k」，返回被改写的材质数。用于验证「自发光抬暗面、压缩明暗比」。 */
+ emiScale: function (k) {
+  var seen = [], changed = 0;
+  scene.traverse(function (o) {
+   if (!o.isMesh || !o.material) return;
+   var ms = (o.material.length ? o.material : [o.material]);
+   ms.forEach(function (m) {
+    if (!m || seen.indexOf(m) >= 0) return; seen.push(m);
+    var e = m.emissive;
+    if (!e || (e.r === 0 && e.g === 0 && e.b === 0)) return;
+    if (m.userData == null) m.userData = {};
+    if (m.userData._emi0 == null) m.userData._emi0 = m.emissiveIntensity;
+    m.emissiveIntensity = m.userData._emi0 * (k == null ? 1 : k);
+    m.needsUpdate = true; changed++;
+   });
+  });
+  return { changed: changed, k: k };
+ },
  pixItemColor: function (i) {
   var r = renderer, gl = (r.getContext ? r.getContext() : null);
   if (!gl) return { err: 'no gl' };
@@ -9239,6 +9829,8 @@ window.__API__ = {
      vc: !!o.material.vertexColors, hasColor: !!a,
      colorHex: o.material.color ? o.material.color.getHexString() : '',
      rough: o.material.roughness, metal: o.material.metalness,
+     emi: o.material.emissive ? o.material.emissive.getHexString() : null,
+     emiI: o.material.emissiveIntensity,
      cnt: a ? a.count : 0, itemSize: a ? a.itemSize : 0, norm: a ? !!a.normalized : null,
      first: a ? [a.array[0], a.array[1], a.array[2], a.array[3], a.array[4], a.array[5]] : null,
      verts: g.attributes.position ? g.attributes.position.count : 0
