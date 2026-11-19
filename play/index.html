@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v102</b> · 202611191245</div>
+<div id="verTag"><b>v104</b> · 202611191815</div>
 
 <div id="tripBadge"></div>
 
@@ -1302,7 +1302,10 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
       旧逻辑只是把该朝向排前面，打分照样能选到 40×40×60「立起来」的箱子：底面积更小、
       贴地分被 R27-B 削弱后「占地面积小」反而占便宜，结果箱子竖着摞、不再是从大到小叠。
       硬锁后箱子永远是 60×40×40 平放，叠放只会沿高度方向发生，符合用户规则。 */
-   if ((it._stack || it._legs) && keepH.length) {
+   /* [R34 202611191755] 加 it._sideHard：CATALOG 声明 sideHard:true 的品类（行李箱）必须平放，
+      只把它排到前面不够——L01 实测行李箱被选成 h=45 侧躺（l=26,w=68,h=45）。
+      硬锁只保留「原始高竖直」一个朝向，叠放只沿高度方向发生。 */
+   if ((it._stack || it._legs || it._sideHard) && keepH.length) {
     ors = keepH;
    } else if (keepH.length && keepH.length < ors.length) {
     ors = keepH.concat(ors.filter(o => Math.abs(o[2] - it._d.h) >= 0.01));
@@ -1563,6 +1566,21 @@ function packCore(bin, items, topPenalty, orderMode, stackBoost, dense) {
       ground: groundArea(placed) };
 }
 
+/* [R34 202611191815] 朝向硬锁统一入口：packCore 与 exactPack 共用，杜绝兜底分支绕过规则。
+   背景：L01 实测行李箱被兜底精确搜索摊成 l=26,w=68,h=45 侧躺（主路径因剩余空间仅 42 宽放不下
+   68×45×26 而失败，exactPack 拿全 6 朝向补位成功 → 件数更多被采纳 → 规则被整条旁路，历史同类 bug）。
+   硬锁集合：_stack（可堆叠箱族）/ _legs（带腿件）/ _sideHard（CATALOG 声明必须平放，如行李箱）
+   → 只保留「原始高竖直」那一组朝向。返回的是索引数组，调用方用同一索引取体素，保证对齐。 */
+function orsHardLock(it, ors) {
+ let hard = !!(it._stack || it._legs || it._sideHard);
+ const all = [];
+ for (let i = 0; i < ors.length; i++) all.push(i);
+ if (!hard) return all;
+ const keep = [];
+ for (let i = 0; i < ors.length; i++) if (Math.abs(ors[i][2] - it.h) < 0.01) keep.push(i);
+ return keep.length ? keep : all;
+}
+
 /* 失败兜底：小规模精确搜索（极点候选 + 体素碰撞 + 支撑率）
    贪心 packCore 在「大而薄 + 高」组合上必然漏解。典型案例：
    床垫 190×150×25 铺满整块底面 → 小冰箱只能叠在床垫上且无法直立（25+170 > 175），
@@ -1575,13 +1593,34 @@ function exactPack(bin, items, _budgetMs) {
  const W = bin.l - 2 * BIN_PAD, D = bin.w - 2 * BIN_PAD, H = bin.h - 2 * BIN_PAD;
  const meta = items.map(function (it) {
   const d = { l: it.l, w: it.w, h: it.h };
-  return { it: it, ors: orientations(d), vox: voxelizeBox(d, cell) };
+  const orsAll = orientations(d), voxAll = voxelizeBox(d, cell);
+  /* [R34 202611191815] 兜底搜索必须服从与 packCore 相同的朝向硬锁，否则规则被旁路 */
+  const idx = orsHardLock(it, orsAll);
+  const ors = [], vox = [];
+  for (let i = 0; i < idx.length; i++) { ors.push(orsAll[idx[i]]); vox.push(voxAll[idx[i]]); }
+  return { it: it, ors: ors, vox: vox, oidx: idx };
  });
- const order = meta.map(function (m, i) { return i; }).sort(function (a, b) {
-  const va = meta[a].it.l * meta[a].it.w * meta[a].it.h;
-  const vb = meta[b].it.l * meta[b].it.w * meta[b].it.h;
-  return vb - va;
- });
+ /* [R34 202611191815] 排序策略表：单一「体积降序」会漏解。实测 L01（S 仓 100×100×100：
+    4 件搬家箱 60×40×40 + 1 件行李箱 68×45×26 平放）——箱子先贴地铺满后，行李箱在剩余
+    所有极点上都放不下，而「箱叠箱 + 行李箱压在两只箱顶（支撑率 88%）」是有解的。
+    故精确搜索对多种排序各跑一遍，取件数最多者，全装即停（≤4 件不限时，5~14 件共享 anytime 预算）。 */
+ const _all = meta.map(function (m, i) { return i; });
+ const STRAT = [
+  function (a, b) { return meta[b].it.l * meta[b].it.w * meta[b].it.h - meta[a].it.l * meta[a].it.w * meta[a].it.h; },
+  function (a, b) {
+   const ea = Math.max(meta[a].it.l, meta[a].it.w), eb = Math.max(meta[b].it.l, meta[b].it.w);
+   if (Math.abs(ea - eb) > 1e-6) return eb - ea;
+   return meta[b].it.h - meta[a].it.h;
+  },
+  function (a, b) { return meta[a].it.h - meta[b].it.h || meta[b].it.l * meta[b].it.w - meta[a].it.l * meta[a].it.w; },
+  function (a, b) {
+   const ha = (meta[a].it._sideHard || meta[a].it._stack || meta[a].it._legs) ? 0 : 1;
+   const hb = (meta[b].it._sideHard || meta[b].it._stack || meta[b].it._legs) ? 0 : 1;
+   if (ha !== hb) return ha - hb;
+   return meta[b].it.l * meta[b].it.w * meta[b].it.h - meta[a].it.l * meta[a].it.w * meta[a].it.h;
+  }
+ ];
+ let order = _all.slice().sort(STRAT[0]);
  const placed = [];
  let _stop = false;
 
@@ -1635,7 +1674,7 @@ function exactPack(bin, items, _budgetMs) {
    for (let pi = 0; pi < pts.length; pi++) {
     const x = pts[pi][0], y = pts[pi][1], z = pts[pi][2];
     if (x + l > W + 1e-6 || y + w > D + 1e-6 || z + h > H + 1e-6) continue;
-    const box = { x: x, y: y, z: z, l: l, w: w, h: h, name: m.it.name, _oi: oi, _src: m.it, _voxPose: m.vox[oi] };
+    const box = { x: x, y: y, z: z, l: l, w: w, h: h, name: m.it.name, _oi: (m.oidx ? m.oidx[oi] : oi), _src: m.it, _voxPose: m.vox[oi] };
     if (!supportOK(box)) continue;
     if (collide(box, m.vox, oi)) continue;
     placed.push(box);
@@ -1648,10 +1687,10 @@ function exactPack(bin, items, _budgetMs) {
   return false;
  }
 
- if (!dfs(0)) return null;
- const vol = placed.reduce(function (s, b) { return s + b.l * b.w * b.h; }, 0);
- const cap = W * D * H;
- /* [FIX-DONE] 原实现用对象当键：done[obj] 全部退化成 "[object Object]"，
+ function buildResult() {
+  const vol = placed.reduce(function (s, b) { return s + b.l * b.w * b.h; }, 0);
+  const cap = W * D * H;
+  /* [FIX-DONE] 原实现用对象当键：done[obj] 全部退化成 "[object Object]"，
     只要放下一件，failed 就恒为空。改用 Set 按引用判等。 */
  const done = new Set();
  for (let i = 0; i < placed.length; i++) done.add(placed[i]._src);
@@ -1661,8 +1700,22 @@ function exactPack(bin, items, _budgetMs) {
   }),
   failed: items.filter(function (it) { return !done.has(it); }).map(function (it) { return it.name; }),
   count: placed.length, total: items.length,
-  util: vol / cap, vol: vol / 1e6, cap: cap / 1e6
- };
+   util: vol / cap, vol: vol / 1e6, cap: cap / 1e6
+  };
+ }
+
+ /* [R34 202611191815] 多排序各跑一遍，取件数最多（同件数取利用率更高）的解 */
+ let bestR = null;
+ for (let s = 0; s < STRAT.length; s++) {
+  if (_stop) break;
+  placed.length = 0;
+  order = _all.slice().sort(STRAT[s]);
+  if (!dfs(0)) continue;
+  const r = buildResult();
+  if (!bestR || r.count > bestR.count || (r.count === bestR.count && r.util > bestR.util)) bestR = r;
+  if (bestR.count === items.length) break;
+ }
+ return bestR;
 }
 
 function pack(bin, items) {
@@ -1804,7 +1857,9 @@ if (typeof window !== 'undefined' && !window.__ERRLOG__) {
 var CATALOG = [
  { id:'carton',   name:'搬家箱',  l:60,  w:40,  h:40,  boxSet:true,     mesh:'box',      color:0xb98a55, side:false,
   box:true, mat:'cardboard', tapered:false, vol:96000, std:1.2, stackable:true, legs:false, cap:true },
- { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78, stackable:true, cap:true },
+ /* [R34 202611191755] 行李箱必须平放堆叠：显式 side:false → noSide=true → R27-G 硬锁「原始高竖直」= h=26 平放，
+    且显式 side 字段不受 sideFree 关卡（L06 装车 / L07）放宽影响。竖立对叠重心高、一碰就倒，已写入装填手册规则。 */
+ { id:'suitcase', name:'行李箱',  l:68,  w:45,  h:26,  mesh:'p_suit',   color:0x3f5b78, side:false, sideHard:true, stackable:true, cap:true },
  { id:'bike',     name:'自行车',  l:175, w:60,  h:105, mesh:'bike',     color:0x2b2b2b, stackable:false, cap:false },
  { id:'sofa',     name:'沙发',    l:200, w:85,  h:80,  mesh:'sofa',     color:0x8a6a4f, soft:true, compress:true, warn:true, stackable:false, legs:true, cap:false },
  { id:'mattress', name:'床垫',    l:190, w:150, h:25,  mesh:'mattress', color:0xd8d2c4, soft:true, stackable:true, cap:true },
@@ -1814,7 +1869,9 @@ var CATALOG = [
  { id:'fridge',   name:'小冰箱',  l:60,  w:65,  h:170, mesh:'fridge',   color:0xf0f0f0, upright:true, stackable:false, cap:true },
  { id:'shelf',    name:'书架',    l:80,  w:30,  h:180, mesh:'shelf',    color:0x8b6b47, upright:true, stackable:false, cap:true },
  { id:'chair',    name:'椅子',    l:45,  w:45,  h:90,  mesh:'chair',    color:0x6b7b8c, stackable:false, legs:true, cap:true },
- { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'storagebox', color:0x5c7a63, side:false, stack:true, stackable:true, cap:true },
+ /* [R34 202611191755] mesh 由真实模型 storagebox 改为程序化 p_crate：原资产是开盖+翘盖状态，
+    顶面只有 z 中央一条达到最高点，其余低 1.5~2.4cm，上层件落位后视觉悬空、能从箱口看进内部。 */
+ { id:'crate',    name:'收纳箱',  l:55,  w:40,  h:30,  mesh:'p_crate',   color:0x5c7a63, side:false, stack:true, stackable:true, cap:true },
  { id:'tv',       name:'电视',    l:130, w:15,  h:75,  mesh:'tv',       color:0x2a2a2a, upright:true, stackable:false, cap:false },
  { id:'table',    name:'茶几',    l:100, w:55,  h:45,  mesh:'coffeetable', color:0x8a7355, stackable:false, legs:true, cap:true },
  { id:'treadmill',name:'跑步机',  l:170, w:80,  h:130, mesh:'treadmill', color:0x3a3f47, stackable:false, cap:false },
@@ -3072,7 +3129,7 @@ function snapGeo(geo, key) {
    解法：全部程序化几何 —— BoxGeometry 拼板 + ExtrudeGeometry 挖孔，所有面严格轴对齐、
    棱是真实硬棱，孔与箱盖是真几何不是贴图。顶点色逐部件编码（单材质一模型），
    与既有渲染链（makeObjSized 非等比铺满）完全兼容，模型 AABB 归一化到 ±0.5。 */
-var PROC_KEYS = { p_carton: 1, p_plastic: 1, p_suit: 1 };
+var PROC_KEYS = { p_carton: 1, p_plastic: 1, p_suit: 1, p_crate: 1 };
 var PROC_MAT = {
  /* [R23-EMI 20261117] 纸箱加一点自身暖色自发光：场景补光是冷蓝(0x9dc0ff/0xc8d8ff)+半球光，
     纯漫反射的牛皮纸在这种冷光场里会被洗成中性灰（实测 base 暖色占比仅 0.6%）。
@@ -3080,7 +3137,9 @@ var PROC_MAT = {
     强度 0.30 + 深棕 0x3A2410，不改变明暗层次。塑料箱/行李箱不加（它们本来就是冷色系）。 */
  p_carton:  { rough: 0.94, metal: 0.00, emi: 0x3A2410, emiI: 0.30 },
  p_plastic: { rough: 0.32, metal: 0.04 },
- p_suit:    { rough: 0.50, metal: 0.07 }
+ p_suit:    { rough: 0.50, metal: 0.07 },
+ /* [R34] 收纳箱：塑料件，磨砂半亮，不加自发光 */
+ p_crate:   { rough: 0.62, metal: 0.02 }
 };
 var procCache = {}, procMats = {};
 
@@ -3278,8 +3337,48 @@ function pSuitGeo() {
  return pMerge(parts);
 }
 
+/* [R34 202611191755] 收纳箱：改程序化全闭合平顶几何，替换原真实模型 storagebox。
+   原模型是「开盖 + 盖翘起」的扫描资产：解码后顶部 3% 高度带内的朝上三角只覆盖 z -0.037..0.164
+   （整模 z -0.5..0.5），顶视 10x10 网格里只有中间一条有面片，其余顶面比最高点低 1.5~2.4cm 实际尺寸；
+   而 makeObjSized 把最高点对齐占位盒顶 → 上层件按占位盒顶落位，视觉上就是「箱里看得见 + 顶面凹陷 + 垂直空隙」。
+   现在：一体薄平盖（0.06 归一化 ≈ 1.8cm），顶面 100% 覆盖到 y=+0.5；内衬挡透视（把手孔看进去是深色槽）；
+   上下分段箱体（中间留 6mm 细缝）；中央 5mm 分模缝由下方垫板封住，顶面仍连续可承压。 */
+function pCrateGeo() {
+ var parts = [], sign;
+ var TH = 0.022;                       /* 侧板/端板厚 */
+ var WX = 1.0, DZ = 1.0 - 2 * TH;      /* 端板夹在两侧板之间，角部不共面 */
+ var cBodyU = 0x5C7A63, cBodyD = 0x49604F, cBot = 0x3E5647, cIn = 0x222D28;
+ var cLid = 0x6C8C73, cSeam = 0x2C3A31;
+ /* 内衬：挡住空腔，从把手孔看进去是深色槽而不是透视到背面 */
+ parts.push({ g: pBoxG(DZ - 0.014, 0.86, DZ - 0.014, 0, -0.06, 0), c: cIn, n: 'liner' });
+ /* 底板 */
+ parts.push({ g: pBoxG(DZ, TH, DZ, 0, -0.5 + TH / 2, 0), c: cBot, n: 'bottom' });
+ /* 侧板 z=±：上半段带圆角矩形把手孔，下半段整板，两段之间留 0.006 细缝 */
+ for (sign = -1; sign <= 1; sign += 2) {
+  var gh = pPlateG(WX, 0.45, TH, { t: 'rect', u: 0, v: 0.095, ru: 0.17, rv: 0.05, r: 0.03 });
+  gh.translate(0, 0.205, sign * (0.5 - TH / 2));
+  parts.push({ g: gh, c: cBodyU, n: 'sideU' + (sign > 0 ? '+z' : '-z') });
+  parts.push({ g: pBoxG(WX, 0.444, TH, 0, -0.248, sign * (0.5 - TH / 2)), c: cBodyD, n: 'sideD' + (sign > 0 ? '+z' : '-z') });
+ }
+ /* 端板 x=±：同样上下两段，无孔 */
+ for (sign = -1; sign <= 1; sign += 2) {
+  parts.push({ g: pBoxG(TH, 0.45, DZ, sign * (0.5 - TH / 2), 0.205, 0), c: cBodyU, n: 'endU' + (sign > 0 ? '+x' : '-x') });
+  parts.push({ g: pBoxG(TH, 0.444, DZ, sign * (0.5 - TH / 2), -0.248, 0), c: cBodyD, n: 'endD' + (sign > 0 ? '+x' : '-x') });
+ }
+ /* 平顶盖：两片各自铺满到 x=±0.5（左片 -0.5..-0.0025 / 右片 0.0025..0.5），顶面恒在 y=+0.5 */
+ parts.push({ g: pBoxG(0.4975, 0.06, 1.0, -0.25125, 0.47, 0), c: cLid, n: 'lidL' });
+ parts.push({ g: pBoxG(0.4975, 0.06, 1.0,  0.25125, 0.47, 0), c: cLid, n: 'lidR' });
+ /* 分模缝垫板：顶面 0.485，封住 5mm 缝隙，保证顶面无贯穿空洞 */
+ parts.push({ g: pBoxG(0.03, 0.022, 1.0, 0, 0.474, 0), c: cSeam, n: 'seamFill' });
+ return pMerge(parts);
+}
+
 function buildProcMesh(key) {
- if (!procCache[key]) procCache[key] = (key === 'p_suit') ? pSuitGeo() : pCartonGeo(key === 'p_plastic');
+ if (!procCache[key]) {
+  procCache[key] = (key === 'p_suit') ? pSuitGeo()
+                 : (key === 'p_crate') ? pCrateGeo()
+                 : pCartonGeo(key === 'p_plastic');
+ }
  if (!procMats[key]) {
   var pm = PROC_MAT[key] || { rough: 0.7, metal: 0.0 };
   procMats[key] = new T.MeshStandardMaterial({
@@ -4826,6 +4925,9 @@ function addToCart(cat) {
   side: sideOf(cat), pose: poseSel,
   /* [R29-C] 可堆叠/带腿/顶面可承压：固化在加入那一刻，后续改选项不影响已加件 */
   stackable: stackOf(cat), legs: !!cat.legs, cap: !!cat.cap,
+  /* [R34 202611191815] sideHard 必须固化进 cart 条目，否则 items 构造读 c.sideHard 恒 undefined，
+     硬锁静默失效（同 R28-A「字段没带进 cart」坑）。行李箱=必须平放。 */
+  sideHard: !!cat.sideHard,
   /* P0-1/P0-3：姿态的分段形状随 cart 项带出（局部坐标，原点在占位 AABB 左前下角），
     失败件要靠它在仓外也画出两段而不是一整块 */
   poseParts: (poseObj && poseObj.parts) ? poseObj.parts : null,
@@ -5869,6 +5971,7 @@ function finishManual() {
             才有 side 字段，写成 side===undefined?false 等于把 CATALOG 的 side:false 丢掉，
             搬家箱被立成 40x40x60（R28 真凶之一）。可堆叠族默认不可侧放。 */
          noSide: cart[ci].side !== undefined ? !cart[ci].side : (sideFreeNow() ? false : !!(cart[ci].box || cart[ci].stack)),
+         _sideHard: !!cart[ci].sideHard,
          stack: (cart[ci].stackable !== undefined ? !!cart[ci].stackable : !!(cart[ci].box || cart[ci].stack)),
          _legs: !!cart[ci].legs, _cap: !!cart[ci].cap,
          _vox: voxFor(cart[ci]) });
@@ -5935,8 +6038,12 @@ els.mbExit.addEventListener('click', function (e) {
 /* minCap 是"能全装下的最小仓位容积"，用于算"仓位选得准不准"的奖励分。
   六关数值均来自实跑验证，改物品或仓位尺寸必须重新跑一遍。 */
 var LEVELS = [
+ /* [R34 202611191815] 行李箱改为「必须平放（sideHard）」后，S 仓（净 100×100×100）装不下
+    4 箱 + 1 行李箱：平放的 68×45×26 行李箱只能压在箱顶，覆盖率 78% < floatAudit 的 85% 线
+    （22% 悬挑在画面上就是「悬空」）。可装的真解是 3 箱 + 1 行李箱（行李箱贴地、两箱各叠一层，
+    支撑 100%），故本关数量 4 箱降为 3 箱 —— 教学点「1m³ 能塞下」不变。 */
  { id:'L01', name:'第一趟', hint:'先看看 1m³ 能不能塞下', bin:'S',
-  items:[['搬家箱',4],['行李箱',1]], minCap:capM3Of('S'), limit:0 },
+  items:[['搬家箱',3],['行李箱',1]], minCap:capM3Of('S'), limit:0 },
  { id:'L02', name:'装不下的时候', hint:'沙发、床垫、自行车，3m³ 真装得下吗', bin:'M',
   items:[['沙发',1],['床垫',1],['自行车',1]], minCap:capM3Of('L'), limit:0,
   trapNote:'这关的 3 m³ 是故意留的坑：沙发 200cm，横过来竖过去都超 152cm 的内部，就是要你先把这个坑踩出来' },
@@ -6126,6 +6233,7 @@ function playTrips() {
            upright: !!c.upright, _poses: posesFor(c.id, c.pose),
            /* [R28-A 202611180754] 同 P23a：分趟入口与主装填必须同口径，否则「分趟能装、一次装不下」 */
            noSide: c.side !== undefined ? !c.side : (sideFreeNow() ? false : !!(c.box || c.stack)),
+           _sideHard: !!c.sideHard,
            stack: (c.stackable !== undefined ? !!c.stackable : !!(c.box || c.stack)),
            _legs: !!c.legs, _cap: !!c.cap,
            _vox: voxFor(c) });
@@ -6345,6 +6453,7 @@ function doPack() {
          upright: !!c.upright, _poses: posesFor(c.id, c.pose),
          /* [R28-A 202611180754] 同 P23a/P23b：主入口默认值回落到品类语义（搬家箱不可侧放） */
          noSide: c.side !== undefined ? !c.side : (sideFreeNow() ? false : !!(c.box || c.stack)),
+         _sideHard: !!c.sideHard,
          /* [R29-C 202611181810] 可堆叠按清单条目固化的 stackable 走；未设时退回箱子/收纳箱默认 */
          stack: (c.stackable !== undefined ? !!c.stackable : !!(c.box || c.stack)),
          _legs: !!c.legs, _cap: !!c.cap,
@@ -7706,6 +7815,58 @@ window.__API__ = {
  /* 场景第 i 件的「面凸出」审计：顶点按 AABB 归一化到 ±1，
     逐面（|u_ax|>0.90 视为该面归属）统计 max|u| 与该面顶点数。
     max|u_ax| ≤1.02 = 该面平整无凸起物（把手/提手会明显 >1.1）。*/
+ /* [R34 202611191820] 程序化几何原样导出（position/index/color），供离线光栅渲染取证：
+    只在验收时用，不参与业务渲染。 */
+ rawProc: function (key) {
+  var m = buildProcMesh(key);
+  if (!m) return null;
+  var g = m.geometry, pa = g.getAttribute('position'), ca = g.getAttribute('color');
+  var P = [], C = [];
+  for (var i = 0; i < pa.count; i++) {
+   P.push(+pa.getX(i).toFixed(5), +pa.getY(i).toFixed(5), +pa.getZ(i).toFixed(5));
+   if (ca) C.push(+ca.getX(i).toFixed(3), +ca.getY(i).toFixed(3), +ca.getZ(i).toFixed(3));
+  }
+  var I = [];
+  if (g.index) { for (var t = 0; t < g.index.count; t++) I.push(g.index.getX(t)); }
+  else { for (var t2 = 0; t2 < pa.count; t2++) I.push(t2); }
+  return { key: key, P: P, C: C, I: I, nv: pa.count };
+ },
+ /* [R34 202611191820] 顶视封闭性审计：n×n 网格从 +y 向下射线打本件，记录最高命中点的相对高度。
+    判据：全封闭 → 所有命中点 rel≈1（命中盖板顶面）；敞口 → 网格中部命中点 rel 明显 < 0.9
+    （射线穿过敞口直接落到内衬/箱底）。这是「收纳箱一半没盖子/盖翘起」这类缺陷的客观判据，
+    不再依赖读图。rel 定义：命中点 y 在 bbox 高度上的归一化位置。 */
+ topAudit: function (key, n) {
+  n = n || 12;
+  var m = buildProcMesh(key);
+  if (!m) return null;
+  var g = m.geometry;
+  g.computeBoundingBox();
+  var bb = g.boundingBox;
+  var mesh = new T.Mesh(g, m.material);
+  mesh.updateMatrixWorld(true);
+  var rc = new T.Raycaster(), o = new T.Vector3(), d = new T.Vector3(0, -1, 0);
+  var cells = [], hitN = 0, missN = 0, lowN = 0, minRel = 9, maxRel = -9;
+  var hy = (bb.max.y - bb.min.y) || 1e-6;
+  for (var i2 = 0; i2 < n; i2++) for (var j = 0; j < n; j++) {
+   var u = (n === 1 ? 0.5 : i2 / (n - 1)), v = (n === 1 ? 0.5 : j / (n - 1));
+   var x = bb.min.x + (bb.max.x - bb.min.x) * (0.02 + 0.96 * u);
+   var z = bb.min.z + (bb.max.z - bb.min.z) * (0.02 + 0.96 * v);
+   o.set(x, bb.max.y + Math.max(1, hy), z);
+   rc.set(o, d);
+   var its = rc.intersectObject(mesh, false);
+   if (!its.length) { missN++; cells.push(' '); continue; }
+   var rel = (its[0].point.y - bb.min.y) / hy;
+   hitN++; if (rel < minRel) minRel = rel; if (rel > maxRel) maxRel = rel;
+   if (rel < 0.9) lowN++;
+   cells.push(rel >= 0.97 ? '#' : (rel >= 0.9 ? '+' : '-'));
+  }
+  var coverTop = +(((n * n - lowN) / (n * n)) * 100).toFixed(2);
+  var rows = [];
+  for (var r = 0; r < n; r++) rows.push(cells.slice(r * n, (r + 1) * n).join(''));
+  return { key: key, n: n, hit: hitN, miss: missN, low: lowN,
+   minRel: +(minRel === 9 ? 0 : minRel).toFixed(4), maxRel: +(maxRel === -9 ? 0 : maxRel).toFixed(4),
+   coverTop: coverTop, grid: rows };
+ },
  itemAudit: function (i) {
   var o = placedGroup.children[i];
   if (!o) return null;
@@ -7759,6 +7920,8 @@ window.__API__ = {
  },
  /* [MERGE-v78] 仓位口径三函数挂到调试接口，验收脚本直接调同一实现，不另写一套判据 */
  capM3Of: capM3Of, nextSceneForMinCap: nextSceneForMinCap, smallerSceneForItems: smallerSceneForItems,
+ /* [R34 202611191820] 出口级校验函数挂调试接口（stackAudit 可带参复核外部 placed 列表） */
+ stackAudit: stackAudit, stackCoverM: stackCoverM,
  /* P0-2/P0-3 验收（第7轮）+ FIX-GAP-01（20261114）：逐个算 placedGroup 子对象的世界包围盒。
    口径已改：X/Z = 占位 - 0.5cm，Y = 占位（上下堆叠零缝隙）。
    用 Box3().setFromObject 走真实几何对账，不靠读参数推断画了多大 */
@@ -7961,12 +8124,15 @@ window.__API__ = {
   for (i = 0; i < list.length; i++) {
    var o = list[i];
    var it = { name: o.name || ('item' + i), l: o.l, w: o.w, h: o.h,
-         soft: !!o.soft, upright: !!o.upright, noSide: !!o.noSide,
+         soft: !!o.soft, upright: !!o.upright, noSide: !!o.noSide, _sideHard: !!o.sideHard,
          stack: (o.stack === undefined ? !!(o.box || /搬家箱|收纳箱|纸箱|标准箱/.test(String(o.name || ''))) : !!o.stack),
          _legs: !!o.legs, _cap: !!o.cap,
          _poses: o.solid ? null : (o.poses || posesOf(o.id)) };
    if (hasMesh(o.mesh) && !GREYBOX_ON()) {
-    var v = voxFor({ mesh: o.mesh, l: o.l, w: o.w, h: o.h });
+    /* [R34 202611191755] 探针口径与页面同源：原实现只传 {mesh,l,w,h}，把 stack/box/cap 丢了，
+       voxFor 的「可堆叠族走包围盒体素」分支因此永不命中 → 箱子被按真实模型体素判定，
+       与页面（voxFor(c) 传整条 CATALOG 条目）不同源，实测同一批货 L06 页面 52 件、探针只 31 件。 */
+    var v = voxFor({ mesh: o.mesh, l: o.l, w: o.w, h: o.h, stack: o.stack, box: !!o.box, cap: !!o.cap });
     if (v) it._vox = v;
    }
    it._solid = !!o.solid;
@@ -8545,7 +8711,10 @@ window.__API__ = {
  },
  /* [R27] 悬空审计出口：placed 各件「底面被下方整块件托住的比例」，<0.6 即悬空。
     与 audit() 的体素支撑率互补（这个只认整块 AABB，parts 件豁免）。 */
- floatAudit: function () {
+ floatAudit: function (pl) {
+  /* [R34 202611191820] 可带参：探针（packOnly 等）传入自己的 placed 列表复核，
+     不带参时沿用 lastPack。原实现只能读 lastPack，静态对账拿不到悬空数。 */
+  if (pl && pl.length) return floatAudit(pl);
   if (!lastPack) return null;
   return floatAudit(lastPack.placed);
  },
