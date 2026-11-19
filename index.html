@@ -612,7 +612,7 @@ body.kbopen .sheet.full{height:auto!important;
 <!-- [v78] 2026202611160226 两条并行版本线合并为单一主线，此后三通道（GitHub Pages 根 / GitHub Pages play / 魔搭创空间）同源同步。
      并入 v77.5 线：远景可辨（雾密度按相机距离反算 + camDist 钳位）、灯光控制、清单一键归零、L07 薄板件镜子关、立放重试 FIX-CLIP-02/03、FIX-STARS 门/电梯硬门槛。
      并入 v52 线：4 顺序路装箱 + anytime 精确搜索（>30 件体积预判短路）、LEVEL-FIX-04（L04 目标仓 XL→L）、FIX-COPY-03（结算文案按 binPts 分档）、L02 trapNote、capM3Of 统一容积口径、FIX-BINCAP。 -->
-<div id="verTag"><b>v100</b> · 202611190243</div>
+<div id="verTag"><b>v102</b> · 202611191245</div>
 
 <div id="tripBadge"></div>
 
@@ -4045,16 +4045,21 @@ function makeObjSized(cat, pl, ph, pw, placed) {
       避免 3cm 的抽屉盒被压扁 5%。底面始终与占位盒底面齐平：不下沉穿地、也不悬空。
       （旧版用「整体下移」实现同样效果，会让底部比占位底面低 0.15cm 嵌进地板，已弃用。） */
    var CAP_EPS = capEps(ph);   /* [FIX-CAP-06] 统一口径 */
-   /* [R29-A 202611181810] 非箱类造型件改等比缩放（三轴同一个 k）。
-      此前三轴各自铺满占位盒：模型原比例一旦被算法摆成别的姿态（椅子 45x45x90 被躺成 45x90x45），
-      渲染就沿轴独立拉伸，用户看到的就是「同一个椅子车厢里被拉长、12 方仓里正常」。
-      等比后模型保持自身比例，只按最紧的那一轴缩放进占位盒；空出的余量由下面的
-      X/Z 居中 + Y 底面坐实吸收。箱类本身方正，仍走铺满以贴合占位盒。 */
+   /* [R33-A 20261119] 取消「造型件等比缩放」（R29-A 的整改）。
+      等比把「实体必须等于占位盒」这条不变量打破了：占位盒是算法做堆叠、支撑率、容量的
+      唯一真值，实体一旦小于占位盒，上层件按占位顶面落位就会与下层实体之间留出肉眼可见
+      的空隙——这正是用户反复投诉的「悬空」。真机实测（L06，objBoxes mesh-only 对账）：
+      行李箱占位 68 高、实体只有 25.7（缺口 42.3cm）；收纳箱占位 30 高、实体 25（缺口 5cm）；
+      椅子占位 90 高、实体 71.2（缺口 18.8cm）；只有 box:true 的搬家箱（走三轴铺满）正常（缺口 0.1~0.2cm）。
+      横向错位同源：等比后实体足迹只有占位的 57%，居中后每边空 10cm 以上。
+      改为所有品类三轴各自铺满占位盒：形变是「恒定」的（只取决于 CATALOG 名义比例与资产比例，
+      与摆放姿态无关），远小于「缝隙 + 错位」的观感代价；配合下面的 X/Z 居中 + Y 底面坐实，
+      实体顶面 = 占位顶 − CAP_EPS、底面 = 占位底面，零视觉缝隙。 */
    var _kx = (szXZ(pl) + OVL_XZ * 2) / (size.x || 1);
    var _ky = Math.max(0.01, ph - CAP_EPS) / (size.y || 1);
    var _kz = (szXZ(pw) + OVL_XZ * 2) / (size.z || 1);
-   if (!cat.box) { var _kEq = Math.min(_kx, _ky, _kz); _kx = _ky = _kz = _kEq; }
    wrap.scale.set(_kx, _ky, _kz);
+   /* [R33-A] 三轴各自铺满，不再取 min 等比 —— 见上方注释。 */
    var b2 = new T.Box3().setFromObject(wrap);
    var c2 = new T.Vector3(); b2.getCenter(c2);
    /* X/Z 居中，Y 底部坐实到占位盒底面（防止模型悬浮在盒中间） */
@@ -6209,6 +6214,11 @@ function renderPreview() {
   return (b.l * b.w - a.l * a.w) || (b.h - a.h);
  });
  var px = bin.l + 26;
+ /* [R33-D 20261119] 待装件从「沿 +x 一条长龙」改成「按仓宽铺 2D 网格」。
+    L06 实测：52 件沿 x 一路排到 2124cm（仓长才 430），深度方向只用 z=0~45cm，
+    fitCamera 被迫退到 dist=12000，手机上一堆箱子小到看不清、更看不清谁压着谁。
+    现在：一列占一个 footprint，先沿 z（仓宽方向）铺满 bin.w，再换下一行（x 前进一行列宽 + 20）。 */
+ var _pz = 0, _rowL = 0, _pzGap = 10;
  /* [R27-I 202611172335] 列高上限 = 仓高（原来写 max(bin.h,120)*2 = 240，S 仓 102 高时 4 只箱子被叠到 160，
     远看就是「一摞箱子顶出仓外」）。待装件排布必须保证「能装进仓」，所以上限就是仓高：
     S 仓 102 高 → 40 高的箱子只叠 2 层（80），第 3 只另开一列落地，肉眼即「从下往上叠、地面还留着」。 */
@@ -6217,7 +6227,7 @@ function renderPreview() {
  for (var k = 0; k < _pvOrder.length; k++) {
   var cat = _pvOrder[k];
   var canStack = !!(cat.box || cat.stack);
-  var pickC = null;
+  var pickC = null, pickRot = false;
   if (canStack) {
    for (var ci = 0; ci < cols.length; ci++) {
     var cc = cols[ci];
@@ -6226,15 +6236,25 @@ function renderPreview() {
     var fitB = (cc.footL >= cat.w - 0.01 && cc.footW >= cat.l - 0.01);
     if (!fitA && !fitB) continue;
     if (cc.top + cat.h > maxColH) continue;
-    if (!pickC || cc.top < pickC.top) pickC = cc;
+    if (!pickC || cc.top < pickC.top) { pickC = cc; pickRot = !fitA; }
    }
   }
   if (!pickC) {
-   pickC = { x: px, z: 0, top: 0, footL: cat.l, footW: cat.w, stack: canStack };
+   /* 本行铺满（z 超 bin.w）才换行；首次（_pz===0）不换行，防单件比 bin.w 还宽时死循环 */
+   var _dw = pickRot ? cat.l : cat.w;
+   if (_pz > 0 && _pz + _dw > bin.w + 0.5) { px += _rowL + 14; _pz = 0; _rowL = 0; }
+   pickC = { x: px, z: _pz, top: 0, footL: cat.l, footW: cat.w, stack: canStack };
    cols.push(pickC);
-   px += (canStack ? Math.max(cat.l, 90) : cat.l) + 20;
+   _pz += _dw + _pzGap;
+   /* 行宽只算真实列深（旧写法用 max(cat.l,90) 白占 30~50cm，52 件被拉成 7 行长龙） */
+   _rowL = Math.max(_rowL, pickRot ? cat.w : cat.l);
   }
   var o = makeObj(cat);
+  /* [R33-B 20261119] fitB 命中（列只容得下「长宽互换」的摆放）时必须真的把物品绕 Y 转 90°。
+     旧实现只把 fitB 当成「能放」，物品仍按 cat.l ✕ cat.w 摆进 footL ✕ footW 的列并在列中心，
+     横向差 (footL − cat.w)/2 —— 这正是用户看到的「整摞待装件横向错位」。绕 Y 旋转不改变 h，
+     列高累加继续用 cat.h。 */
+  if (pickRot) o.rotation.y = Math.PI / 2;
   /* y = 列顶高度 + 本件半高 → 底面正好坐在列顶（第一层就是地面），不存在空中悬停 */
   o.position.set(pickC.x + pickC.footL / 2, pickC.top + cat.h / 2, pickC.z + pickC.footW / 2);
   o.userData.target = o.position.clone();
@@ -7789,6 +7809,36 @@ window.__API__ = {
    });
   });
   return out;
+ },
+ /* [R33-C 20261119] 占位-实体一致性审计 —— 唯一能抓「视觉悬空」的判据。
+    算法侧 floatAudit 只证明「占位盒被托住」，渲染实体小于占位盒时照样露缝（本轮 L06 实证：
+    floatAudit floating=0 而行李箱实体比占位矮 42.3cm）。逐件返回占位盒与实体网格盒的
+    顶缝 / 底缝 / 三轴偏差，bad = 任一超阈（顶缝>0.6、底缝>0.6、|δ|>0.8cm）。 */
+ fitAudit: function () {
+  var out = [], bad = 0;
+  function meshBox(root) {
+   var bb = new T.Box3(), tmp = new T.Box3(), has = false;
+   root.traverse(function (n) {
+    if (!n.isMesh || (n.material && n.material.isMeshBasicMaterial)) return;
+    tmp.setFromObject(n);
+    if (!has) { bb.copy(tmp); has = true; } else bb.union(tmp);
+   });
+   return has ? bb : new T.Box3().setFromObject(root);
+  }
+  placedGroup.children.forEach(function (o, i) {
+   var d = o.userData.dims; if (!d) return;
+   var bb = meshBox(o);
+   var top = o.position.y + d[1] / 2, bot = o.position.y - d[1] / 2;
+   var gapTop = +(top - bb.max.y).toFixed(2), gapBot = +(bb.min.y - bot).toFixed(2);
+   var dl = +((bb.max.x - bb.min.x) - d[0]).toFixed(1), dh = +((bb.max.y - bb.min.y) - d[1]).toFixed(1),
+       dw = +((bb.max.z - bb.min.z) - d[2]).toFixed(1);
+   var isBad = (gapTop > 0.6 || gapBot > 0.6 || Math.abs(dl) > 0.8 || Math.abs(dh) > 0.8 || Math.abs(dw) > 0.8);
+   if (isBad) bad++;
+   out.push({ i: i, catId: o.userData.catId || null, dims: d,
+    box: [+(bb.max.x - bb.min.x).toFixed(1), +((bb.max.y - bb.min.y)).toFixed(1), +((bb.max.z - bb.min.z)).toFixed(1)],
+    dl: dl, dh: dh, dw: dw, gapTop: gapTop, gapBot: gapBot, bad: isBad });
+  });
+  return { n: out.length, bad: bad, list: out };
  },
  /* P0-1③ 验收：数画面里的「装不下」标注（角标 Sprite / 红色描边框） */
  countSprites: function () {
